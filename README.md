@@ -1,14 +1,14 @@
 # Brainrot Bloom
 
-A complete source project for a Roblox collection and growth game. Everything visual is built from original Roblox parts at runtime: no Toolbox models, uploaded meshes, paid assets, or external asset IDs are required.
+A complete source project for a Roblox collection and growth game. All visuals are made from original Roblox parts: no Toolbox models, uploaded meshes, paid assets, or external asset IDs are required.
 
 ## Open and play
 
 1. Download [`BrainrotBloom.rbxlx`](BrainrotBloom.rbxlx) from this repository or workspace and open it in **Roblox Studio**.
-2. Press **Play**. The server creates the islands, shops, creature gallery, day/night cycle, and player data; the client creates the interface. The edit view is intentionally empty before Play.
-3. Open **WORLDS**, choose **Clover Commons → TELEPORT TO PIT**, and press **E** or **DETECT** while standing in the sand.
+2. The complete map is already visible in Studio’s edit view. Press **Play** to start the UI, day/night cycle, player data, and gameplay. The server refreshes the scenery on startup.
+3. Open **Worlds**, choose **Clover Commons → Travel to sand pit**, and press **E** or **Dig** while standing in the sand.
 4. Tap the capture button or press **Space** enough times within 10 seconds. Your new brainrot immediately starts earning coins.
-5. Open **BAG**, select a creature, and feed it. You start with 150 coins, a Tin Twig detector, and three Suspicious Crumbs.
+5. Open **Collection** (or **Bag** on mobile), select a creature, and feed it. You start with 150 coins, a Tin Twig detector, and three Suspicious Crumbs.
 
 Use **FOOD**, **SELL**, and **GEAR** to teleport directly to each shop. **HOME** returns to the garden. Walk-up shop prompts use **F**, so they do not conflict with the detector's E key. Touch players use the on-screen buttons.
 
@@ -16,11 +16,11 @@ Studio is needed to actually play Roblox. This Linux cloud workspace builds the 
 
 ## What's included
 
-- **21 detailed original creatures**, with layered wings, gills, petals, crowns, clothing, and species-specific details. Three in each rarity: Common, Uncommon, Rare, Epic, Legendary, Mythic, Secret. Each has a distinct procedural silhouette and palette.
+- **21 individually sculpted creatures** with different anatomy: sliced toast, a pasta planter, a squat frog, a segmented bee, a full shark in slippers, curled tentacles, four-legged lion/dragon/capybara, a crescent moon, and robed wizard/emperor. Each has tailored face placement, limbs, accessories, and layered construction. Three in each rarity: Common, Uncommon, Rare, Epic, Legendary, Mythic, Secret. Each has a distinct procedural silhouette and palette.
 - **Feeding and levels** to level 100. Food grants XP; every level increases income and the displayed companion grows as it levels. All owned creatures earn income while you are online, including creatures you are not displaying.
 - **15 foods**, from Suspicious Crumb to Secret Midnight Feast. A random six-food selection refreshes at shared five-minute boundaries. The inexpensive Crumb is always available; purchase quantities are personal to the current player session.
 - **Seven detector tiers**, progressively shorter search cooldowns and higher rarity reach. Higher power also improves the weighting of rare finds. Detectors are visible tools held by the character.
-- **Three expanded worlds**: each island is 700 × 660 studs (four times the original area), with 320 × 280 sand pits, green surroundings, gardens, trails, benches, themed scenery, shops, and teleport controls:
+- **Three expanded worlds**: each island is 700 × 660 studs (four times the original area), with 320 × 280 sand pits, terraced rocky shores, recessed excavation basins, stone steps, rope fences, survey carts, crates, lanterns, themed woodlands, shops, and teleport controls. The hub has a fountain plaza, gabled markets with stocked shelves, a trading scale, and a specimen gallery. Each world has its own landmarks: a windmill and bridged picnic pond, a sun-arch sanctuary and palm oasis, and a telescope observatory with crystal/mushroom gardens:
 
 | World | Unlock cost | Minimum detector power to dig | Possible rarity ceiling |
 | --- | ---: | ---: | --- |
@@ -34,7 +34,7 @@ A world's rarity ceiling also requires a sufficiently strong detector. The start
 - **Gear Shop sections** for detectors and boosts. Growth Juice doubles food XP for a chosen creature; Golden Hour doubles its income. Each lasts five minutes. The two kinds can coexist; buying an already active kind is refused without charging.
 - **A sell station** with confirmation and level-based sale values. Collection capacity is 50 creatures.
 - **A 12-minute day/night cycle**, night lamps, original creature previews, and a following companion. Physical signs replace floating map pins.
-- **A redesigned Builder Sans interface** with a softer forest palette, larger touch targets, gentle transitions, persistent navigation, searchable/sortable collection cards, rarity filters, and 12-creature pagination. The capture sheet previews the actual creature.
+- **A Builder Sans field-journal interface** with cream paper, sage accents, illustrated world postcards, vector navigation icons, rarity-tinted sculpture stages, food tokens, readable detector stats, larger touch targets, gentle transitions, persistent navigation, searchable/sortable collection cards, rarity filters, and 12-creature pagination. The capture sheet previews the actual creature.
 - **Server-owned purchases and rewards**, profile validation, request limits, DataStore session locks, autosave, leave/shutdown saving, and explicit Studio temporary-data fallback.
 
 Income is earned online only. Boost clocks continue to expire while offline. There are no Robux purchases or external account requirements.
@@ -54,15 +54,14 @@ cd /workspace/mesroblox
 bash scripts/setup.sh
 ```
 
-The script downloads pinned Rojo 7.5.1 and Luau 0.744 tools over verified HTTPS into ignored `.tools/`, runs the automated checks, and builds `build/BrainrotBloom.rbxlx`. Python 3, curl, and unzip must be present. Re-running it reuses installed tools.
+The script downloads pinned Rojo 7.5.1, Luau 0.744, and Lune 0.11.1 tools over verified HTTPS into ignored `.tools/`, runs the automated checks, assembles and validates the actual map with native Roblox datatypes, and saves the map into both `BrainrotBloom.rbxlx` and `build/BrainrotBloom.rbxlx`. Python 3, curl, and unzip must be present. Re-running it reuses installed tools.
 
 ```sh
 # Check syntax, economy, and authoritative server action behavior.
 python3 scripts/test.py --luau-dir .tools
 
-# Rebuild the Studio file after edits.
-mkdir -p build
-.tools/rojo build default.project.json -o build/BrainrotBloom.rbxlx
+# Rebuild the Studio file, including the editor-visible map, after edits.
+bash scripts/setup.sh
 
 # Optional: sync source to Studio through the Rojo plugin on your own machine.
 .tools/rojo serve default.project.json
@@ -79,8 +78,23 @@ Cloud tasks already have an isolated checkout; use this checkout without creatin
 | `src/server/Main.server.luau` | Profiles, saving, shops, income, validated capture sessions |
 | `src/client/Main.client.luau` | HUD, shop and collection UI, teleport controls, capture presentation |
 
+## Geometry previews
+
+[Creature sculpture contact sheet](docs/creature-geometry-preview.png) · [Village detail](docs/village-geometry-preview.png) · [Clover Commons](docs/meadow-geometry-preview.png)
+
+These previews are drawn from the generated Parts’ actual positions and rotations. They are **offline geometry renders**, not Roblox Studio screenshots: materials, transparency, fonts, lighting, and vegetation scatter may differ in the engine.
+
+To regenerate them with the optional NumPy/Pillow preview dependencies installed:
+
+```sh
+.tools/lune run scripts/scene_export.luau build/BrainrotBloom-preview.rbxlx --geometry
+python3 scripts/render_preview.py
+```
+
+The scene exporter uses deterministic preview randomness for scattered vegetation. Hand-authored landmark/creature transforms are the source transforms. It checks for non-finite transforms (including vertical look-at rotations) and bounds geometry budgets; it does not emulate Roblox networking or physics.
+
 ## Verification boundary
 
-The automated suite compiles every source with the official Luau compiler, executes real economy functions, and exercises the actual server action handlers with deterministic Roblox service doubles. It checks purchases, finite quantities, capture success/failure/replays, growth, boost expiration, passive income, world progression, and save/reload behavior. It also executes every creature factory, the actual expanded map builder with the restricted Workspace-write guard, and client UI flows at three mocked viewport sizes. UI mocks do not validate real layout or rendering.
+The automated suite compiles every source with the official Luau compiler, executes real economy functions, and exercises the actual server action handlers with deterministic Roblox service doubles. It checks purchases, finite quantities, capture success/failure/replays, growth, boost expiration, passive income, world progression, and save/reload behavior. It also executes every creature factory, the actual expanded map builder with the restricted Workspace-write guard, and client UI flows at three mocked viewport sizes. UI mocks do not validate real layout or rendering. The build also executes every sculpture and the map using native Roblox datatypes and reflected Instances via Lune, validates finite transforms, confirms pit alignment, and bakes the editor-visible scene.
 
 These checks do **not** render the game or connect to Roblox DataStores. Follow [`docs/PLAYTEST.md`](docs/PLAYTEST.md) in Roblox Studio for real character controls, touch layouts, multiplayer, and live saving before publishing the game to players. The built place has not been published to Roblox.

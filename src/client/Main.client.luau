@@ -16,13 +16,17 @@ local Action = remotes:WaitForChild("Action")
 local State = remotes:WaitForChild("State")
 local Notify = remotes:WaitForChild("Notify")
 
+-- A warm field-journal palette keeps the new sculptures in focus.
 local C = {
-	bg = Color3.fromRGB(17, 25, 24), panel = Color3.fromRGB(23, 34, 31),
-	card = Color3.fromRGB(31, 44, 40), light = Color3.fromRGB(45, 62, 54),
-	text = Color3.fromRGB(239, 243, 235), muted = Color3.fromRGB(166, 184, 172),
-	lime = Color3.fromRGB(174, 222, 184), green = Color3.fromRGB(137, 202, 169),
-	gold = Color3.fromRGB(233, 201, 144), red = Color3.fromRGB(238, 151, 143),
+	bg = Color3.fromRGB(27, 44, 39), panel = Color3.fromRGB(245, 242, 232),
+	card = Color3.fromRGB(255, 254, 249), light = Color3.fromRGB(229, 233, 220),
+	text = Color3.fromRGB(35, 51, 45), muted = Color3.fromRGB(102, 116, 105),
+	lime = Color3.fromRGB(186, 216, 164), green = Color3.fromRGB(74, 118, 90),
+	gold = Color3.fromRGB(139, 98, 42), red = Color3.fromRGB(168, 75, 65),
+	paper = Color3.fromRGB(255, 254, 246), honey = Color3.fromRGB(238, 206, 141),
+	line = Color3.fromRGB(204, 212, 196), alert = Color3.fromRGB(243, 161, 153),
 }
+
 local state = nil
 local activePage = nil
 local selectedUid = nil
@@ -62,7 +66,7 @@ local function corner(obj, radius)
 	make("UICorner", {CornerRadius = UDim.new(0, radius or 12)}, obj)
 end
 local function stroke(obj, color, transparency)
-	return make("UIStroke", {Color = color or C.light, Transparency = transparency or 0, Thickness = 1, ApplyStrokeMode = Enum.ApplyStrokeMode.Border}, obj)
+	return make("UIStroke", {Color = color or C.line, Transparency = transparency or 0, Thickness = 1, ApplyStrokeMode = Enum.ApplyStrokeMode.Border}, obj)
 end
 local function label(parent, text, size, color, props)
 	local p = {
@@ -84,9 +88,9 @@ local function button(parent, text, onClick, props)
 	if p.Size.Y.Scale==0 and p.Size.Y.Offset<44 then p.Size=UDim2.new(p.Size.X.Scale,p.Size.X.Offset,0,44) end
 	local b = make("TextButton", p, parent)
 	corner(b, 10)
-	local border=stroke(b,C.text,0.94)
-	b.MouseEnter:Connect(function() TweenService:Create(border,TweenInfo.new(0.12),{Transparency=0.75}):Play() end)
-	b.MouseLeave:Connect(function() TweenService:Create(border,TweenInfo.new(0.12),{Transparency=0.94}):Play() end)
+	local border=stroke(b,C.bg,0.9)
+	b.MouseEnter:Connect(function() TweenService:Create(border,TweenInfo.new(0.12),{Transparency=0.6}):Play() end)
+	b.MouseLeave:Connect(function() TweenService:Create(border,TweenInfo.new(0.12),{Transparency=0.9}):Play() end)
 	if onClick then b.Activated:Connect(onClick) end
 	return b
 end
@@ -103,9 +107,85 @@ end
 local function card(parent, height)
 	local frame = make("Frame", {Size = UDim2.new(1, 0, 0, height), BackgroundColor3 = C.card, BorderSizePixel = 0}, parent)
 	corner(frame, 12)
-	stroke(frame,C.light,0.65)
+	stroke(frame,C.line,0.45)
 	return frame
 end
+local function readable(tint)
+	return tint:Lerp(C.text,0.64)
+end
+local function badge(parent, text, tint, position, size)
+	local field=label(parent,text,13,readable(tint),{Position=position,Size=size,
+		BackgroundColor3=tint:Lerp(C.paper,0.82),TextXAlignment=Enum.TextXAlignment.Center,
+		Font=Enum.Font.BuilderSansMedium})
+	corner(field,8)
+	return field
+end
+local function icon(parent, kind, tint, position, size)
+	local root=make("Frame",{Position=position,Size=size,BackgroundTransparency=1},parent)
+	local function mark(x,y,w,h,round,rotation)
+		local bit=make("Frame",{Position=UDim2.fromScale(x,y),Size=UDim2.fromScale(w,h),
+			BackgroundColor3=tint,BorderSizePixel=0,Rotation=rotation or 0},root)
+		bit:SetAttribute("TintIcon",true)
+		if round then corner(bit,round) end
+		return bit
+	end
+	if kind=="Collection" then
+		mark(0.18,0.28,0.64,0.63,4);mark(0.32,0.08,0.36,0.12,3)
+	elseif kind=="Food" then
+		mark(0.2,0.32,0.62,0.6,8);mark(0.52,0.09,0.12,0.26,2,-20);mark(0.65,0.09,0.24,0.13,4,-24)
+	elseif kind=="Sell" then
+		mark(0.12,0.64,0.76,0.19,5);mark(0.2,0.39,0.6,0.18,5);mark(0.31,0.14,0.39,0.18,5)
+	elseif kind=="Gear" then
+		mark(0.46,0.07,0.12,0.6,3,-28);mark(0.17,0.65,0.64,0.2,8);mark(0.54,0.1,0.25,0.12,2,-28)
+	else
+		mark(0.19,0.19,0.62,0.62,10);mark(0.42,0.04,0.16,0.25,2);mark(0.42,0.71,0.16,0.25,2)
+	end
+	return root
+end
+local function previewStage(parent,tint,position,size)
+	local stage=make("Frame",{Position=position,Size=size,BackgroundColor3=tint:Lerp(C.paper,0.86),BorderSizePixel=0,ClipsDescendants=true},parent)
+	corner(stage,12)
+	local halo=make("Frame",{AnchorPoint=Vector2.new(0.5,0.5),Position=UDim2.fromScale(0.5,0.5),Size=UDim2.fromScale(0.62,0.86),BackgroundColor3=tint,BackgroundTransparency=0.8,BorderSizePixel=0},stage)
+	corner(halo,200)
+	local ground=make("Frame",{AnchorPoint=Vector2.new(0.5,0.5),Position=UDim2.fromScale(0.5,0.86),Size=UDim2.fromScale(0.48,0.07),BackgroundColor3=C.bg,BackgroundTransparency=0.9,BorderSizePixel=0},stage)
+	corner(ground,100)
+	return stage
+end
+local function landscape(parent,world,position,size)
+	local stage=make("Frame",{Position=position,Size=size,BackgroundColor3=world.color:Lerp(C.paper,0.68),BorderSizePixel=0,ClipsDescendants=true},parent)
+	corner(stage,12)
+	local function block(x,y,w,h,color,radius,rotation)
+		local piece=make("Frame",{Position=UDim2.fromScale(x,y),Size=UDim2.fromScale(w,h),BackgroundColor3=color,BorderSizePixel=0,Rotation=rotation or 0},stage)
+		if radius then corner(piece,radius) end
+		return piece
+	end
+	block(0.72,0.12,0.14,0.2,world.id=="Cosmic" and C.paper or C.honey,100)
+	local distant=world.color:Lerp(C.green,0.45)
+	block(-0.15,0.42,0.82,0.9,distant,100,-8)
+	block(0.45,0.3,0.82,0.95,world.color:Lerp(C.green,0.6),100,12)
+	local ground=world.id=="Meadow" and Color3.fromRGB(159,188,127) or world.id=="Dunes" and Color3.fromRGB(216,175,116) or Color3.fromRGB(144,149,172)
+	block(0,0.7,1,0.4,ground)
+	block(0.25,0.77,0.5,0.17,world.id=="Cosmic" and Color3.fromRGB(204,185,224) or Color3.fromRGB(238,215,166),6)
+	if world.id=="Meadow" then
+		for i=1,3 do
+			local x=0.05+(i-1)*0.1
+			block(x+0.035,0.56,0.025,0.23,C.gold,2)
+			block(x,0.4,0.1,0.25,C.green,20)
+		end
+	elseif world.id=="Dunes" then
+		for _,x in ipairs({0.09,0.8}) do
+			block(x,0.4,0.04,0.4,Color3.fromRGB(172,130,86),2)
+			block(x-0.04,0.36,0.14,0.05,C.green,3,-18)
+			block(x-0.05,0.34,0.14,0.05,C.green,3,18)
+		end
+		block(0.58,0.42,0.04,0.25,C.paper,1);block(0.7,0.42,0.04,0.25,C.paper,1);block(0.58,0.39,0.16,0.05,C.paper,1)
+	else
+		for i=1,4 do block(0.07+i*0.07,0.58-(i%2)*0.12,0.035,0.23,Color3.fromRGB(226,216,255),2,22) end
+		block(0.73,0.56,0.18,0.2,Color3.fromRGB(104,111,147),100)
+	end
+	return stage
+end
+
 local function money(value)
 	value = tonumber(value) or 0
 	for _, unit in ipairs({{1e12,"T"},{1e9,"B"},{1e6,"M"},{1e3,"K"}}) do
@@ -137,24 +217,26 @@ local function rarity(id)
 end
 
 local hud = make("Frame", {Position = UDim2.new(0, 12, 0, 12), Size = UDim2.new(0, 290, 0, 86),
-	BackgroundColor3 = C.bg, BorderSizePixel = 0}, screen)
+	BackgroundColor3 = C.panel, BorderSizePixel = 0}, screen)
 corner(hud, 16)
 stroke(hud, C.light, 0.2)
-label(hud, "Brainrot Bloom", 12, C.lime, {Position = UDim2.new(0, 16, 0, 10), Size = UDim2.new(1, -90, 0, 18)})
-local coinsLabel = label(hud, "Loading…", 25, C.gold, {Position = UDim2.new(0, 16, 0, 27), Size = UDim2.new(1, -95, 0, 28), Font = Enum.Font.BuilderSansBold})
+label(hud, "Brainrot Bloom", 12, C.green, {Position = UDim2.new(0, 16, 0, 10), Size = UDim2.new(1, -90, 0, 18)})
+icon(hud,"Sell",C.gold,UDim2.fromOffset(16,33),UDim2.fromOffset(15,18))
+local coinsLabel = label(hud, "Loading…", 25, C.gold, {Position = UDim2.new(0, 39, 0, 27), Size = UDim2.new(1, -118, 0, 28), Font = Enum.Font.BuilderSansBold})
 local incomeLabel = label(hud, "Passive income grows with every level", 11, C.muted, {Position = UDim2.new(0, 16, 0, 62), Size = UDim2.new(1, -25, 0, 18)})
 button(hud, "Home", function() request("Teleport", {destination = "Home"}) end,
 	{Position = UDim2.new(1, -74, 0, 14), Size = UDim2.new(0, 60, 0, 40), TextSize = 13})
 local helpButton = button(screen, "?", function() openPage("Help") end,
-	{AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -12, 0, 12), Size = UDim2.new(0, 38, 0, 38), BackgroundColor3 = C.bg, TextSize = 21, ZIndex=10})
+	{AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -12, 0, 12), Size = UDim2.new(0, 38, 0, 38), BackgroundColor3 = C.panel, TextSize = 21, ZIndex=10})
 
 local nav = make("Frame", {AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -12),
-	Size = UDim2.new(0.97, 0, 0, 62), BackgroundColor3 = C.bg, BorderSizePixel = 0, ZIndex=10}, screen)
+	Size = UDim2.new(0.97, 0, 0, 62), BackgroundColor3 = C.panel, BorderSizePixel = 0, ZIndex=10}, screen)
 make("UISizeConstraint", {MaxSize = Vector2.new(720, 62)}, nav)
 corner(nav, 16)
 padding(nav, 6)
 make("UIGridLayout", {CellSize = UDim2.new(0.2, -5, 1, 0), CellPadding = UDim2.new(0, 6, 0, 0), SortOrder = Enum.SortOrder.LayoutOrder}, nav)
 local navButtons = {}
+local navIcons = {}
 for index, page in ipairs({"Collection", "Food", "Sell", "Gear", "Worlds"}) do
 	navButtons[page] = button(nav, page == "Collection" and "Collection" or page, function()
 		if page == "Food" or page == "Sell" or page == "Gear" then
@@ -162,12 +244,14 @@ for index, page in ipairs({"Collection", "Food", "Sell", "Gear", "Worlds"}) do
 			if not result or not result.ok then return end
 		end
 		openPage(page)
-	end, {LayoutOrder = index, TextSize = 14})
+	end, {LayoutOrder = index, TextSize = 13, TextYAlignment=Enum.TextYAlignment.Bottom, BackgroundColor3=C.panel})
+	make("UIPadding",{PaddingBottom=UDim.new(0,5)},navButtons[page])
+	navIcons[page]=icon(navButtons[page],page,C.muted,UDim2.new(0.5,-9,0,3),UDim2.fromOffset(18,18))
 end
 local digButton = button(screen, "Dig  ·  E", function() startDig() end,
 	{AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -86), Size = UDim2.new(0, 176, 0, 48),
-		BackgroundColor3 = C.lime, TextColor3 = C.bg, TextSize = 17})
-local detectorLabel = label(screen, "Walk into a sand pit to search", 12, C.text,
+		BackgroundColor3 = C.bg, TextColor3 = C.paper, TextSize = 17})
+local detectorLabel = label(screen, "Walk into a sand pit to search", 12, C.paper,
 	{AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -142), Size = UDim2.new(0.95, 0, 0, 22),
 		TextXAlignment = Enum.TextXAlignment.Center, TextStrokeTransparency = 0.45})
 
@@ -178,19 +262,21 @@ local panel = make("Frame", {AnchorPoint = Vector2.new(0.5, 0.5), Position = UDi
 make("UISizeConstraint", {MaxSize = Vector2.new(900, 720)}, panel)
 corner(panel, 20)
 stroke(panel, C.light)
+label(panel,"FIELD JOURNAL",11,C.green,{Position=UDim2.fromOffset(22,12),Size=UDim2.new(1,-100,0,18),Font=Enum.Font.BuilderSansMedium})
 local title = label(panel, "Collection", 24, C.text,
-	{Position = UDim2.new(0, 20, 0, 16), Size = UDim2.new(1, -88, 0, 30), Font = Enum.Font.BuilderSansBold, TextTruncate = Enum.TextTruncate.AtEnd})
+	{Position = UDim2.new(0, 22, 0, 31), Size = UDim2.new(1, -100, 0, 30), Font = Enum.Font.BuilderSansBold, TextTruncate = Enum.TextTruncate.AtEnd})
 local subtitle = label(panel, "", 13, C.muted,
-	{Position = UDim2.new(0, 20, 0, 50), Size = UDim2.new(1, -40, 0, 22), TextTruncate = Enum.TextTruncate.AtEnd})
+	{Position = UDim2.new(0, 22, 0, 64), Size = UDim2.new(1, -44, 0, 22), TextTruncate = Enum.TextTruncate.AtEnd})
 button(panel, "×", function() openPage(nil) end,
-	{Position = UDim2.new(1, -60, 0, 15), Size = UDim2.new(0, 42, 0, 42), BackgroundColor3 = C.light})
-local body = make("ScrollingFrame", {Position = UDim2.new(0, 12, 0, 88), Size = UDim2.new(1, -24, 1, -100),
-	BackgroundTransparency = 1, BorderSizePixel = 0, ScrollBarThickness = 4, ScrollBarImageColor3 = C.lime,
+	{Position = UDim2.new(1, -62, 0, 22), Size = UDim2.new(0, 42, 0, 42), BackgroundColor3 = C.light})
+make("Frame",{Position=UDim2.new(0,22,0,94),Size=UDim2.new(1,-44,0,1),BackgroundColor3=C.line,BorderSizePixel=0},panel)
+local body = make("ScrollingFrame", {Position = UDim2.new(0, 12, 0, 104), Size = UDim2.new(1, -24, 1, -116),
+	BackgroundTransparency = 1, BorderSizePixel = 0, ScrollBarThickness = 4, ScrollBarImageColor3 = C.green,
 	CanvasSize = UDim2.new(), AutomaticCanvasSize = Enum.AutomaticSize.Y, ScrollingDirection = Enum.ScrollingDirection.Y}, panel)
 padding(body, 8)
 vertical(body, 10)
 
-local toast = label(screen, "", 15, C.text, {AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 102),
+local toast = label(screen, "", 15, C.paper, {AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 102),
 	Size = UDim2.new(0.88, 0, 0, 52), BackgroundColor3 = C.bg, BackgroundTransparency = 0.05,
 	TextXAlignment = Enum.TextXAlignment.Center, TextWrapped = true, Visible = false, ZIndex = 20})
 make("UISizeConstraint", {MaxSize = Vector2.new(540, 70)}, toast)
@@ -201,7 +287,7 @@ local function notify(text, kind)
 	toastVersion += 1
 	local version = toastVersion
 	toast.Text = tostring(text)
-	toast.TextColor3 = kind == "error" and C.red or C.text
+	toast.TextColor3 = kind == "error" and C.alert or C.paper
 	toast.Visible = true
 	task.delay(4, function() if version == toastVersion then toast.Visible = false end end)
 end
@@ -218,8 +304,18 @@ local function viewport(parent, specId, size, pos)
 	model.Parent = world
 	model:PivotTo(CFrame.new())
 	local cf, bounds = model:GetBoundingBox()
-	local radius = math.max(bounds.X, bounds.Y, bounds.Z)
-	local camera = make("Camera", {FieldOfView = 35, CFrame = CFrame.lookAt(cf.Position + Vector3.new(radius * 0.65, radius * 0.35, -radius * 1.75), cf.Position)}, frame)
+	local camera=make("Camera",{FieldOfView=35},frame)
+	local direction=Vector3.new(0.65,0.35,-1.75)
+	direction=direction/direction.Magnitude
+	local function fitCamera()
+		local pixels=frame.AbsoluteSize
+		local aspect=math.max(0.2,pixels.X/math.max(1,pixels.Y))
+		local halfFov=math.atan(math.tan(math.rad(35/2))*math.min(1,aspect))
+		local distance=(bounds.Magnitude/2)/math.sin(halfFov)*1.05
+		camera.CFrame=CFrame.lookAt(cf.Position+direction*distance,cf.Position)
+	end
+	frame:GetPropertyChangedSignal("AbsoluteSize"):Connect(fitCamera)
+	fitCamera()
 	frame.CurrentCamera = camera
 	table.insert(viewports, {model = model, base = model:GetPivot()})
 end
@@ -272,8 +368,8 @@ local function empty(text)
 	label(f, text, 15, C.muted, {Position = UDim2.new(0, 20, 0, 15), Size = UDim2.new(1, -40, 1, -30), TextWrapped = true, TextXAlignment = Enum.TextXAlignment.Center})
 end
 local function smallTag(parent, text, color, pos, width)
-	local tag = label(parent, text, 10, color or C.lime, {Position = pos, Size = UDim2.new(0, width or 100, 0, 22),
-		BackgroundColor3 = C.bg, BackgroundTransparency = 0.2, TextXAlignment = Enum.TextXAlignment.Center, Font = Enum.Font.BuilderSansBold})
+	local tag = label(parent, text, 10, readable(color or C.green), {Position = pos, Size = UDim2.new(0, width or 100, 0, 22),
+		BackgroundColor3 = C.light, BackgroundTransparency = 0, TextXAlignment = Enum.TextXAlignment.Center, Font = Enum.Font.BuilderSansBold})
 	corner(tag, 6)
 	return tag
 end
@@ -335,21 +431,21 @@ local function collectionPage(sellMode)
 	label(body,string.format("%d brainrots  ·  %d/%d collected",#list,#state.brainrots,Config.MaxBrainrots),13,C.muted)
 	local columns=body.AbsoluteSize.X>=660 and 3 or 2
 	local gap=12
-	local grid=row(body,math.ceil((last-first+1)/columns)*256-gap)
-	make("UIGridLayout",{CellSize=UDim2.new(1/columns,-gap*(columns-1)/columns,0,244),CellPadding=UDim2.fromOffset(gap,gap),SortOrder=Enum.SortOrder.LayoutOrder},grid)
+	local grid=row(body,math.ceil((last-first+1)/columns)*296-gap)
+	make("UIGridLayout",{CellSize=UDim2.new(1/columns,-gap*(columns-1)/columns,0,284),CellPadding=UDim2.fromOffset(gap,gap),SortOrder=Enum.SortOrder.LayoutOrder},grid)
 	for index=first,last do
 		local b=list[index]
 		local r=rarity(b.rarity)
-		local tile=card(grid,244)
+		local tile=card(grid,284)
 		tile.LayoutOrder=index
-		local band=make("Frame",{Size=UDim2.new(1,-24,0,2),Position=UDim2.fromOffset(12,0),BackgroundColor3=r.color,BackgroundTransparency=0.15,BorderSizePixel=0},tile)
-		viewport(tile,b.specId,UDim2.new(1,-12,0,110),UDim2.fromOffset(6,6))
-		label(tile,b.name,14,C.text,{Position=UDim2.fromOffset(12,112),Size=UDim2.new(1,-24,0,38),TextWrapped=true,TextTruncate=Enum.TextTruncate.AtEnd,Font=Enum.Font.BuilderSansMedium})
-		label(tile,r.name.." · Lv "..b.level,12,r.color,{Position=UDim2.fromOffset(12,151),Size=UDim2.new(1,-24,0,18)})
-		label(tile,"+$"..money(b.income).." / sec",13,C.gold,{Position=UDim2.fromOffset(12,171),Size=UDim2.new(1,-24,0,18)})
+		previewStage(tile,r.color,UDim2.fromOffset(10,10),UDim2.new(1,-20,0,126))
+		viewport(tile,b.specId,UDim2.new(1,-12,0,126),UDim2.fromOffset(6,8))
+		label(tile,b.name,15,C.text,{Position=UDim2.fromOffset(12,143),Size=UDim2.new(1,-24,0,38),TextWrapped=true,TextTruncate=Enum.TextTruncate.AtEnd,Font=Enum.Font.BuilderSansBold})
+		label(tile,r.name.." · Lv "..b.level,12,readable(r.color),{Position=UDim2.fromOffset(12,183),Size=UDim2.new(1,-24,0,18)})
+		label(tile,"+$"..money(b.income).." / sec",14,C.gold,{Position=UDim2.fromOffset(12,207),Size=UDim2.new(1,-24,0,20),Font=Enum.Font.BuilderSansMedium})
 		button(tile,sellMode and "Review sale" or "Feed & grow",function() selectedUid=b.uid; openPage(sellMode and "SellDetail" or "Detail") end,
 			{Position=UDim2.new(0,10,1,-52),Size=UDim2.new(1,-20,0,44),TextSize=13,BackgroundColor3=C.light})
-		if state.activeBrainrot==b.uid then smallTag(tile,"Following",C.green,UDim2.fromOffset(8,8),76) end
+		if state.activeBrainrot==b.uid then smallTag(tile,"Following",C.green,UDim2.fromOffset(16,16),76) end
 	end
 	if pages>1 then
 		local paging=row(body,44)
@@ -368,17 +464,23 @@ local function detailPage(sellMode)
 	title.Text = brainrot.name
 	subtitle.Text = r.name .. "  ·  Level " .. brainrot.level .. "  /  +$" .. money(brainrot.income) .. " per second"
 	button(body, "‹ Back to collection", function() openPage(sellMode and "Sell" or "Collection") end, {Size = UDim2.new(1, 0, 0, 32), TextSize = 13})
-	local hero = card(body, 162)
-	viewport(hero, brainrot.specId, UDim2.new(0, 132, 0, 150), UDim2.new(0, 0, 0, 2))
-	label(hero, "Level " .. brainrot.level, 18, r.color, {Position = UDim2.new(0, 140, 0, 16), Size = UDim2.new(1, -152, 0, 25), Font = Enum.Font.BuilderSansBold})
-	label(hero, tostring(math.floor(brainrot.xp or 0)) .. " / " .. tostring(brainrot.xpNeeded or Config.xpNeeded(brainrot.level)) .. " XP", 12, C.muted,
-		{Position = UDim2.new(0, 140, 0, 47), Size = UDim2.new(1, -152, 0, 20)})
-	local track = make("Frame", {Position = UDim2.new(0, 140, 0, 75), Size = UDim2.new(1, -154, 0, 8), BackgroundColor3 = C.bg, BorderSizePixel = 0}, hero)
-	corner(track, 4)
-	local fill = make("Frame", {Size = UDim2.new(math.clamp((brainrot.xp or 0) / math.max(1, brainrot.xpNeeded or Config.xpNeeded(brainrot.level)), 0, 1), 0, 1, 0), BackgroundColor3 = r.color, BorderSizePixel = 0}, track)
-	corner(fill, 4)
-	button(hero, state.activeBrainrot == brainrot.uid and "Following you" or "Set as companion", function() perform("EquipBrainrot", {uid = brainrot.uid}) end,
-		{Position = UDim2.new(0, 140, 0, 102), Size = UDim2.new(1, -154, 0, 37), TextSize = 12})
+	local hero = card(body, 204)
+	previewStage(hero,r.color,UDim2.fromOffset(12,12),UDim2.new(0.48,-12,1,-24))
+	viewport(hero,brainrot.specId,UDim2.new(0.48,-8,1,-16),UDim2.fromOffset(8,8))
+	label(hero,"Level "..brainrot.level.." / "..Config.MaxLevel,18,C.text,{Position=UDim2.new(0.5,8,0,17),Size=UDim2.new(0.5,-24,0,28),Font=Enum.Font.BuilderSansBold})
+	local maxed=brainrot.level>=Config.MaxLevel
+	label(hero,maxed and "Fully grown" or (tostring(math.floor(brainrot.xp or 0)).." / "..tostring(brainrot.xpNeeded or Config.xpNeeded(brainrot.level)).." XP"),13,C.muted,
+		{Position=UDim2.new(0.5,8,0,49),Size=UDim2.new(0.5,-24,0,21)})
+	local track=make("Frame",{Position=UDim2.new(0.5,8,0,79),Size=UDim2.new(0.5,-24,0,7),BackgroundColor3=C.light,BorderSizePixel=0},hero)
+	corner(track,4)
+	local fill=make("Frame",{Size=UDim2.new(maxed and 1 or math.clamp((brainrot.xp or 0)/math.max(1,brainrot.xpNeeded or Config.xpNeeded(brainrot.level)),0,1),0,1,0),BackgroundColor3=readable(r.color),BorderSizePixel=0},track)
+	corner(fill,4)
+	local incomeFactor=(brainrot.incomeBoostUntil or 0)>now() and 2 or 1
+	local nextIncome=Config.income(brainrot.specId,math.min(Config.MaxLevel,brainrot.level+1))*incomeFactor
+	label(hero,maxed and "A perfect little earner." or ("Next level: $"..money(nextIncome).." / sec"),13,C.gold,
+		{Position=UDim2.new(0.5,8,0,98),Size=UDim2.new(0.5,-24,0,34),TextWrapped=true})
+	button(hero,state.activeBrainrot==brainrot.uid and "Following you" or "Set as companion",function() perform("EquipBrainrot",{uid=brainrot.uid}) end,
+		{Position=UDim2.new(0.5,8,0,145),Size=UDim2.new(0.5,-24,0,44),TextSize=13,BackgroundColor3=C.light})
 	if sellMode then
 		label(body, "Sold creatures and their levels cannot be recovered.", 12, C.muted, {Size = UDim2.new(1, 0, 0, 42), TextWrapped = true})
 		local sale = brainrot.sellValue or brainrot.value or Config.sellValue(brainrot.specId, brainrot.level)
@@ -387,7 +489,7 @@ local function detailPage(sellMode)
 				local result = perform("Sell", {uid = brainrot.uid})
 				if result and result.ok then selectedUid = nil; openPage("Sell") end
 			else activePage = "SellConfirm"; renderPage() end
-		end, {Size = UDim2.new(1, 0, 0, 48), BackgroundColor3 = C.red, TextColor3 = C.bg})
+		end, {Size = UDim2.new(1, 0, 0, 48), BackgroundColor3 = C.red, TextColor3 = C.paper})
 		if activePage == "SellConfirm" then
 			label(body, "Tap SELL again to confirm this permanent sale.", 13, C.red, {Size = UDim2.new(1, 0, 0, 42), TextWrapped = true})
 		end
@@ -397,11 +499,11 @@ local function detailPage(sellMode)
 	local incomeTime = (brainrot.incomeBoostUntil or 0) - now()
 	if growthTime > 0 or incomeTime > 0 then
 		local status = label(body, (growthTime > 0 and "2x growth: " .. seconds(growthTime) .. "   " or "") .. (incomeTime > 0 and "2x income: " .. seconds(incomeTime) or ""),
-			12, C.lime, {Size = UDim2.new(1, 0, 0, 26)})
+			12, C.green, {Size = UDim2.new(1, 0, 0, 26)})
 		status:SetAttribute("GrowthUntil", brainrot.growthBoostUntil or 0)
 		status:SetAttribute("IncomeUntil", brainrot.incomeBoostUntil or 0)
 	end
-	label(body, "Feed to grow", 12, C.lime)
+	label(body, "Feed to grow", 12, C.green)
 	local foodFound = false
 	for _, food in ipairs(Config.Foods) do
 		local owned = (state.foods or {})[food.id] or 0
@@ -421,7 +523,7 @@ local function detailPage(sellMode)
 	if not foodFound then empty("Your food bag is empty. Visit the rotating food shop to buy snacks.") end
 	button(body, "Visit food shop", function() local result = perform("Teleport", {destination = "Food"}); if result and result.ok then openPage("Food") end end,
 		{Size = UDim2.new(1, 0, 0, 40)})
-	label(body, "Five-minute boosts · this brainrot", 11, C.lime)
+	label(body, "Five-minute boosts · this brainrot", 11, C.green)
 	for _, kind in ipairs({"Growth", "Income"}) do
 		local boost = Config.Boosts[kind]
 		button(body, "2x " .. kind .. "  /  $" .. money(boost.price), function() perform("BuyBoost", {uid = brainrot.uid, kind = kind}) end,
@@ -439,24 +541,28 @@ local function foodPage()
 			{Position = UDim2.new(0.4 + (index - 1) * 0.2, 2, 0, 2), Size = UDim2.new(0.2, -5, 1, -4),
 				BackgroundColor3 = chosenQuantity == amount and C.lime or C.light, TextColor3 = chosenQuantity == amount and C.bg or C.text})
 	end
-	local rotation = label(body, "Restocking...", 13, C.lime, {Size = UDim2.new(1, 0, 0, 28)})
-	rotation.Name = "RotationCountdown"
+	local rotation=label(body,"Restocking…",13,C.green,{Size=UDim2.new(1,0,0,40),BackgroundColor3=C.light,TextXAlignment=Enum.TextXAlignment.Center,Font=Enum.Font.BuilderSansMedium})
+	rotation.Name="RotationCountdown"
+	corner(rotation,10)
 	local stockMap = {}
 	for _, slot in ipairs(state.stock or {}) do stockMap[slot.id] = slot.remaining end
 	for _, food in ipairs(Config.Foods) do
 		local remaining = stockMap[food.id]
 		if remaining ~= nil then
-			local f = card(body, 112)
-			label(f, food.name, 17, C.text, {Position = UDim2.new(0, 14, 0, 10), Size = UDim2.new(1, -28, 0, 23)})
-			label(f, "+" .. food.xp .. " XP  /  $" .. money(food.price) .. " each", 12, C.gold,
-				{Position = UDim2.new(0, 14, 0, 37), Size = UDim2.new(1, -28, 0, 20)})
-			label(f, "Stock " .. remaining .. "  •  In bag " .. ((state.foods or {})[food.id] or 0), 11, C.muted,
-				{Position = UDim2.new(0, 14, 0, 76), Size = UDim2.new(0.5, -12, 0, 20)})
-			local amount = math.min(chosenQuantity, remaining)
-			button(f, remaining > 0 and ("Buy " .. amount .. "  /  $" .. money(food.price * amount)) or "Sold out", function()
-				if amount > 0 then perform("BuyFood", {id = food.id, quantity = amount}) end
-			end, {Position = UDim2.new(0.5, 0, 0, 66), Size = UDim2.new(0.5, -12, 0, 34), TextSize = 13,
-				BackgroundColor3 = remaining > 0 and C.lime or C.light, TextColor3 = remaining > 0 and C.bg or C.muted})
+			local f=card(body,148)
+			local token=make("Frame",{Position=UDim2.fromOffset(14,14),Size=UDim2.fromOffset(58,58),BackgroundColor3=C.light,BorderSizePixel=0},f)
+			corner(token,16)
+			label(token,food.emoji or "•",30,C.text,{Size=UDim2.fromScale(1,1),TextXAlignment=Enum.TextXAlignment.Center})
+			label(f,food.name,16,C.text,{Position=UDim2.fromOffset(84,13),Size=UDim2.new(1,-98,0,36),TextWrapped=true,Font=Enum.Font.BuilderSansMedium})
+			badge(f,"+"..food.xp.." XP",C.green,UDim2.fromOffset(84,51),UDim2.fromOffset(116,21))
+			label(f,"$"..money(food.price).." each",13,C.gold,{Position=UDim2.fromOffset(84,73),Size=UDim2.new(1,-98,0,20)})
+			label(f,remaining.." in stock",13,C.muted,{Position=UDim2.fromOffset(14,99),Size=UDim2.new(0.5,-20,0,18)})
+			label(f,"Pantry: "..((state.foods or {})[food.id] or 0),13,C.muted,{Position=UDim2.fromOffset(14,120),Size=UDim2.new(0.5,-20,0,18)})
+			local amount=math.min(chosenQuantity,remaining)
+			button(f,remaining>0 and ("Buy "..amount.." · $"..money(food.price*amount)) or "Sold out",function()
+				if amount>0 then perform("BuyFood",{id=food.id,quantity=amount}) end
+			end,{Position=UDim2.new(0.5,0,1,-56),Size=UDim2.new(0.5,-14,0,44),TextSize=13,
+				BackgroundColor3=remaining>0 and C.lime or C.light,TextColor3=remaining>0 and C.bg or C.muted})
 		end
 	end
 	if not next(stockMap) then empty("The shop is preparing today's snacks. Try again in a moment.") end
@@ -476,7 +582,7 @@ local function gearPage()
 		if #(state.brainrots or {}) == 0 then empty("Capture a brainrot first to use a growth or income boost."); return end
 		for _, brainrot in ipairs(state.brainrots) do
 			local f = card(body, 122)
-			label(f, brainrot.name .. "  /  Lv " .. brainrot.level, 15, rarity(brainrot.rarity).color,
+			label(f, brainrot.name .. "  /  Lv " .. brainrot.level, 15, readable(rarity(brainrot.rarity).color),
 				{Position = UDim2.new(0, 12, 0, 10), Size = UDim2.new(1, -24, 0, 24), TextTruncate = Enum.TextTruncate.AtEnd})
 			for index, kind in ipairs({"Growth", "Income"}) do
 				local boost = Config.Boosts[kind]
@@ -484,45 +590,63 @@ local function gearPage()
 				local active = untilTime > now()
 				button(f, "2x " .. kind .. " / $" .. money(boost.price), function() perform("BuyBoost", {uid = brainrot.uid, kind = kind}) end,
 					{Position = UDim2.new((index - 1) * 0.5, 10, 0, 44), Size = UDim2.new(0.5, -15, 0, 39), TextSize = 13, BackgroundColor3 = C.light})
-				local status = label(f, active and ("Active  " .. seconds(untilTime - now())) or "Lasts 5 minutes", 10, active and C.lime or C.muted,
+				local status = label(f, active and ("Active  " .. seconds(untilTime - now())) or "Lasts 5 minutes", 10, active and C.green or C.muted,
 					{Position = UDim2.new((index - 1) * 0.5, 12, 0, 88), Size = UDim2.new(0.5, -15, 0, 20)})
 				if active then status:SetAttribute("BoostUntil", untilTime) end
 			end
 		end
 		return
 	end
-	for _, detector in ipairs(Config.Detectors) do
-		local owned = contains(state.ownedDetectors, detector.id)
-		local equipped = state.detector == detector.id
-		local f = card(body, 140)
-		label(f, detector.name, 17, detector.color or C.text, {Position = UDim2.new(0, 14, 0, 10), Size = UDim2.new(1, -28, 0, 24)})
-		local w = find(Config.Worlds, detector.world)
-		label(f, "Power " .. detector.power .. "  •  " .. tostring(detector.speed) .. "s scan cooldown", 12, C.muted,
-			{Position = UDim2.new(0, 14, 0, 38), Size = UDim2.new(1, -28, 0, 20)})
-		label(f, w and ("Available in " .. w.name) or "Expedition equipment", 11, C.muted,
-			{Position = UDim2.new(0, 14, 0, 62), Size = UDim2.new(1, -28, 0, 19)})
-		button(f, equipped and "Equipped" or (owned and "Equip" or ("Buy · $" .. money(detector.price))), function()
-			if not equipped then perform(owned and "EquipDetector" or "BuyDetector", {id = detector.id}) end
-		end, {Position = UDim2.new(0, 12, 0, 94), Size = UDim2.new(1, -24, 0, 34),
-			BackgroundColor3 = equipped and C.light or C.lime, TextColor3 = equipped and C.green or C.bg, TextSize = 12})
+	for _,detector in ipairs(Config.Detectors) do
+		local owned=contains(state.ownedDetectors,detector.id)
+		local equipped=state.detector==detector.id
+		local f=card(body,206)
+		local tint=detector.color or C.green
+		local token=make("Frame",{Position=UDim2.fromOffset(14,16),Size=UDim2.fromOffset(74,90),BackgroundColor3=tint:Lerp(C.paper,0.78),BorderSizePixel=0},f)
+		corner(token,12)
+		icon(token,"Gear",readable(tint),UDim2.fromOffset(13,15),UDim2.fromOffset(48,56))
+		label(f,detector.name,17,C.text,{Position=UDim2.fromOffset(102,13),Size=UDim2.new(1,-116,0,38),TextWrapped=true,Font=Enum.Font.BuilderSansBold})
+		local ceiling=Config.Rarities[math.min(detector.power,#Config.Rarities)]
+		label(f,"Finds through "..ceiling.name,13,readable(ceiling.color),{Position=UDim2.fromOffset(102,56),Size=UDim2.new(1,-116,0,21)})
+		label(f,tostring(detector.speed).."s between scans",13,C.muted,{Position=UDim2.fromOffset(102,80),Size=UDim2.new(1,-116,0,21)})
+		local w=find(Config.Worlds,detector.world)
+		local available=contains(state.unlockedWorlds,detector.world)
+		label(f,available and ("Power "..detector.power.." / "..#Config.Rarities) or ("Requires "..(w and w.name or detector.world)),13,available and C.muted or C.red,
+			{Position=UDim2.fromOffset(14,116),Size=UDim2.new(1,-28,0,19),TextTruncate=Enum.TextTruncate.AtEnd})
+		for rank=1,#Config.Rarities do
+			local segment=make("Frame",{Position=UDim2.new((rank-1)/#Config.Rarities,14-(rank-1)*22/#Config.Rarities,0,140),Size=UDim2.new(1/#Config.Rarities,-(28+6*(#Config.Rarities-1))/#Config.Rarities,0,5),
+				BackgroundColor3=rank<=detector.power and readable(tint) or C.light,BorderSizePixel=0},f)
+			corner(segment,3)
+		end
+		button(f,equipped and "Equipped" or (owned and "Equip" or ("Buy · $"..money(detector.price))),function()
+			if not equipped then perform(owned and "EquipDetector" or "BuyDetector",{id=detector.id}) end
+		end,{Position=UDim2.new(0,14,1,-56),Size=UDim2.new(1,-28,0,44),BackgroundColor3=equipped and C.light or C.lime,
+			TextColor3=equipped and C.green or C.bg,TextSize=14})
 	end
 end
 
 local function worldsPage()
-	title.Text = "Choose a world"
-	subtitle.Text = "Each world hides rarer brainrots. Upgrade your detector before moving on."
-	for index, world in ipairs(Config.Worlds) do
-		local unlocked = contains(state.unlockedWorlds, world.id)
-		local f = card(body, 172)
-		smallTag(f, "World " .. index, world.color, UDim2.new(0, 14, 0, 12), 80)
-		label(f, world.name, 21, C.text, {Position = UDim2.new(0, 14, 0, 42), Size = UDim2.new(1, -28, 0, 28), Font = Enum.Font.BuilderSansBold})
-		label(f, world.description or "Discover the creatures buried beneath the sand.", 12, C.muted,
-			{Position = UDim2.new(0, 14, 0, 76), Size = UDim2.new(1, -28, 0, 34), TextWrapped = true})
-		button(f, unlocked and "Travel to sand pit" or ("Unlock · $" .. money(world.unlockCost)), function()
-			local result = perform(unlocked and "Teleport" or "UnlockWorld", unlocked and {destination = world.id} or {id = world.id})
-			if result and result.ok and unlocked then openPage(nil) end
-		end, {Position = UDim2.new(0, 12, 1, -49), Size = UDim2.new(1, -24, 0, 36), BackgroundColor3 = unlocked and C.lime or C.light,
-			TextColor3 = unlocked and C.bg or C.text, TextSize = 12})
+	title.Text="Choose a world"
+	subtitle.Text="A new landscape, new discoveries. Your next adventure starts here."
+	local wide=body.AbsoluteSize.X>=620
+	local detector=find(Config.Detectors,state.detector)
+	for index,world in ipairs(Config.Worlds) do
+		local unlocked=contains(state.unlockedWorlds,world.id)
+		local f=card(body,wide and 212 or 302)
+		landscape(f,world,UDim2.fromOffset(12,12),wide and UDim2.new(0.36,-12,1,-24) or UDim2.new(1,-24,0,104))
+		local xScale,xOffset=wide and 0.38 or 0,wide and 0 or 16
+		local top=wide and 16 or 126
+		label(f,"EXPEDITION 0"..index,12,C.green,{Position=UDim2.new(xScale,xOffset,0,top),Size=UDim2.new(wide and 0.62 or 1,wide and -16 or -32,0,18),Font=Enum.Font.BuilderSansMedium})
+		label(f,world.name,21,C.text,{Position=UDim2.new(xScale,xOffset,0,top+22),Size=UDim2.new(wide and 0.62 or 1,wide and -16 or -32,0,30),Font=Enum.Font.BuilderSansBold,TextTruncate=Enum.TextTruncate.AtEnd})
+		label(f,world.description or "A landscape of strange little discoveries.",13,C.muted,{Position=UDim2.new(xScale,xOffset,0,top+56),Size=UDim2.new(wide and 0.62 or 1,wide and -16 or -32,0,36),TextWrapped=true})
+		local canDig=detector and detector.power>=world.minPower
+		label(f,"Power "..world.minPower.."+ · Up to "..Config.Rarities[world.maxRarity].name,13,canDig and C.green or C.red,
+			{Position=UDim2.new(xScale,xOffset,0,top+98),Size=UDim2.new(wide and 0.62 or 1,wide and -16 or -32,0,20)})
+		button(f,unlocked and "Travel to sand pit" or ("Unlock · $"..money(world.unlockCost)),function()
+			local result=perform(unlocked and "Teleport" or "UnlockWorld",unlocked and {destination=world.id} or {id=world.id})
+			if result and result.ok then openPage(nil) end
+		end,{Position=UDim2.new(xScale,xOffset,1,-56),Size=UDim2.new(wide and 0.62 or 1,wide and -16 or -32,0,44),
+			BackgroundColor3=unlocked and C.lime or C.light,TextColor3=C.bg,TextSize=14})
 	end
 end
 
@@ -568,8 +692,11 @@ openPage = function(page)
 	detectorLabel.Visible = page == nil
 	for key, b in pairs(navButtons) do
 		local on = key == page or (key == "Collection" and page == "Detail") or (key == "Sell" and (page == "SellDetail" or page == "SellConfirm"))
-		b.BackgroundColor3 = on and C.lime or C.light
-		b.TextColor3 = on and C.bg or C.text
+		b.BackgroundColor3 = on and C.bg or C.panel
+		b.TextColor3 = on and C.paper or C.muted
+		for _,piece in ipairs(navIcons[key]:GetDescendants()) do
+			if piece:GetAttribute("TintIcon") then piece.BackgroundColor3=on and C.paper or C.muted end
+		end
 	end
 	if page then
 		body.CanvasPosition=Vector2.zero; renderPage()
@@ -588,7 +715,7 @@ local capturePanel = make("Frame", {AnchorPoint = Vector2.new(0.5, 0.5), Positio
 make("UISizeConstraint", {MaxSize = Vector2.new(440, 410)}, capturePanel)
 corner(capturePanel, 22)
 stroke(capturePanel, C.lime, 0.2)
-label(capturePanel, "You found a signal", 12, C.lime, {Position = UDim2.new(0, 20, 0, 16), Size = UDim2.new(1, -40, 0, 22), TextXAlignment = Enum.TextXAlignment.Center})
+label(capturePanel, "You found a signal", 12, C.green, {Position = UDim2.new(0, 20, 0, 16), Size = UDim2.new(1, -40, 0, 22), TextXAlignment = Enum.TextXAlignment.Center})
 local captureName = label(capturePanel, "A brainrot!", 26, C.text, {Position = UDim2.new(0, 20, 0, 43), Size = UDim2.new(1, -40, 0, 32), TextXAlignment = Enum.TextXAlignment.Center, Font = Enum.Font.BuilderSansBold, TextScaled = true})
 make("UITextSizeConstraint", {MaxTextSize = 26, MinTextSize = 15}, captureName)
 local captureRarity = label(capturePanel, "COMMON", 13, C.muted, {Position = UDim2.new(0, 20, 0, 79), Size = UDim2.new(1, -40, 0, 24), TextXAlignment = Enum.TextXAlignment.Center})
@@ -648,24 +775,29 @@ startDig = function()
 	if busy or capture or activePage then return end
 	busy = true
 	digButton.Text = "Scanning…"
-	digButton.BackgroundColor3 = C.gold
+	digButton.BackgroundColor3 = C.honey
+	digButton.TextColor3=C.bg
 	local result = request("StartDig")
 	busy = false
 	digButton.Text = UserInputService.TouchEnabled and "Dig" or "Dig  ·  E"
-	digButton.BackgroundColor3 = C.lime
+	digButton.BackgroundColor3 = C.bg
+	digButton.TextColor3=C.paper
 	if not result or not result.ok or not result.dig then return end
 	local dig = result.dig
 	capture = {id = dig.id, required = dig.required, duration = dig.duration, deadline = os.clock() + dig.duration, taps = 0, name = dig.name or "brainrot", rarity = dig.rarity}
 	captureName.Text = capture.name
 	local r = rarity(dig.rarity)
 	captureRarity.Text = r.name
-	captureRarity.TextColor3 = r.color
+	captureRarity.TextColor3 = readable(r.color)
 	progressFill.BackgroundColor3 = r.color
 	progressFill.Size = UDim2.fromScale(0, 1)
 	captureProgress.Text = "0 / " .. capture.required .. " taps"
 	for _,child in capturePreview:GetChildren() do child:Destroy() end
+	previewStage(capturePreview,r.color,UDim2.new(),UDim2.fromScale(1,1))
 	viewport(capturePreview,dig.specId,UDim2.fromScale(1,1))
 	captureShade.Visible = true
+	capturePanel.Position=UDim2.new(0.5,0,0.5,6)
+	TweenService:Create(capturePanel,TweenInfo.new(0.16,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),{Position=UDim2.fromScale(0.5,0.5)}):Play()
 	ContextActionService:BindActionAtPriority("BrainrotCaptureTap", function(_, inputState)
 		if inputState == Enum.UserInputState.Begin then task.spawn(tapDig) end
 		return Enum.ContextActionResult.Sink
@@ -728,7 +860,7 @@ RunService.RenderStepped:Connect(function(dt)
 					if boostUntil then
 						local remaining = boostUntil - now()
 						item.Text = remaining > 0 and ("Active  " .. seconds(remaining)) or "Boost expired"
-						item.TextColor3 = remaining > 0 and C.lime or C.muted
+						item.TextColor3 = remaining > 0 and C.green or C.muted
 					elseif growthUntil then
 						local growth = growthUntil - now()
 						local income = (item:GetAttribute("IncomeUntil") or 0) - now()
@@ -751,7 +883,7 @@ local function resize()
 	panel.Position=panelRestPosition
 	for name,b in pairs(navButtons) do
 		b.Text=name=="Collection" and (size.X<500 and "Bag" or "Collection") or name
-		b.TextSize=size.X<500 and 13 or 14
+		b.TextSize=size.X<500 and 12 or 13
 	end
 	if activePage=="Collection" or activePage=="Sell" then renderPage() end
 	capturePanel.Size = UDim2.new(0.9, 0, 0, math.min(410, size.Y - 24))

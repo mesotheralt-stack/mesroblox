@@ -24,3 +24,11 @@ For tuning, use `src/shared/Config.luau`; keep game rewards and purchases on the
 - Inspect all 21 creatures in the collection and as companions. Check fine details remain attached when models grow, and each preview frames the whole creature.
 - Search/filter/sort a full collection; move through the 12-creature pages and open/feed/sell the selected creature. Confirm the scroll position stays comfortable after feeding.
 - Verify the Builder Sans text and muted colors are readable at phone sizes. Switch directly between pages using the bottom navigation, including phone landscape. Complete a capture using the new creature preview sheet.
+
+## Sculpture and scenery pass
+
+- Before Play, confirm the complete map is visible in the downloaded place. Press Play and confirm the server refreshes it once, with one BrainrotWorld and one gallery.
+- Inspect distinct body shapes: the frog’s four legs, shark’s long body/slippers, capybara’s muzzle/four feet, wizard’s robe, moon’s crescent, octopus’s curled tentacles, and bee’s abdomen/wings. Check all species at both level 1 and high levels. Native build validation checks finite transforms; Studio still needs to check materials and appearance.
+- Walk the sunken pit entrance steps and all landmark trails. Check the windmill, pond bridge stairs, oasis paths, observatory entrance, shop counters and trading post without blocked teleports or trapping collisions.
+- Verify the cream/sage journal UI contrast in daylight and at night; inspect the illustrated world cards, sculpture stages, food tokens, detector stats, and complete a capture on a phone.
+- Confirm the full creature remains in frame in portrait and landscape viewports, including broad wings and tall hats. The camera now responds to the viewport aspect ratio.

@@ -63,6 +63,16 @@ local function verifyWorld(World)
 		assert(math.abs(frame.X-pit.center.X)<pit.size.X/2 and math.abs(frame.Z-pit.center.Z)<pit.size.Z/2,"Travel must land inside the actual expanded pit")
 	end
 	assert(built.pits.Dunes.center.X-built.pits.Meadow.center.X==1040,"Expanded islands must remain separate")
+	local scene=workspace:FindFirstChild("BrainrotWorld")
+	for id,landmark in {Meadow="CloverWindmill",Dunes="SunArchSanctuary",Cosmic="MoonwatchObservatory"} do
+		local island=scene:FindFirstChild(id)
+		local landmarks=island and island:FindFirstChild("Landmarks")
+		assert(landmarks and landmarks:FindFirstChild(landmark),id.." needs its own authored landmark")
+		local excavation=island:FindFirstChild("ExcavationSite")
+		assert(excavation and excavation:FindFirstChild("WideEntranceStep"),"Recessed sand needs entrance steps")
+		assert(excavation:FindFirstChild("DigZone").Position.Y+1.5<island:FindFirstChild("NorthernLawn").Position.Y+3,"Sand basin must sit below the lawn")
+	end
+	assert(scene:FindFirstChild("CloverVillage"),"Detailed village must exist")
 	assert(lighting.ClockTime == 9, "Lighting cycle must start")
 	print("PASS actual map startup with restricted Workspace writes, expanded geometry and no floating pins")
 end

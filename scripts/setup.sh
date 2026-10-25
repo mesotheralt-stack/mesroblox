@@ -14,9 +14,11 @@ fetch_tool() {
 }
 fetch_tool 'https://github.com/rojo-rbx/rojo/releases/download/v7.5.1/rojo-7.5.1-linux-x86_64.zip' rojo.zip rojo
 fetch_tool 'https://github.com/luau-lang/luau/releases/download/0.744/luau-ubuntu.zip' luau.zip luau
+fetch_tool 'https://github.com/lune-org/lune/releases/download/v0.11.1/lune-0.11.1-linux-x86_64.zip' lune.zip lune
 chmod +x "$TOOLS"/luau*
 "$TOOLS/rojo" --version
 python3 scripts/test.py --luau-dir "$TOOLS"
 mkdir -p build
 "$TOOLS/rojo" build default.project.json -o build/BrainrotBloom.rbxlx
-cp build/BrainrotBloom.rbxlx BrainrotBloom.rbxlx
+"$TOOLS/lune" run scripts/scene_export.luau BrainrotBloom.rbxlx
+cp BrainrotBloom.rbxlx build/BrainrotBloom.rbxlx
