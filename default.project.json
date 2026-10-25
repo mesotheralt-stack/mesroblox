@@ -1,0 +1,23 @@
+{
+  "name": "Brainrot Bloom",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "BrainrotShared": { "$path": "src/shared" }
+    },
+    "ServerScriptService": {
+      "BrainrotServer": { "$path": "src/server" }
+    },
+    "StarterPlayer": {
+      "$properties": { "CameraMaxZoomDistance": 60, "CameraMinZoomDistance": 8 },
+      "StarterPlayerScripts": { "BrainrotClient": { "$path": "src/client" } }
+    },
+    "Workspace": {
+      "$properties": { "Gravity": 196.2, "StreamingEnabled": false }
+    },
+    "Lighting": {
+      "$properties": { "Brightness": 2, "ClockTime": 10, "GlobalShadows": true }
+    },
+    "SoundService": { "$properties": { "RespectFilteringEnabled": true } }
+  }
+}

@@ -1,0 +1,2086 @@
+<roblox version="4">
+  <Item class="Lighting" referent="0">
+    <Properties>
+      <string name="Name">Lighting</string>
+      <float name="Brightness">2</float>
+      <float name="ClockTime">10</float>
+      <bool name="GlobalShadows">true</bool>
+    </Properties>
+  </Item>
+  <Item class="ReplicatedStorage" referent="1">
+    <Properties>
+      <string name="Name">ReplicatedStorage</string>
+    </Properties>
+    <Item class="Folder" referent="2">
+      <Properties>
+        <string name="Name">BrainrotShared</string>
+      </Properties>
+      <Item class="ModuleScript" referent="3">
+        <Properties>
+          <string name="Name">Config</string>
+          <string name="Source"><![CDATA[--!strict
+-- All economy and content tuning lives here. No paid products or external assets.
+local Config = {}
+Config.StartCoins = 150
+Config.MaxBrainrots = 50
+Config.MaxLevel = 100
+Config.RotationSeconds = 300
+Config.DigDuration = 10
+
+Config.Rarities = {
+	{id = "Common", name = "Common", color = Color3.fromRGB(177, 191, 180), weight = 5800, multiplier = 1, taps = 6},
+	{id = "Uncommon", name = "Uncommon", color = Color3.fromRGB(131, 227, 108), weight = 2600, multiplier = 2.5, taps = 9},
+	{id = "Rare", name = "Rare", color = Color3.fromRGB(84, 180, 255), weight = 1100, multiplier = 7, taps = 12},
+	{id = "Epic", name = "Epic", color = Color3.fromRGB(193, 133, 255), weight = 380, multiplier = 20, taps = 16},
+	{id = "Legendary", name = "Legendary", color = Color3.fromRGB(255, 200, 74), weight = 100, multiplier = 60, taps = 20},
+	{id = "Mythic", name = "Mythic", color = Color3.fromRGB(255, 112, 157), weight = 19, multiplier = 160, taps = 25},
+	{id = "Secret", name = "Secret", color = Color3.fromRGB(131, 255, 237), weight = 1, multiplier = 500, taps = 30},
+}
+
+Config.Worlds = {
+	{id = "Meadow", name = "Clover Commons", unlockCost = 0, minPower = 1, maxRarity = 4, color = Color3.fromRGB(150, 229, 118), description = "A green beginning. Dig up Common through Epic creatures."},
+	{id = "Dunes", name = "Sunset Sands", unlockCost = 8000, minPower = 4, maxRarity = 6, color = Color3.fromRGB(255, 193, 111), description = "A bigger signal. Mythic creatures hide below the warm sand."},
+	{id = "Cosmic", name = "Moonbloom Crater", unlockCost = 125000, minPower = 6, maxRarity = 7, color = Color3.fromRGB(188, 161, 255), description = "The final frontier. A tiny chance of a Secret discovery."},
+}
+
+Config.Detectors = {
+	{id = "twig", name = "Tin Twig", power = 2, speed = 4, price = 0, world = "Meadow", color = Color3.fromRGB(163, 177, 159)},
+	{id = "copper", name = "Copper Chirper", power = 3, speed = 3.5, price = 650, world = "Meadow", color = Color3.fromRGB(230, 160, 107)},
+	{id = "clover", name = "Clover Scanner", power = 4, speed = 3, price = 4200, world = "Meadow", color = Color3.fromRGB(162, 237, 124)},
+	{id = "sunbeam", name = "Sunbeam Seeker", power = 5, speed = 2.5, price = 16000, world = "Dunes", color = Color3.fromRGB(255, 208, 102)},
+	{id = "prism", name = "Prism Pulse", power = 6, speed = 2, price = 70000, world = "Dunes", color = Color3.fromRGB(255, 143, 183)},
+	{id = "moon", name = "Moonbeam Array", power = 7, speed = 1.4, price = 240000, world = "Cosmic", color = Color3.fromRGB(180, 156, 255)},
+	{id = "void", name = "Void Whisperer", power = 7, speed = 0.8, price = 800000, world = "Cosmic", color = Color3.fromRGB(129, 255, 230)},
+}
+
+Config.Foods = {
+	{id = "crumb", name = "Suspicious Crumb", emoji = "🍞", xp = 25, price = 15, stock = 24},
+	{id = "carrot", name = "Crunchy Carrot", emoji = "🥕", xp = 60, price = 40, stock = 20},
+	{id = "apple", name = "Wobble Apple", emoji = "🍎", xp = 110, price = 80, stock = 18},
+	{id = "banana", name = "Bonkers Banana", emoji = "🍌", xp = 180, price = 150, stock = 16},
+	{id = "cookie", name = "Chaos Cookie", emoji = "🍪", xp = 300, price = 280, stock = 14},
+	{id = "taco", name = "Turbo Taco", emoji = "🌮", xp = 500, price = 500, stock = 12},
+	{id = "donut", name = "Disco Donut", emoji = "🍩", xp = 800, price = 900, stock = 10},
+	{id = "pizza", name = "Party Pizza", emoji = "🍕", xp = 1250, price = 1600, stock = 9},
+	{id = "sushi", name = "Silly Sushi", emoji = "🍣", xp = 2000, price = 2800, stock = 8},
+	{id = "burger", name = "Galaxy Burger", emoji = "🍔", xp = 3200, price = 5000, stock = 7},
+	{id = "cake", name = "Cloud Cake", emoji = "🍰", xp = 5000, price = 8500, stock = 6},
+	{id = "melon", name = "Meteor Melon", emoji = "🍉", xp = 7500, price = 14000, stock = 5},
+	{id = "honey", name = "Mythic Honey", emoji = "🍯", xp = 11000, price = 23000, stock = 4},
+	{id = "star", name = "Stardust Sorbet", emoji = "🍨", xp = 16000, price = 36000, stock = 3},
+	{id = "feast", name = "Secret Midnight Feast", emoji = "🍱", xp = 24000, price = 60000, stock = 2},
+}
+
+Config.Boosts = {
+	Growth = {name = "Growth Juice", price = 500, duration = 300},
+	Income = {name = "Golden Hour", price = 1000, duration = 300},
+}
+
+-- Original names and procedural silhouettes; every species has its own palette.
+Config.Creatures = {
+	{id = "sprout", name = "Sproutini Spaghetti", rarity = "Common", color = Color3.fromRGB(144, 211, 113), accent = Color3.fromRGB(255, 226, 135), shape = "sprout"},
+	{id = "toast", name = "Toasto Bamboozlo", rarity = "Common", color = Color3.fromRGB(231, 171, 109), accent = Color3.fromRGB(255, 230, 168), shape = "toast"},
+	{id = "pebble", name = "Pebblino Wobblino", rarity = "Common", color = Color3.fromRGB(172, 185, 201), accent = Color3.fromRGB(249, 176, 188), shape = "rock"},
+	{id = "frog", name = "Froggolini Ravioli", rarity = "Uncommon", color = Color3.fromRGB(111, 211, 127), accent = Color3.fromRGB(255, 226, 130), shape = "frog"},
+	{id = "mushroom", name = "Mushmello Jellino", rarity = "Uncommon", color = Color3.fromRGB(255, 174, 199), accent = Color3.fromRGB(255, 246, 217), shape = "mushroom"},
+	{id = "bee", name = "Buzzetti Confetti", rarity = "Uncommon", color = Color3.fromRGB(255, 207, 92), accent = Color3.fromRGB(97, 76, 63), shape = "bee"},
+	{id = "shark", name = "Sharkuccino Slippers", rarity = "Rare", color = Color3.fromRGB(111, 181, 236), accent = Color3.fromRGB(255, 210, 129), shape = "shark"},
+	{id = "cactus", name = "Cactini Linguini", rarity = "Rare", color = Color3.fromRGB(94, 195, 161), accent = Color3.fromRGB(255, 145, 197), shape = "cactus"},
+	{id = "cloud", name = "Cloudolini Macaroni", rarity = "Rare", color = Color3.fromRGB(188, 225, 255), accent = Color3.fromRGB(140, 150, 245), shape = "cloud"},
+	{id = "octopus", name = "Octopesto Presto", rarity = "Epic", color = Color3.fromRGB(189, 138, 242), accent = Color3.fromRGB(255, 208, 143), shape = "octopus"},
+	{id = "disco", name = "Disco Dodo Deluxe", rarity = "Epic", color = Color3.fromRGB(239, 133, 220), accent = Color3.fromRGB(139, 245, 219), shape = "bird"},
+	{id = "wizard", name = "Wizzaroni Pepperoni", rarity = "Epic", color = Color3.fromRGB(160, 142, 240), accent = Color3.fromRGB(255, 210, 109), shape = "wizard"},
+	{id = "lion", name = "Lionardo Lemonardo", rarity = "Legendary", color = Color3.fromRGB(255, 208, 98), accent = Color3.fromRGB(224, 131, 76), shape = "lion"},
+	{id = "dragon", name = "Dragolato Gelato", rarity = "Legendary", color = Color3.fromRGB(255, 164, 116), accent = Color3.fromRGB(158, 242, 195), shape = "dragon"},
+	{id = "sun", name = "Solini Gnocchini", rarity = "Legendary", color = Color3.fromRGB(255, 227, 115), accent = Color3.fromRGB(255, 157, 110), shape = "sun"},
+	{id = "phoenix", name = "Phoeniccini Fettuccine", rarity = "Mythic", color = Color3.fromRGB(255, 116, 151), accent = Color3.fromRGB(255, 216, 126), shape = "phoenix"},
+	{id = "moon", name = "Lunatici Mochi", rarity = "Mythic", color = Color3.fromRGB(202, 166, 255), accent = Color3.fromRGB(255, 194, 233), shape = "moon"},
+	{id = "jelly", name = "Jellybean Astronautini", rarity = "Mythic", color = Color3.fromRGB(255, 160, 218), accent = Color3.fromRGB(164, 244, 255), shape = "jelly"},
+	{id = "void", name = "Voidolini Neveroni", rarity = "Secret", color = Color3.fromRGB(73, 62, 117), accent = Color3.fromRGB(130, 255, 224), shape = "void"},
+	{id = "cosmic", name = "Cosmic Capybaroni", rarity = "Secret", color = Color3.fromRGB(153, 230, 218), accent = Color3.fromRGB(255, 220, 151), shape = "capybara"},
+	{id = "crown", name = "Emperor Noodlestar", rarity = "Secret", color = Color3.fromRGB(220, 202, 255), accent = Color3.fromRGB(255, 218, 113), shape = "crown"},
+}
+
+function Config.get(list, id)
+	for _, item in ipairs(list) do
+		if item.id == id then return item end
+	end
+	return nil
+end
+
+function Config.xpNeeded(level: number): number
+	return math.floor(40 + 18 * level ^ 1.2)
+end
+
+function Config.income(specId: string, level: number): number
+	local spec = Config.get(Config.Creatures, specId)
+	if not spec then return 0 end
+	local rarity = Config.get(Config.Rarities, spec.rarity)
+	local growth = math.clamp(level, 1, Config.MaxLevel) - 1
+	return math.floor(2 * rarity.multiplier * (1 + growth * 0.24) ^ 1.15) + growth
+end
+
+function Config.sellValue(specId: string, level: number): number
+	return Config.income(specId, level) * 45
+end
+
+return Config
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="4">
+        <Properties>
+          <string name="Name">CreatureFactory</string>
+          <string name="Source"><![CDATA[-- Original, dependency-free toy creatures. Every piece is anchored for use in
+-- world displays and ViewportFrames; callers move the result with PivotTo.
+local CreatureFactory = {}
+
+local function piece(model, name, size, position, color, shape, rotation)
+	local part = Instance.new("Part")
+	part.Name = name
+	part.Size = size
+	part.CFrame = CFrame.new(position) * (rotation or CFrame.new())
+	part.Color = color
+	part.Material = Enum.Material.SmoothPlastic
+	part.Anchored = true
+	part.CanCollide = false
+	part.CanTouch = false
+	part.CanQuery = false
+	part.TopSurface = Enum.SurfaceType.Smooth
+	part.BottomSurface = Enum.SurfaceType.Smooth
+	if shape then part.Shape = shape end
+	part.Parent = model
+	return part
+end
+
+function CreatureFactory.create(spec, scale)
+	local model = Instance.new("Model")
+	model.Name = spec.name or "Brainrot"
+	local color = spec.color or Color3.fromRGB(158, 225, 110)
+	local accent = spec.accent or Color3.fromRGB(255, 210, 91)
+	local white = Color3.fromRGB(255, 253, 242)
+	local ink = Color3.fromRGB(28, 38, 42)
+	local shape = string.lower(spec.shape or "blob")
+	local root = piece(model, "Root", Vector3.new(0.2, 0.2, 0.2), Vector3.zero, color)
+	root.Transparency = 1
+	model.PrimaryPart = root
+	piece(model, "Body", Vector3.new(2.8, 3.1, 2.2), Vector3.new(0, 2.3, 0), color, Enum.PartType.Ball)
+	piece(model, "LeftFoot", Vector3.new(0.95, 0.55, 1.4), Vector3.new(-0.75, 0.45, -0.3), accent, Enum.PartType.Ball)
+	piece(model, "RightFoot", Vector3.new(0.95, 0.55, 1.4), Vector3.new(0.75, 0.45, -0.3), accent, Enum.PartType.Ball)
+	for _, side in {-1, 1} do
+		local x = side * 0.62
+		piece(model, "EyeWhite", Vector3.new(0.88, 1.05, 0.4), Vector3.new(x, 2.9, -1.02), white, Enum.PartType.Ball)
+		piece(model, "Pupil", Vector3.new(0.38, 0.54, 0.18), Vector3.new(x + 0.06, 2.9, -1.24), ink, Enum.PartType.Ball)
+		piece(model, "Glint", Vector3.new(0.12, 0.16, 0.08), Vector3.new(x - 0.02, 3.05, -1.34), white, Enum.PartType.Ball)
+		piece(model, "Cheek", Vector3.new(0.45, 0.22, 0.15), Vector3.new(side * 0.99, 2.34, -0.93), Color3.fromRGB(255, 151, 143), Enum.PartType.Ball)
+		piece(model, "Arm", Vector3.new(0.55, 1.3, 0.6), Vector3.new(side * 1.35, 2.0, 0), accent, Enum.PartType.Ball, CFrame.Angles(0, 0, side * 0.5))
+	end
+	piece(model, "Smile", Vector3.new(0.65, 0.14, 0.18), Vector3.new(0, 2.13, -1.08), ink, Enum.PartType.Ball)
+
+	-- Familiar silhouettes with silly original combinations; unrecognised shape
+	-- names still produce a complete creature with a tuft.
+	if string.find(shape, "toast") or string.find(shape, "bread") then
+		piece(model, "ToastCrust", Vector3.new(3.0, 2.9, 0.8), Vector3.new(0, 2.5, 0.65), accent)
+		piece(model, "ToastCenter", Vector3.new(2.5, 2.4, 0.12), Vector3.new(0, 2.55, -0.05), color)
+	elseif string.find(shape, "mush") then
+		piece(model, "MushroomCap", Vector3.new(4.0, 1.4, 3.4), Vector3.new(0, 3.9, 0), accent, Enum.PartType.Ball)
+		for i = 1, 5 do
+			local angle = i * math.pi * 2 / 5
+			piece(model, "CapSpot", Vector3.new(0.5, 0.16, 0.5), Vector3.new(math.cos(angle) * 1.1, 4.45, math.sin(angle) * 0.8), white, Enum.PartType.Ball)
+		end
+	elseif string.find(shape, "cat") or string.find(shape, "bunny") then
+		for _, side in {-1, 1} do
+			piece(model, "Ear", Vector3.new(0.72, string.find(shape, "bunny") and 2.1 or 1.25, 0.7), Vector3.new(side * 0.9, 4.0, 0), accent, Enum.PartType.Ball, CFrame.Angles(0, 0, side * -0.2))
+		end
+	elseif string.find(shape, "crown") or string.find(shape, "king") then
+		piece(model, "CrownBand", Vector3.new(2.4, 0.45, 2.0), Vector3.new(0, 3.9, 0), accent)
+		for i = -1, 1 do
+			piece(model, "CrownPoint", Vector3.new(0.45, 0.9, 0.45), Vector3.new(i * 0.8, 4.45, 0), accent)
+		end
+	elseif string.find(shape, "planet") or string.find(shape, "cosmic") then
+		local ring = piece(model, "Orbit", Vector3.new(0.18, 5.0, 5.0), Vector3.new(0, 2.5, 0), accent, Enum.PartType.Cylinder, CFrame.Angles(0, 0, math.rad(65)))
+		ring.Transparency = 0.32
+		ring.Material = Enum.Material.Neon
+	elseif string.find(shape, "cactus") then
+		for i = 1, 6 do
+			local angle = i * math.pi / 3
+			piece(model, "Spine", Vector3.new(0.16, 0.65, 0.16), Vector3.new(math.cos(angle) * 1.2, 3.3, math.sin(angle)), white, nil, CFrame.Angles(0, 0, angle))
+		end
+	elseif string.find(shape, "coffee") or string.find(shape, "cup") then
+		piece(model, "CupRim", Vector3.new(0.25, 2.7, 2.7), Vector3.new(0, 3.7, 0), accent, Enum.PartType.Cylinder, CFrame.Angles(0, 0, math.pi / 2))
+		piece(model, "Coffee", Vector3.new(0.28, 2.25, 2.25), Vector3.new(0, 3.85, 0), Color3.fromRGB(92, 49, 33), Enum.PartType.Cylinder, CFrame.Angles(0, 0, math.pi / 2))
+		piece(model, "Handle", Vector3.new(1.0, 1.6, 0.7), Vector3.new(1.65, 2.65, 0), accent, Enum.PartType.Ball)
+	elseif shape == "sprout" then
+		piece(model, "Stem", Vector3.new(0.22, 1.4, 0.22), Vector3.new(0, 4.0, 0), accent)
+		for _, side in {-1, 1} do
+			piece(model, "Leaf", Vector3.new(1.4, 0.4, 0.8), Vector3.new(side * 0.6, 4.5, 0), color, Enum.PartType.Ball, CFrame.Angles(0, 0, side * 0.4))
+		end
+	elseif shape == "rock" then
+		for i = 1, 5 do
+			local angle = i * math.pi * 2 / 5
+			piece(model, "PebbleCrest", Vector3.new(0.7, 0.6, 0.7), Vector3.new(math.cos(angle) * 0.65, 3.65, math.sin(angle) * 0.5), accent, Enum.PartType.Ball)
+		end
+	elseif shape == "frog" then
+		for _, side in {-1, 1} do
+			piece(model, "FrogEyeStalk", Vector3.new(1.0, 1.0, 0.9), Vector3.new(side * 0.83, 3.65, -0.2), color, Enum.PartType.Ball)
+			piece(model, "FrogSpot", Vector3.new(0.4, 0.15, 0.5), Vector3.new(side * 0.95, 3.92, -0.45), accent, Enum.PartType.Ball)
+		end
+	elseif shape == "bee" then
+		for _, side in {-1, 1} do
+			local wing = piece(model, "Wing", Vector3.new(1.9, 2.8, 0.25), Vector3.new(side * 1.5, 3.1, 0.7), white, Enum.PartType.Ball, CFrame.Angles(0, 0, side * -0.6))
+			wing.Transparency = 0.3
+			piece(model, "Antenna", Vector3.new(0.15, 1.1, 0.15), Vector3.new(side * 0.7, 4.1, 0), accent, nil, CFrame.Angles(0, 0, side * -0.3))
+			piece(model, "AntennaTip", Vector3.new(0.4, 0.4, 0.4), Vector3.new(side * 0.85, 4.6, 0), accent, Enum.PartType.Ball)
+		end
+		piece(model, "BeeStripe", Vector3.new(2.7, 0.35, 0.3), Vector3.new(0, 1.7, -0.8), accent)
+	elseif shape == "shark" then
+		piece(model, "DorsalFin", Vector3.new(0.45, 1.7, 1.2), Vector3.new(0, 4.0, 0.4), accent, nil, CFrame.Angles(math.rad(-25), 0, 0))
+		piece(model, "SharkTail", Vector3.new(0.7, 2.3, 0.5), Vector3.new(0, 2.4, 1.7), color, nil, CFrame.Angles(0, 0, math.rad(35)))
+		for _, side in {-1, 1} do
+			piece(model, "SideFin", Vector3.new(1.5, 0.35, 1.0), Vector3.new(side * 1.65, 2.5, 0.1), color, nil, CFrame.Angles(0, 0, side * -0.3))
+		end
+	elseif shape == "cloud" then
+		for i = -1, 1 do
+			piece(model, "CloudPuff", Vector3.new(1.7, 1.6, 1.7), Vector3.new(i * 0.85, 3.8 + (1 - math.abs(i)) * 0.3, 0), white, Enum.PartType.Ball)
+		end
+	elseif shape == "octopus" or shape == "jelly" then
+		for i = 1, 8 do
+			local angle = i * math.pi / 4
+			piece(model, "Tentacle", Vector3.new(0.6, 0.8, 1.7), Vector3.new(math.sin(angle) * 1.1, 0.65, math.cos(angle) * 0.9), accent, Enum.PartType.Ball, CFrame.Angles(0, angle, 0))
+		end
+		if shape == "jelly" then
+			local dome = piece(model, "SpaceHelmet", Vector3.new(3.6, 3.8, 3.0), Vector3.new(0, 2.7, 0), white, Enum.PartType.Ball)
+			dome.Transparency = 0.8
+		end
+	elseif shape == "bird" or shape == "phoenix" or shape == "dragon" then
+		for _, side in {-1, 1} do
+			for feather = 1, 3 do
+				piece(model, "WingFeather", Vector3.new(0.6, 2.6 - feather * 0.3, 0.65), Vector3.new(side * (1.3 + feather * 0.35), 2.65, 0.2), feather % 2 == 0 and color or accent, Enum.PartType.Ball, CFrame.Angles(0, 0, side * -0.65))
+			end
+		end
+		piece(model, "Beak", Vector3.new(0.65, 0.55, 0.7), Vector3.new(0, 2.4, -1.2), accent, Enum.PartType.Ball)
+		if shape == "dragon" then
+			for _, side in {-1, 1} do
+				piece(model, "DragonHorn", Vector3.new(0.45, 1.5, 0.45), Vector3.new(side * 0.8, 4.0, 0), white, nil, CFrame.Angles(0, 0, side * -0.3))
+			end
+			piece(model, "DragonTail", Vector3.new(0.7, 0.8, 2.7), Vector3.new(0, 1.3, 1.7), color, Enum.PartType.Ball)
+		elseif shape == "phoenix" then
+			for i = -1, 1 do
+				local flame = piece(model, "FlameCrest", Vector3.new(0.45, 1.7 - math.abs(i) * 0.3, 0.5), Vector3.new(i * 0.55, 4.1, 0), accent, Enum.PartType.Ball, CFrame.Angles(0, 0, i * -0.2))
+				flame.Material = Enum.Material.Neon
+			end
+			piece(model, "PhoenixTail", Vector3.new(1.5, 0.5, 2.5), Vector3.new(0, 1.8, 1.5), accent, Enum.PartType.Ball)
+		else
+			for i = -1, 1 do
+				piece(model, "DiscoCrest", Vector3.new(0.45, 1.2, 0.45), Vector3.new(i * 0.45, 4.0, 0), accent, Enum.PartType.Ball)
+			end
+		end
+	elseif shape == "wizard" then
+		piece(model, "HatBrim", Vector3.new(0.2, 3.5, 3.5), Vector3.new(0, 3.8, 0), accent, Enum.PartType.Cylinder, CFrame.Angles(0, 0, math.pi / 2))
+		piece(model, "WizardHat", Vector3.new(1.7, 1.8, 1.7), Vector3.new(0, 4.5, 0), color)
+		piece(model, "HatTip", Vector3.new(0.8, 1.1, 0.8), Vector3.new(0.3, 5.7, 0), accent, nil, CFrame.Angles(0, 0, -0.3))
+	elseif shape == "sun" or shape == "lion" then
+		for i = 1, 12 do
+			local angle = i * math.pi / 6
+			piece(model, "ManeRay", Vector3.new(0.6, 1.3, 0.5), Vector3.new(math.sin(angle) * 1.8, 2.6 + math.cos(angle) * 1.8, 0.3), accent, shape == "lion" and Enum.PartType.Ball or nil, CFrame.Angles(0, 0, -angle))
+		end
+	elseif shape == "moon" or shape == "void" then
+		for i = 1, 5 do
+			local angle = i * math.pi * 2 / 5
+			local star = piece(model, "OrbitStar", Vector3.new(0.45, 0.45, 0.45), Vector3.new(math.cos(angle) * 2.2, 3.1 + math.sin(angle) * 1.6, 0), accent, nil, CFrame.Angles(0, 0, math.pi / 4))
+			star.Material = Enum.Material.Neon
+		end
+		if shape == "void" then
+			for i = 1, 20 do
+				local a, b = i * math.pi / 10, (i + 1) * math.pi / 10
+				local p = Vector3.new(math.cos(a) * 2.35, 2.65 + math.sin(a) * 1.1, math.sin(a) * 1.9)
+				local q = Vector3.new(math.cos(b) * 2.35, 2.65 + math.sin(b) * 1.1, math.sin(b) * 1.9)
+				local ring = piece(model, "VoidHalo", Vector3.new(0.12, 0.12, (q - p).Magnitude + 0.05), (p + q) / 2, accent, nil, CFrame.lookAt(Vector3.zero, q - p))
+				ring.Material = Enum.Material.Neon
+			end
+		else
+			for i = 0, 7 do
+				local a = -1.1 + i * 0.32
+				piece(model, "MoonCrescent", Vector3.new(0.65, 0.65, 0.5), Vector3.new(1.1 + math.cos(a) * 1.2, 3.1 + math.sin(a) * 1.2, 0.3), accent, Enum.PartType.Ball)
+			end
+		end
+	elseif shape == "capybara" then
+		for _, side in {-1, 1} do
+			piece(model, "RoundEar", Vector3.new(0.8, 0.9, 0.6), Vector3.new(side * 1.0, 3.65, 0), accent, Enum.PartType.Ball)
+		end
+		piece(model, "Snout", Vector3.new(1.2, 0.75, 0.5), Vector3.new(0, 2.0, -1.08), accent, Enum.PartType.Ball)
+		piece(model, "Nose", Vector3.new(0.4, 0.2, 0.16), Vector3.new(0, 2.25, -1.38), ink, Enum.PartType.Ball)
+	else
+		for i = -1, 1 do
+			piece(model, "SillyTuft", Vector3.new(0.55, 1.05 - math.abs(i) * 0.2, 0.55), Vector3.new(i * 0.55, 3.9, 0), accent, Enum.PartType.Ball, CFrame.Angles(0, 0, i * -0.35))
+		end
+	end
+	local rarity = string.lower(spec.rarity or "")
+	if rarity == "secret" or rarity == "mythic" then
+		local light = Instance.new("PointLight")
+		light.Color = accent
+		light.Brightness = 0.7
+		light.Range = 9
+		light.Parent = root
+	end
+	if scale and scale ~= 1 then model:ScaleTo(math.clamp(scale, 0.1, 5)) end
+	return model
+end
+
+return CreatureFactory
+]]></string>
+        </Properties>
+      </Item>
+    </Item>
+  </Item>
+  <Item class="ServerScriptService" referent="5">
+    <Properties>
+      <string name="Name">ServerScriptService</string>
+    </Properties>
+    <Item class="Folder" referent="6">
+      <Properties>
+        <string name="Name">BrainrotServer</string>
+      </Properties>
+      <Item class="ModuleScript" referent="7">
+        <Properties>
+          <string name="Name">DetectorTool</string>
+          <string name="Source"><![CDATA[-- Cosmetic, physically welded detector. Capture authority stays in Main.server.
+local DetectorTool = {}
+
+local function removeOld(container)
+	if not container then return end
+	for _, child in container:GetChildren() do
+		if child:IsA("Tool") and child:GetAttribute("BrainrotDetector") then child:Destroy() end
+	end
+end
+
+function DetectorTool.equip(player, spec)
+	local backpack = player:FindFirstChildOfClass("Backpack")
+	local character = player.Character
+	if not backpack or not character then return end
+	removeOld(backpack)
+	removeOld(character)
+	local tool = Instance.new("Tool")
+	tool.Name = spec.name
+	tool.ToolTip = "Search the sand • use DIG or press E"
+	tool.CanBeDropped = false
+	tool.RequiresHandle = true
+	tool:SetAttribute("BrainrotDetector", true)
+	local handle = Instance.new("Part")
+	handle.Name = "Handle"
+	handle.Size = Vector3.new(0.38, 1.15, 0.4)
+	handle.Color = Color3.fromRGB(35, 43, 49)
+	handle.Material = Enum.Material.SmoothPlastic
+	handle.CanCollide = false
+	handle.CanTouch = false
+	handle.Massless = true
+	handle.Parent = tool
+	local function piece(name, size, frame, color, shape)
+		local part = Instance.new("Part")
+		part.Name = name
+		part.Size = size
+		part.CFrame = frame
+		part.Color = color
+		part.Material = Enum.Material.Metal
+		part.CanCollide = false
+		part.CanTouch = false
+		part.Massless = true
+		if shape then part.Shape = shape end
+		part.Parent = tool
+		local weld = Instance.new("WeldConstraint")
+		weld.Part0 = handle
+		weld.Part1 = part
+		weld.Parent = part
+		return part
+	end
+	piece("Shaft", Vector3.new(0.18, 3.4, 0.18), CFrame.new(0, -1.8, -0.65) * CFrame.Angles(math.rad(25), 0, 0), spec.color)
+	piece("SearchCoil", Vector3.new(0.15, 2.0, 2.0), CFrame.new(0, -3.3, -1.4) * CFrame.Angles(0, 0, math.pi / 2), spec.color, Enum.PartType.Cylinder)
+	piece("CoilInset", Vector3.new(0.18, 1.45, 1.45), CFrame.new(0, -3.3, -1.4) * CFrame.Angles(0, 0, math.pi / 2), Color3.fromRGB(27, 36, 41), Enum.PartType.Cylinder)
+	piece("ControlBox", Vector3.new(0.85, 0.6, 0.5), CFrame.new(0, -0.6, -0.35), spec.color)
+	local screen = piece("SignalDisplay", Vector3.new(0.63, 0.08, 0.32), CFrame.new(0, -0.27, -0.35), Color3.fromRGB(166, 255, 179))
+	screen.Material = Enum.Material.Neon
+	tool.Grip = CFrame.new(0, -0.25, 0)
+	tool.Parent = backpack
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	if humanoid and humanoid.Health > 0 then humanoid:EquipTool(tool) end
+	return tool
+end
+
+return DetectorTool
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="Script" referent="8">
+        <Properties>
+          <string name="Name">Main</string>
+          <token name="RunContext">0</token>
+          <string name="Source"><![CDATA[-- Brainrot Bloom: all currency, collections, rolls and capture rewards live on the server.
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local DataStoreService = game:GetService("DataStoreService")
+local HttpService = game:GetService("HttpService")
+local RunService = game:GetService("RunService")
+
+local Shared = ReplicatedStorage:WaitForChild("BrainrotShared")
+local Config = require(Shared:WaitForChild("Config"))
+local CreatureFactory = require(Shared:WaitForChild("CreatureFactory"))
+local World = require(script.Parent:WaitForChild("World"))
+local DetectorTool = require(script.Parent:WaitForChild("DetectorTool"))
+local map = World.build(Config)
+
+local remoteFolder = Instance.new("Folder")
+remoteFolder.Name = "BrainrotRemotes"
+local Action = Instance.new("RemoteFunction")
+Action.Name = "Action"
+Action.Parent = remoteFolder
+local State = Instance.new("RemoteEvent")
+State.Name = "State"
+State.Parent = remoteFolder
+local Notify = Instance.new("RemoteEvent")
+Notify.Name = "Notify"
+Notify.Parent = remoteFolder
+remoteFolder.Parent = ReplicatedStorage
+
+local storeOk, store = pcall(function()
+	return DataStoreService:GetDataStore("BrainrotBloom_Player_v1")
+end)
+if not storeOk then
+	warn("[Brainrot Bloom] Save store could not initialize: " .. tostring(store))
+	store = nil
+end
+local sessionId = game.JobId .. ":" .. HttpService:GenerateGUID(false)
+local profiles = {}
+local savesInFlight = {}
+local closing = false
+local rng = Random.new()
+local MAX_COINS = 1e15
+local LOCK_SECONDS = 180
+local cachedEpoch = -1
+local rotation = {}
+
+local function integer(value, minimum, maximum, fallback)
+	if type(value) ~= "number" or value ~= value or math.abs(value) == math.huge then
+		return fallback
+	end
+	return math.clamp(math.floor(value), minimum, maximum)
+end
+
+local function lookup(list, id)
+	if type(id) ~= "string" then return nil end
+	return Config.get(list, id)
+end
+
+local function owned(list, id)
+	return table.find(list, id) ~= nil
+end
+
+local function newData()
+	return {
+		coins = Config.StartCoins,
+		brainrots = {},
+		foods = { [Config.Foods[1].id] = 3 },
+		ownedDetectors = { Config.Detectors[1].id },
+		detector = Config.Detectors[1].id,
+		unlockedWorlds = { Config.Worlds[1].id },
+		activeBrainrot = nil,
+		discoveryCount = 0,
+	}
+end
+
+local function sanitize(raw)
+	local data = newData()
+	if type(raw) ~= "table" then return data end
+	data.coins = integer(raw.coins, 0, MAX_COINS, Config.StartCoins)
+	data.discoveryCount = integer(raw.discoveryCount, 0, 1e9, 0)
+	data.foods = {}
+	for _, food in Config.Foods do
+		data.foods[food.id] = integer(type(raw.foods) == "table" and raw.foods[food.id], 0, 9999, 0)
+	end
+	for _, spec in Config.Detectors do
+		if type(raw.ownedDetectors) == "table" and owned(raw.ownedDetectors, spec.id) and not owned(data.ownedDetectors, spec.id) then
+			table.insert(data.ownedDetectors, spec.id)
+		end
+	end
+	if owned(data.ownedDetectors, raw.detector) then data.detector = raw.detector end
+	for _, world in Config.Worlds do
+		if type(raw.unlockedWorlds) == "table" and owned(raw.unlockedWorlds, world.id) and not owned(data.unlockedWorlds, world.id) then
+			table.insert(data.unlockedWorlds, world.id)
+		end
+	end
+	local seen = {}
+	if type(raw.brainrots) == "table" then
+		for _, saved in raw.brainrots do
+			if #data.brainrots >= Config.MaxBrainrots then break end
+			if type(saved) == "table" and lookup(Config.Creatures, saved.specId) then
+				local uid = type(saved.uid) == "string" and #saved.uid <= 64 and saved.uid or HttpService:GenerateGUID(false)
+				if not seen[uid] then
+					seen[uid] = true
+					local level = integer(saved.level, 1, Config.MaxLevel, 1)
+					table.insert(data.brainrots, {
+						uid = uid, specId = saved.specId, level = level,
+						xp = level < Config.MaxLevel and integer(saved.xp, 0, Config.xpNeeded(level) - 1, 0) or 0,
+						growthBoostUntil = integer(saved.growthBoostUntil, 0, os.time() + Config.Boosts.Growth.duration, 0),
+						incomeBoostUntil = integer(saved.incomeBoostUntil, 0, os.time() + Config.Boosts.Income.duration, 0),
+					})
+				end
+			end
+		end
+	end
+	if seen[raw.activeBrainrot] then data.activeBrainrot = raw.activeBrainrot end
+	if not data.activeBrainrot and data.brainrots[1] then data.activeBrainrot = data.brainrots[1].uid end
+	return data
+end
+
+local function findBrainrot(profile, uid)
+	if type(uid) ~= "string" then return nil end
+	for index, brainrot in profile.data.brainrots do
+		if brainrot.uid == uid then return brainrot, index end
+	end
+	return nil
+end
+
+local function brainrotIncome(brainrot)
+	local boost = brainrot.incomeBoostUntil > os.time() and 2 or 1
+	return Config.income(brainrot.specId, brainrot.level) * boost
+end
+
+local function totalIncome(profile)
+	local total = 0
+	for _, brainrot in profile.data.brainrots do total += brainrotIncome(brainrot) end
+	return total
+end
+
+-- Same rotation for every server at the same five-minute UTC boundary. Quantities are per player.
+local function refreshRotation()
+	local epoch = math.floor(os.time() / Config.RotationSeconds)
+	if epoch ~= cachedEpoch then
+		cachedEpoch = epoch
+		local random = Random.new(epoch)
+		local candidates = {}
+		for index = 2, #Config.Foods do table.insert(candidates, Config.Foods[index]) end
+		for index = #candidates, 2, -1 do
+			local other = random:NextInteger(1, index)
+			candidates[index], candidates[other] = candidates[other], candidates[index]
+		end
+		rotation = { Config.Foods[1] }
+		for index = 1, math.min(5, #candidates) do table.insert(rotation, candidates[index]) end
+	end
+	return epoch
+end
+
+local function ensureStock(profile)
+	local epoch = refreshRotation()
+	if profile.stockEpoch ~= epoch then
+		profile.stockEpoch = epoch
+		profile.purchased = {}
+	end
+end
+
+local function publicState(profile)
+	ensureStock(profile)
+	local brainrots = {}
+	for _, brainrot in profile.data.brainrots do
+		local spec = lookup(Config.Creatures, brainrot.specId)
+		table.insert(brainrots, {
+			uid = brainrot.uid, specId = brainrot.specId, name = spec.name, rarity = spec.rarity,
+			level = brainrot.level, xp = brainrot.xp, xpNeeded = Config.xpNeeded(brainrot.level),
+			income = brainrotIncome(brainrot), growthBoostUntil = brainrot.growthBoostUntil,
+			incomeBoostUntil = brainrot.incomeBoostUntil,
+		})
+	end
+	local stock = {}
+	for _, food in rotation do
+		table.insert(stock, { id = food.id, remaining = math.max(0, food.stock - (profile.purchased[food.id] or 0)) })
+	end
+	return {
+		coins = math.floor(profile.data.coins), income = totalIncome(profile), world = profile.world,
+		detector = profile.data.detector, ownedDetectors = table.clone(profile.data.ownedDetectors),
+		unlockedWorlds = table.clone(profile.data.unlockedWorlds), activeBrainrot = profile.data.activeBrainrot,
+		brainrots = brainrots, foods = table.clone(profile.data.foods), stock = stock,
+		rotationEnds = (cachedEpoch + 1) * Config.RotationSeconds, discoveryCount = profile.data.discoveryCount,
+		serverTime = os.time(), persistenceEnabled = profile.persistent,
+	}
+end
+
+local function push(player, profile)
+	if player.Parent == Players then State:FireClient(player, publicState(profile)) end
+end
+
+local function updateCompanion(profile)
+	if profile.companion then profile.companion:Destroy(); profile.companion = nil end
+	local brainrot = findBrainrot(profile, profile.data.activeBrainrot)
+	if not brainrot then return end
+	local spec = lookup(Config.Creatures, brainrot.specId)
+	local model = CreatureFactory.create(spec, 0.7 + (brainrot.level - 1) * 0.015)
+	model.Name = profile.player.Name .. "'s " .. spec.name
+	model.Parent = workspace
+	local primary = model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart", true)
+	if primary then
+		model.PrimaryPart = primary
+		local label = Instance.new("BillboardGui")
+		label.Name = "CompanionLabel"
+		label.Size = UDim2.fromOffset(220, 52)
+		label.StudsOffset = Vector3.new(0, 3, 0)
+		label.MaxDistance = 70
+		label.Parent = primary
+		local text = Instance.new("TextLabel")
+		text.Name = "Text"
+		text.Size = UDim2.fromScale(1, 1)
+		text.BackgroundTransparency = 1
+		text.Font = Enum.Font.GothamBold
+		text.TextSize = 15
+		text.TextColor3 = Color3.new(1, 1, 1)
+		text.TextStrokeTransparency = 0.3
+		text.Text = string.format("%s  •  Lv.%d\n$%s / sec", spec.name, brainrot.level, tostring(brainrotIncome(brainrot)))
+		text.Parent = label
+	end
+	profile.companion = model
+end
+
+local function snapshot(profile)
+	local copy = {
+		coins = math.floor(profile.data.coins), discoveryCount = profile.data.discoveryCount,
+		foods = table.clone(profile.data.foods), detector = profile.data.detector,
+		ownedDetectors = table.clone(profile.data.ownedDetectors), unlockedWorlds = table.clone(profile.data.unlockedWorlds),
+		activeBrainrot = profile.data.activeBrainrot, brainrots = {},
+	}
+	for _, brainrot in profile.data.brainrots do table.insert(copy.brainrots, table.clone(brainrot)) end
+	return copy
+end
+
+local function save(profile, release)
+	if not profile.persistent then return true end
+	local userId = profile.player.UserId
+	-- A removal waits for an autosave so the final snapshot cannot be skipped.
+	if savesInFlight[userId] then
+		if not release then return false end
+		local deadline = os.clock() + 12
+		repeat task.wait(0.1) until not savesInFlight[userId] or os.clock() >= deadline
+		if savesInFlight[userId] then return false end
+	end
+	savesInFlight[userId] = true
+	local data = snapshot(profile)
+	local ok, result = pcall(function()
+		return store:UpdateAsync("Player_" .. userId, function(previous)
+			if type(previous) ~= "table" or type(previous.session) ~= "table" or previous.session.id ~= sessionId then
+				return nil -- Never overwrite a profile whose session lock we no longer own.
+			end
+			return { schema = 1, data = data, session = not release and { id = sessionId, expires = os.time() + LOCK_SECONDS } or nil }
+		end)
+	end)
+	savesInFlight[userId] = nil
+	if not ok then
+		warn("[Brainrot Bloom] Save failed for user " .. userId .. ": " .. tostring(result))
+		return false
+	end
+	if not result then
+		profile.persistent = false
+		if profile.player.Parent == Players then profile.player:Kick("Your save session moved to another server. Please rejoin to protect your collection.") end
+		return false
+	end
+	return true
+end
+
+local function acquire(player)
+	local finalError
+	for attempt = 1, 3 do
+		local ok, result = pcall(function()
+			return store:UpdateAsync("Player_" .. player.UserId, function(previous)
+				if type(previous) == "table" and type(previous.session) == "table"
+					and previous.session.id ~= sessionId and (tonumber(previous.session.expires) or 0) > os.time() then
+					return nil
+				end
+				local data = type(previous) == "table" and previous.data or nil
+				return { schema = 1, data = sanitize(data), session = { id = sessionId, expires = os.time() + LOCK_SECONDS } }
+			end)
+		end)
+		if ok then
+			if type(result) == "table" and type(result.session) == "table" and result.session.id == sessionId then
+				return sanitize(result.data), true
+			end
+			return nil, false, "Your collection is still open on another server. Wait a moment and rejoin."
+		end
+		finalError = result
+		if attempt < 3 then task.wait(attempt) end
+	end
+	warn("[Brainrot Bloom] DataStore unavailable: " .. tostring(finalError))
+	if RunService:IsStudio() then
+		warn("[Brainrot Bloom] Studio uses temporary progress until the experience is published and API Services are enabled. No failed load will be saved.")
+		return newData(), false
+	end
+	return nil, false, "Your collection could not be loaded safely. Please rejoin in a moment."
+end
+
+local function rootFor(player)
+	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	if not humanoid or humanoid.Health <= 0 then return nil end
+	return character:FindFirstChild("HumanoidRootPart")
+end
+
+local function pitForPosition(position)
+	for id, pit in map.pits do
+		local relative = position - pit.center
+		if math.abs(relative.X) <= pit.size.X / 2 and math.abs(relative.Z) <= pit.size.Z / 2 and math.abs(relative.Y) < 35 then
+			return lookup(Config.Worlds, id)
+		end
+	end
+	return nil
+end
+
+local function teleport(player, profile, destination)
+	local frame = type(destination) == "string" and map.destinations[destination]
+	if not frame then return false, "That destination does not exist." end
+	local world = lookup(Config.Worlds, destination)
+	if world and not owned(profile.data.unlockedWorlds, world.id) then return false, "Unlock this world in the Worlds menu first." end
+	local root = rootFor(player)
+	if not root then return false, "Wait for your character to spawn." end
+	profile.dig = nil
+	player.Character:PivotTo(frame)
+	root.AssemblyLinearVelocity = Vector3.zero
+	root.AssemblyAngularVelocity = Vector3.zero
+	profile.world = world and world.id or Config.Worlds[1].id
+	return true
+end
+
+local function charge(profile, cost)
+	if profile.data.coins < cost then return false end
+	profile.data.coins -= cost
+	return true
+end
+
+local function fail(message)
+	return { ok = false, message = message }
+end
+
+local function rollCreature(world, detector)
+	local choices = {}
+	local total = 0
+	local ceiling = math.min(world.maxRarity, detector.power)
+	for index, rarity in Config.Rarities do
+		if index <= ceiling then
+			local species = {}
+			for _, spec in Config.Creatures do
+				if spec.rarity == rarity.id then table.insert(species, spec) end
+			end
+			if #species > 0 then
+				local weight = rarity.weight * (1 + math.max(0, detector.power - 1) * (index - 1) * 0.25)
+				total += weight
+				table.insert(choices, { rarity = rarity, species = species, threshold = total })
+			end
+		end
+	end
+	local roll = rng:NextNumber(0, total)
+	for _, choice in choices do
+		if roll <= choice.threshold then return choice.species[rng:NextInteger(1, #choice.species)], choice.rarity end
+	end
+	error("No valid creature roll; check world and rarity configuration")
+end
+
+local handlers = {}
+
+function handlers.GetState(_player, _profile, _payload)
+	return { ok = true }
+end
+
+function handlers.Teleport(player, profile, payload)
+	local ok, message = teleport(player, profile, payload.destination)
+	return { ok = ok, message = message }
+end
+
+function handlers.EquipDetector(_player, profile, payload)
+	if not lookup(Config.Detectors, payload.id) or not owned(profile.data.ownedDetectors, payload.id) then return fail("You do not own that detector.") end
+	if profile.dig and profile.dig.deadline > os.clock() then return fail("Finish your current capture first.") end
+	profile.data.detector = payload.id
+	DetectorTool.equip(profile.player, lookup(Config.Detectors, payload.id))
+	return { ok = true, message = "Detector equipped." }
+end
+
+function handlers.BuyDetector(_player, profile, payload)
+	local spec = lookup(Config.Detectors, payload.id)
+	if not spec then return fail("Unknown detector.") end
+	if profile.dig and profile.dig.deadline > os.clock() then return fail("Finish your current capture first.") end
+	if owned(profile.data.ownedDetectors, spec.id) then return fail("You already own this detector.") end
+	if not owned(profile.data.unlockedWorlds, spec.world) then return fail("Unlock " .. spec.world .. " before buying this detector.") end
+	if not charge(profile, spec.price) then return fail("You need more coins for this detector.") end
+	table.insert(profile.data.ownedDetectors, spec.id)
+	profile.data.detector = spec.id
+	DetectorTool.equip(profile.player, spec)
+	return { ok = true, message = spec.name .. " purchased and equipped!" }
+end
+
+function handlers.BuyFood(_player, profile, payload)
+	ensureStock(profile)
+	local food = lookup(Config.Foods, payload.id)
+	if not food then return fail("Unknown food.") end
+	if not table.find(rotation, food) then return fail("This food is not in the current rotation.") end
+	local quantity = integer(payload.quantity, 1, 100, 1)
+	local remaining = food.stock - (profile.purchased[food.id] or 0)
+	if quantity > remaining then return fail("There is not enough stock left in this rotation.") end
+	if (profile.data.foods[food.id] or 0) + quantity > 9999 then return fail("Your pantry is full of this food.") end
+	if not charge(profile, food.price * quantity) then return fail("You need more coins for this food.") end
+	profile.data.foods[food.id] = (profile.data.foods[food.id] or 0) + quantity
+	profile.purchased[food.id] = (profile.purchased[food.id] or 0) + quantity
+	return { ok = true, message = "Bought " .. quantity .. " × " .. food.name .. "." }
+end
+
+function handlers.Feed(_player, profile, payload)
+	local brainrot = findBrainrot(profile, payload.uid)
+	local food = lookup(Config.Foods, payload.foodId)
+	if not brainrot or not food then return fail("Choose a brainrot and food from your inventory.") end
+	if brainrot.level >= Config.MaxLevel then return fail("This brainrot has reached the maximum level.") end
+	local quantity = integer(payload.quantity, 1, 100, 1)
+	if quantity > (profile.data.foods[food.id] or 0) then return fail("You do not have enough of this food.") end
+	profile.data.foods[food.id] -= quantity
+	local previousLevel = brainrot.level
+	brainrot.xp += food.xp * quantity * (brainrot.growthBoostUntil > os.time() and 2 or 1)
+	while brainrot.level < Config.MaxLevel and brainrot.xp >= Config.xpNeeded(brainrot.level) do
+		brainrot.xp -= Config.xpNeeded(brainrot.level)
+		brainrot.level += 1
+	end
+	if brainrot.level == Config.MaxLevel then brainrot.xp = 0 end
+	if profile.data.activeBrainrot == brainrot.uid then updateCompanion(profile) end
+	local gained = brainrot.level - previousLevel
+	return { ok = true, message = gained > 0 and ("Grew " .. gained .. " level" .. (gained == 1 and "!" or "s!")) or "Yum! Growth XP added." }
+end
+
+function handlers.EquipBrainrot(_player, profile, payload)
+	if not findBrainrot(profile, payload.uid) then return fail("You do not own that brainrot.") end
+	profile.data.activeBrainrot = payload.uid
+	updateCompanion(profile)
+	return { ok = true, message = "Your companion is ready. All collected brainrots still earn income!" }
+end
+
+function handlers.Sell(_player, profile, payload)
+	local brainrot, index = findBrainrot(profile, payload.uid)
+	if not brainrot then return fail("Choose a brainrot to sell.") end
+	local value = Config.sellValue(brainrot.specId, brainrot.level)
+	table.remove(profile.data.brainrots, index)
+	profile.data.coins = math.min(MAX_COINS, profile.data.coins + value)
+	if profile.data.activeBrainrot == brainrot.uid then
+		profile.data.activeBrainrot = profile.data.brainrots[1] and profile.data.brainrots[1].uid or nil
+		updateCompanion(profile)
+	end
+	return { ok = true, message = "Brainrot sold for $" .. tostring(value) .. "." }
+end
+
+function handlers.BuyBoost(_player, profile, payload)
+	if payload.kind ~= "Growth" and payload.kind ~= "Income" then return fail("Choose a growth or income boost.") end
+	local brainrot = findBrainrot(profile, payload.uid)
+	local boost = Config.Boosts[payload.kind]
+	if not brainrot then return fail("Choose the brainrot you want to boost.") end
+	local field = payload.kind == "Growth" and "growthBoostUntil" or "incomeBoostUntil"
+	if brainrot[field] > os.time() then return fail("This boost is already active. Wait for it to finish.") end
+	if payload.kind == "Growth" and brainrot.level >= Config.MaxLevel then return fail("This brainrot is already at maximum level.") end
+	if not charge(profile, boost.price) then return fail("You need more coins for this boost.") end
+	brainrot[field] = os.time() + boost.duration
+	if profile.data.activeBrainrot == brainrot.uid then updateCompanion(profile) end
+	return { ok = true, message = "2× " .. string.lower(payload.kind) .. " active for five minutes!" }
+end
+
+function handlers.UnlockWorld(player, profile, payload)
+	local world = lookup(Config.Worlds, payload.id)
+	if not world then return fail("Unknown world.") end
+	if owned(profile.data.unlockedWorlds, world.id) then return fail("You have already unlocked this world.") end
+	local index = table.find(Config.Worlds, world)
+	if index > 1 and not owned(profile.data.unlockedWorlds, Config.Worlds[index - 1].id) then return fail("Unlock the previous world first.") end
+	if not charge(profile, world.unlockCost) then return fail("You need more coins to unlock " .. world.name .. ".") end
+	table.insert(profile.data.unlockedWorlds, world.id)
+	teleport(player, profile, world.id)
+	return { ok = true, message = world.name .. " unlocked! New detectors are available in the gear shop." }
+end
+
+function handlers.StartDig(player, profile, _payload)
+	local root = rootFor(player)
+	if not root then return fail("Wait for your character to spawn.") end
+	local world = pitForPosition(root.Position)
+	if not world then return fail("Stand inside a sand pit to search for brainrots.") end
+	if not owned(profile.data.unlockedWorlds, world.id) then return fail("Unlock this world before digging here.") end
+	local detector = lookup(Config.Detectors, profile.data.detector)
+	if detector.power < world.minPower then return fail("This pit needs a stronger detector. Visit the gear shop.") end
+	if #profile.data.brainrots >= Config.MaxBrainrots then return fail("Your collection is full. Sell a brainrot first.") end
+	if profile.dig and os.clock() < profile.dig.deadline then return fail("A capture is already in progress.") end
+	if os.clock() < profile.nextDig then return fail(string.format("Detector recharging… %.1fs", profile.nextDig - os.clock())) end
+	local spec, rarity = rollCreature(world, detector)
+	local duration = Config.DigDuration
+	profile.world = world.id
+	profile.nextDig = os.clock() + detector.speed
+	profile.dig = {
+		id = HttpService:GenerateGUID(false), specId = spec.id, required = rarity.taps,
+		count = 0, deadline = os.clock() + duration, lastTap = 0, world = world.id,
+	}
+	return { ok = true, dig = { id = profile.dig.id, required = rarity.taps, duration = duration, specId = spec.id, rarity = rarity.id, name = spec.name } }
+end
+
+function handlers.TapDig(player, profile, payload)
+	local dig = profile.dig
+	if not dig or payload.sessionId ~= dig.id then return fail("No active capture. Search the sand again.") end
+	if os.clock() > dig.deadline then profile.dig = nil; return fail("It escaped! Try digging again.") end
+	local root = rootFor(player)
+	local currentWorld = root and pitForPosition(root.Position)
+	if not currentWorld or currentWorld.id ~= dig.world then profile.dig = nil; return fail("Stay in the sand pit during a capture.") end
+	if os.clock() - dig.lastTap < 0.045 then return { ok = true, count = dig.count, taps = dig.count } end
+	dig.lastTap = os.clock()
+	dig.count += 1
+	if dig.count < dig.required then return { ok = true, count = dig.count, taps = dig.count } end
+	profile.dig = nil -- Clear the session before awarding; replayed requests cannot grant another creature.
+	if #profile.data.brainrots >= Config.MaxBrainrots then return fail("Your collection is full.") end
+	local brainrot = { uid = HttpService:GenerateGUID(false), specId = dig.specId, level = 1, xp = 0, growthBoostUntil = 0, incomeBoostUntil = 0 }
+	table.insert(profile.data.brainrots, brainrot)
+	profile.data.discoveryCount += 1
+	if not profile.data.activeBrainrot then profile.data.activeBrainrot = brainrot.uid; updateCompanion(profile) end
+	local spec = lookup(Config.Creatures, brainrot.specId)
+	return { ok = true, complete = true, message = "Captured " .. spec.name .. "! It now earns coins every second." }
+end
+
+Action.OnServerInvoke = function(player, action, payload)
+	local profile = profiles[player]
+	if not profile then return fail("Your collection is loading. Try again in a moment.") end
+	if closing then return fail("The server is closing. Your collection is being saved.") end
+	if type(action) ~= "string" or not handlers[action] then return fail("Unknown action.") end
+	if payload ~= nil and type(payload) ~= "table" then return fail("Invalid request.") end
+	-- Token bucket permits rapid capture taps while bounding every other action.
+	local now = os.clock()
+	profile.tokens = math.min(45, profile.tokens + (now - profile.tokenAt) * 28)
+	profile.tokenAt = now
+	local cost = action == "TapDig" and 1 or 4
+	if profile.tokens < cost then return fail("Please slow down for a moment.") end
+	profile.tokens -= cost
+	local ok, result = pcall(handlers[action], player, profile, payload or {})
+	if not ok then
+		warn("[Brainrot Bloom] Action " .. action .. " failed: " .. tostring(result))
+		return fail("That action could not finish. Please try again.")
+	end
+	-- A state snapshot accompanies meaningful actions; individual taps only return progress.
+	if action ~= "TapDig" or result.complete then
+		result.state = publicState(profile)
+		push(player, profile)
+	end
+	return result
+end
+
+local function onPlayerAdded(player)
+	local data, persistent, message = acquire(player)
+	if not data then player:Kick(message); return end
+	local profile = {
+		player = player, data = data, persistent = persistent, world = Config.Worlds[1].id,
+		nextDig = 0, tokens = 45, tokenAt = os.clock(), stockEpoch = -1, purchased = {},
+	}
+	if player.Parent ~= Players or closing then save(profile, true); return end
+	profiles[player] = profile
+	local function spawnCharacter(character)
+		local root = character:WaitForChild("HumanoidRootPart", 10)
+		if root and profiles[player] == profile then
+			character:PivotTo(map.spawnCFrame)
+			profile.world = Config.Worlds[1].id
+			profile.dig = nil
+			DetectorTool.equip(player, lookup(Config.Detectors, profile.data.detector))
+			updateCompanion(profile)
+			push(player, profile)
+		end
+	end
+	player.CharacterAdded:Connect(spawnCharacter)
+	if player.Character then task.spawn(spawnCharacter, player.Character) end
+	push(player, profile)
+	if not persistent then
+		task.delay(5, function()
+			if player.Parent == Players then Notify:FireClient(player, "Studio session: progress is temporary. Publish and enable API Services to test saving.", "warning") end
+		end)
+	end
+end
+
+Players.PlayerAdded:Connect(onPlayerAdded)
+for _, player in Players:GetPlayers() do task.spawn(onPlayerAdded, player) end
+Players.PlayerRemoving:Connect(function(player)
+	local profile = profiles[player]
+	profiles[player] = nil
+	if profile then
+		if profile.companion then profile.companion:Destroy() end
+		for attempt = 1, 3 do
+			if save(profile, true) then break end
+			if attempt < 3 then task.wait(attempt) end
+		end
+	end
+end)
+
+-- Map ProximityPrompt UI is handled by the client; all resulting actions still pass these server checks.
+task.spawn(function()
+	local elapsed = 0
+	while not closing do
+		task.wait(1)
+		elapsed += 1
+		for player, profile in profiles do
+			profile.data.coins = math.min(MAX_COINS, profile.data.coins + totalIncome(profile))
+			if profile.dig and os.clock() > profile.dig.deadline then profile.dig = nil end
+			if elapsed % 2 == 0 then push(player, profile) end
+			if elapsed % 60 == 0 then task.spawn(save, profile, false) end
+			if elapsed % 5 == 0 and profile.companion then
+				local brainrot = findBrainrot(profile, profile.data.activeBrainrot)
+				local primary = profile.companion.PrimaryPart
+				local label = primary and primary:FindFirstChild("CompanionLabel")
+				local text = label and label:FindFirstChild("Text")
+				if brainrot and text then
+					local spec = lookup(Config.Creatures, brainrot.specId)
+					text.Text = string.format("%s  •  Lv.%d\n$%s / sec", spec.name, brainrot.level, tostring(brainrotIncome(brainrot)))
+				end
+			end
+		end
+	end
+end)
+
+local companionTime = 0
+RunService.Heartbeat:Connect(function(delta)
+	companionTime += delta
+	if companionTime < 0.1 then return end
+	companionTime = 0
+	for player, profile in profiles do
+		local root = rootFor(player)
+		if root and profile.companion and profile.companion.PrimaryPart then
+			local target = root.CFrame * CFrame.new(3.8, -1 + math.sin(os.clock() * 3) * 0.2, 2.5)
+			profile.companion:PivotTo(target)
+		end
+	end
+end)
+
+game:BindToClose(function()
+	closing = true
+	local remaining = 0
+	for _, profile in profiles do
+		remaining += 1
+		task.spawn(function()
+			for attempt = 1, 3 do
+				if save(profile, true) then break end
+				if attempt < 3 then task.wait(attempt) end
+			end
+			remaining -= 1
+		end)
+	end
+	local deadline = os.clock() + 25
+	while remaining > 0 and os.clock() < deadline do task.wait(0.1) end
+end)
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="9">
+        <Properties>
+          <string name="Name">World</string>
+          <string name="Source"><![CDATA[local Lighting = game:GetService("Lighting")
+local Workspace = game:GetService("Workspace")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local CreatureFactory = require(ReplicatedStorage:WaitForChild("BrainrotShared"):WaitForChild("CreatureFactory"))
+
+local World = {}
+local dayCycleStarted = false
+
+local function part(parent, name, size, position, color, material, shape)
+	local object = Instance.new("Part")
+	object.Name = name
+	object.Size = size
+	object.Position = position
+	object.Color = color
+	object.Material = material or Enum.Material.SmoothPlastic
+	object.Anchored = true
+	object.TopSurface = Enum.SurfaceType.Smooth
+	object.BottomSurface = Enum.SurfaceType.Smooth
+	if shape then object.Shape = shape end
+	object.Parent = parent
+	return object
+end
+
+local function label(adornee, title, subtitle, color, width)
+	local gui = Instance.new("BillboardGui")
+	gui.Name = "Sign"
+	gui.Adornee = adornee
+	gui.Size = UDim2.fromOffset(width or 270, subtitle and 78 or 48)
+	gui.StudsOffset = Vector3.new(0, 2, 0)
+	gui.MaxDistance = 220
+	gui.AlwaysOnTop = false
+	gui.Parent = adornee
+	local frame = Instance.new("Frame")
+	frame.Size = UDim2.fromScale(1, 1)
+	frame.BackgroundColor3 = Color3.fromRGB(22, 38, 36)
+	frame.BackgroundTransparency = 0.06
+	frame.Parent = gui
+	local corners = Instance.new("UICorner")
+	corners.CornerRadius = UDim.new(0, 12)
+	corners.Parent = frame
+	local titleLabel = Instance.new("TextLabel")
+	titleLabel.BackgroundTransparency = 1
+	titleLabel.Size = UDim2.new(1, -12, subtitle and 0.6 or 1, 0)
+	titleLabel.Position = UDim2.fromOffset(6, 0)
+	titleLabel.Font = Enum.Font.GothamBold
+	titleLabel.TextSize = 22
+	titleLabel.TextColor3 = color or Color3.fromRGB(255, 241, 203)
+	titleLabel.Text = title
+	titleLabel.Parent = frame
+	if subtitle then
+		local sub = titleLabel:Clone()
+		sub.Size = UDim2.new(1, -12, 0.4, 0)
+		sub.Position = UDim2.new(0, 6, 0.6, -3)
+		sub.Font = Enum.Font.Gotham
+		sub.TextSize = 13
+		sub.TextColor3 = Color3.fromRGB(220, 235, 220)
+		sub.Text = subtitle
+		sub.Parent = frame
+	end
+end
+
+local function tree(parent, position, scale, color)
+	part(parent, "TreeTrunk", Vector3.new(2.4, 10, 2.4) * scale, position + Vector3.new(0, 5 * scale, 0), Color3.fromRGB(110, 76, 47), Enum.Material.Wood)
+	part(parent, "TreeCanopy", Vector3.new(13, 13, 13) * scale, position + Vector3.new(0, 13 * scale, 0), color, Enum.Material.Grass, Enum.PartType.Ball)
+	part(parent, "TreeCanopy", Vector3.new(10, 10, 10) * scale, position + Vector3.new(4 * scale, 16 * scale, 0), color:Lerp(Color3.new(1, 1, 1), 0.08), Enum.Material.Grass, Enum.PartType.Ball)
+end
+
+local function specimenPlaque(parent, position, rarity, species, color, width)
+	width = width or 9
+	local plaque = part(parent, "SpecimenPlaque", Vector3.new(width, 2.3, 0.3), position, Color3.fromRGB(35, 55, 46), Enum.Material.Wood)
+	plaque.CFrame = CFrame.new(position) * CFrame.Angles(0, math.pi, 0)
+	local surface = Instance.new("SurfaceGui")
+	surface.Face = Enum.NormalId.Front
+	surface.CanvasSize = Vector2.new(width * 55, 150)
+	surface.Parent = plaque
+	local text = Instance.new("TextLabel")
+	text.Size = UDim2.new(1, -20, 1, -12)
+	text.Position = UDim2.fromOffset(10, 6)
+	text.BackgroundTransparency = 1
+	text.Font = Enum.Font.GothamBold
+	text.TextColor3 = color
+	text.TextSize = 29
+	text.TextWrapped = true
+	text.Text = rarity .. "\n" .. species
+	text.Parent = surface
+	return plaque
+end
+
+local function prompt(target, action, name, attribute, value)
+	local interaction = Instance.new("ProximityPrompt")
+	interaction.ActionText = action
+	interaction.ObjectText = name
+	interaction.HoldDuration = 0
+	interaction.KeyboardKeyCode = Enum.KeyCode.F
+	interaction.MaxActivationDistance = 15
+	interaction.RequiresLineOfSight = false
+	interaction:SetAttribute(attribute, value)
+	interaction.Parent = target
+	return interaction
+end
+
+local function shop(parent, name, position, color, subtitle, shopId)
+	local wood = Color3.fromRGB(134, 94, 57)
+	part(parent, name .. "Platform", Vector3.new(31, 1, 22), position + Vector3.new(0, 0.6, 0), wood, Enum.Material.WoodPlanks)
+	for _, x in {-13, 13} do
+		for _, z in {-9, 9} do
+			part(parent, "ShopPost", Vector3.new(1.2, 12, 1.2), position + Vector3.new(x, 6.5, z), wood, Enum.Material.Wood)
+		end
+	end
+	part(parent, "ShopBack", Vector3.new(28, 7, 0.8), position + Vector3.new(0, 4.6, 9), Color3.fromRGB(238, 223, 183), Enum.Material.WoodPlanks)
+	local counter = part(parent, "ShopCounter", Vector3.new(27, 4, 3), position + Vector3.new(0, 3, -6), wood, Enum.Material.WoodPlanks)
+	prompt(counter, "Browse", name, "Shop", shopId)
+	part(parent, "ShopAwning", Vector3.new(34, 1.4, 25), position + Vector3.new(0, 13, 0), color)
+	for x = -14, 14, 7 do
+		part(parent, "AwningStripe", Vector3.new(3, 0.08, 25.1), position + Vector3.new(x, 13.75, 0), color:Lerp(Color3.new(1, 1, 1), 0.45))
+	end
+	local sign = part(parent, "ShopSign", Vector3.new(20, 3, 0.5), position + Vector3.new(0, 11, -11), wood)
+	label(sign, name, subtitle, Color3.fromRGB(255, 241, 203))
+	-- Counter wares are original geometric props.
+	for i = -1, 1 do
+		part(parent, "ShopWares", Vector3.new(2.5, 2.5, 2.5), position + Vector3.new(i * 7, 6.2, -5), color:Lerp(Color3.fromRGB(255, 231, 136), (i + 1) * 0.22), Enum.Material.SmoothPlastic, Enum.PartType.Ball)
+	end
+end
+
+function World.startDayNight()
+	if dayCycleStarted then return end
+	dayCycleStarted = true
+	Lighting.ClockTime = 9
+	Lighting.Brightness = 2.1
+	Lighting.GlobalShadows = true
+	Lighting.Ambient = Color3.fromRGB(102, 113, 141)
+	Lighting.OutdoorAmbient = Color3.fromRGB(138, 151, 164)
+	local atmosphere = Lighting:FindFirstChildOfClass("Atmosphere") or Instance.new("Atmosphere")
+	atmosphere.Density = 0.22
+	atmosphere.Color = Color3.fromRGB(205, 232, 255)
+	atmosphere.Decay = Color3.fromRGB(161, 186, 211)
+	atmosphere.Parent = Lighting
+	task.spawn(function()
+		local start = os.clock()
+		while true do
+			Lighting.ClockTime = (9 + (os.clock() - start) / 30) % 24
+			task.wait(0.5)
+		end
+	end)
+end
+
+function World.build(config)
+	local old = Workspace:FindFirstChild("BrainrotWorld")
+	if old then old:Destroy() end
+	local folder = Instance.new("Folder")
+	folder.Name = "BrainrotWorld"
+	folder.Parent = Workspace
+	Workspace.FallenPartsDestroyHeight = -100
+	local ocean = part(folder, "Ocean", Vector3.new(2200, 3, 900), Vector3.new(520, -12, 0), Color3.fromRGB(70, 168, 195), Enum.Material.Glass)
+	ocean.Transparency = 0.2
+	ocean.CanCollide = false
+	local result = {destinations = {}, pits = {}, displaySlots = {}}
+	local ids = {"Meadow", "Dunes", "Cosmic"}
+	local names = {"Sprout Meadows", "Amber Dunes", "Starlight Hollow"}
+	local colors = {Color3.fromRGB(96, 175, 82), Color3.fromRGB(128, 175, 85), Color3.fromRGB(93, 151, 139)}
+	local sandColors = {Color3.fromRGB(239, 215, 157), Color3.fromRGB(236, 183, 101), Color3.fromRGB(178, 159, 221)}
+	local rng = Random.new(74119)
+	for i, id in ids do
+		local offset = Vector3.new((i - 1) * 520, 0, 0)
+		local island = Instance.new("Model")
+		island.Name = id
+		island.Parent = folder
+		part(island, "IslandStone", Vector3.new(350, 12, 330), offset + Vector3.new(0, -9, 0), Color3.fromRGB(120, 116, 93), Enum.Material.Slate)
+		part(island, "Grass", Vector3.new(350, 6, 330), offset + Vector3.new(0, -2.7, 0), colors[i], Enum.Material.Grass)
+		local pitCenter = offset + Vector3.new(0, 0.65, 65)
+		local pitSize = Vector3.new(164, 3, 144)
+		local digZone = part(island, "DigZone", pitSize, pitCenter - Vector3.new(0, 1.4, 0), sandColors[i], Enum.Material.Sand)
+		digZone:SetAttribute("WorldId", id)
+		for _, x in {-84, 84} do
+			part(island, "PitRim", Vector3.new(3, 1.1, 150), offset + Vector3.new(x, 0.9, 65), Color3.fromRGB(157, 117, 72), Enum.Material.WoodPlanks)
+		end
+		for _, z in {-9, 139} do
+			part(island, "PitRim", Vector3.new(170, 1.1, 3), offset + Vector3.new(0, 0.9, z), Color3.fromRGB(157, 117, 72), Enum.Material.WoodPlanks)
+		end
+		result.pits[id] = {center = pitCenter, size = pitSize}
+		result.destinations[id] = CFrame.new(offset + Vector3.new(0, 5, 7)) * CFrame.Angles(0, math.pi, 0)
+		part(island, "MainPath", Vector3.new(17, 0.15, 135), offset + Vector3.new(0, 0.4, -78), Color3.fromRGB(225, 217, 181), Enum.Material.Cobblestone)
+		local marker = part(island, "WorldMarker", Vector3.new(1, 8, 1), offset + Vector3.new(0, 5, -25), Color3.fromRGB(120, 85, 48), Enum.Material.Wood)
+		local world = config.Worlds and config.Worlds[i]
+		if world then names[i] = world.name end
+		label(marker, world and world.name or names[i], i == 1 and "Equip your detector and search the sand" or "Unlock this world from the Worlds menu", Color3.fromRGB(255, 235, 166), 340)
+		for j = 1, 21 do
+			local x = (j % 2 == 0 and -1 or 1) * rng:NextNumber(108, 155)
+			local z = rng:NextNumber(-142, 143)
+			tree(island, offset + Vector3.new(x, 0, z), rng:NextNumber(0.65, 1.15), colors[i]:Lerp(Color3.fromRGB(32, 100, 53), 0.2))
+		end
+		for j = 1, 16 do
+			local x = rng:NextNumber(-150, 150)
+			local z = rng:NextNumber(-143, -112)
+			if i == 1 and math.abs(x) < 104 then z = math.max(z, -130) end
+			local rock = part(island, "Pebble", Vector3.new(4, 3, 4) * rng:NextNumber(0.4, 1.2), offset + Vector3.new(x, 0.6, z), sandColors[i]:Lerp(Color3.fromRGB(110, 114, 115), 0.5), Enum.Material.Rock, Enum.PartType.Ball)
+			rock.Orientation = Vector3.new(0, rng:NextNumber(0, 360), 0)
+		end
+		-- Tiny glowing lamps keep the sand and pathways readable at night.
+		for _, x in {-94, 94} do
+			for _, z in {0, 130} do
+				part(island, "LampPost", Vector3.new(0.8, 9, 0.8), offset + Vector3.new(x, 4.5, z), Color3.fromRGB(69, 74, 62), Enum.Material.Metal)
+				local bulb = part(island, "Lamp", Vector3.new(2.6, 2.6, 2.6), offset + Vector3.new(x, 9.5, z), Color3.fromRGB(255, 228, 158), Enum.Material.Neon, Enum.PartType.Ball)
+				local light = Instance.new("PointLight")
+				light.Color = bulb.Color
+				light.Range = 38
+				light.Brightness = 1.6
+				light.Parent = bulb
+			end
+		end
+		if i > 1 then
+			local portal = part(island, "WorldPortal", Vector3.new(17, 20, 2), offset + Vector3.new(0, 10, -129), sandColors[i], Enum.Material.Neon)
+			portal.Transparency = 0.55
+			portal.CanCollide = false
+			label(portal, names[i], "Access requires the matching world unlock", sandColors[i])
+			prompt(portal, "World access", names[i], "WorldId", id)
+		end
+	end
+
+	shop(folder, "FOOD MARKET", Vector3.new(-64, 0, -66), Color3.fromRGB(241, 139, 95), "Fresh stock every five minutes", "Food")
+	shop(folder, "GEAR WORKSHOP", Vector3.new(64, 0, -66), Color3.fromRGB(95, 169, 211), "Detectors and five-minute boosts", "Gear")
+	local sell = part(folder, "SellArea", Vector3.new(28, 0.4, 23), Vector3.new(-64, 0.55, -113), Color3.fromRGB(255, 207, 94), Enum.Material.SmoothPlastic)
+	label(sell, "SELL BRAINROTS", "Choose a creature in your collection", Color3.fromRGB(255, 219, 109))
+	prompt(sell, "Sell", "Sell brainrots", "Shop", "Sell")
+	local home = part(folder, "HomePad", Vector3.new(24, 0.5, 20), Vector3.new(0, 0.6, -106), Color3.fromRGB(187, 224, 150))
+	label(home, "BRAINROT BLOOM", "Find it. Feed it. Let it flourish.", Color3.fromRGB(192, 240, 139), 340)
+	result.spawnCFrame = CFrame.new(0, 5, -91) * CFrame.Angles(0, math.pi, 0)
+	result.destinations.Home = result.spawnCFrame
+	result.destinations.Food = CFrame.new(-64, 5, -86) * CFrame.Angles(0, math.pi, 0)
+	result.destinations.Gear = CFrame.new(64, 5, -86) * CFrame.Angles(0, math.pi, 0)
+	result.destinations.Sell = CFrame.new(-64, 5, -113)
+	local spawn = Instance.new("SpawnLocation")
+	spawn.Name = "GardenSpawn"
+	spawn.Size = Vector3.new(8, 0.2, 8)
+	spawn.CFrame = CFrame.new(0, 0.85, -91)
+	spawn.Anchored = true
+	spawn.Transparency = 1
+	spawn.CanCollide = false
+	spawn.Neutral = true
+	spawn.Duration = 0
+	spawn.Parent = folder
+	-- A small rear-grove museum previews the seven rarity tiers. These are
+	-- decorative specimens, separate from players' earned companion models.
+	local grove = Instance.new("Folder")
+	grove.Name = "RarityPreviewGrove"
+	grove.Parent = folder
+	local heading = specimenPlaque(grove, Vector3.new(0, 7.5, -156), "COLLECTION PREVIEW", "Seven rarities waiting beneath the sand", Color3.fromRGB(218, 236, 180), 19)
+	heading.Name = "CollectionPreviewSign"
+	for _, x in {-8, 8} do
+		part(grove, "PreviewSignPost", Vector3.new(0.7, 7, 0.7), Vector3.new(x, 3.5, -156), Color3.fromRGB(110, 76, 47), Enum.Material.Wood)
+	end
+	for i, rarity in config.Rarities do
+		local specimen
+		for _, candidate in config.Creatures do
+			if candidate.rarity == rarity.id then specimen = candidate; break end
+		end
+		if specimen then
+			local x, z = (i - 4) * 31, -144
+			part(grove, "SpecimenPlinth", Vector3.new(6, 0.8, 6), Vector3.new(x, 0.7, z), Color3.fromRGB(206, 222, 185), Enum.Material.Slate)
+			local displayCFrame = CFrame.new(x, 1.2, z) * CFrame.Angles(0, math.pi, 0)
+			local model = CreatureFactory.create(specimen, 0.85)
+			model.Name = rarity.id .. "Preview"
+			model:SetAttribute("DecorativePreview", true)
+			model:PivotTo(displayCFrame)
+			model.Parent = grove
+			specimenPlaque(grove, Vector3.new(x, 1.6, z + 5), rarity.name, specimen.name, rarity.color)
+			table.insert(result.displaySlots, displayCFrame)
+		end
+	end
+	World.startDayNight()
+	return result
+end
+
+return World
+]]></string>
+        </Properties>
+      </Item>
+    </Item>
+  </Item>
+  <Item class="SoundService" referent="10">
+    <Properties>
+      <string name="Name">SoundService</string>
+      <bool name="RespectFilteringEnabled">true</bool>
+    </Properties>
+  </Item>
+  <Item class="StarterPlayer" referent="11">
+    <Properties>
+      <string name="Name">StarterPlayer</string>
+      <float name="CameraMaxZoomDistance">60</float>
+      <float name="CameraMinZoomDistance">8</float>
+    </Properties>
+    <Item class="StarterPlayerScripts" referent="12">
+      <Properties>
+        <string name="Name">StarterPlayerScripts</string>
+      </Properties>
+      <Item class="Folder" referent="13">
+        <Properties>
+          <string name="Name">BrainrotClient</string>
+        </Properties>
+        <Item class="LocalScript" referent="14">
+          <Properties>
+            <string name="Name">Main</string>
+            <string name="Source"><![CDATA[-- Client presentation only. Inventory, purchases, digging, and rewards are server-owned.
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
+local ContextActionService = game:GetService("ContextActionService")
+local ProximityPromptService = game:GetService("ProximityPromptService")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+
+local player = Players.LocalPlayer
+local shared = ReplicatedStorage:WaitForChild("BrainrotShared")
+local Config = require(shared:WaitForChild("Config"))
+local CreatureFactory = require(shared:WaitForChild("CreatureFactory"))
+local remotes = ReplicatedStorage:WaitForChild("BrainrotRemotes")
+local Action = remotes:WaitForChild("Action")
+local State = remotes:WaitForChild("State")
+local Notify = remotes:WaitForChild("Notify")
+
+local C = {
+	bg = Color3.fromRGB(13, 22, 31), panel = Color3.fromRGB(20, 33, 44),
+	card = Color3.fromRGB(29, 46, 57), light = Color3.fromRGB(42, 63, 73),
+	text = Color3.fromRGB(243, 249, 237), muted = Color3.fromRGB(166, 191, 190),
+	lime = Color3.fromRGB(201, 242, 115), green = Color3.fromRGB(104, 215, 164),
+	gold = Color3.fromRGB(255, 209, 116), red = Color3.fromRGB(255, 137, 135),
+}
+local state = nil
+local activePage = nil
+local selectedUid = nil
+local gearTab = "Detectors"
+local chosenQuantity = 1
+local busy = false
+local capture = nil
+local capturePending = false
+local viewports = {}
+local renderPage
+local renderedSignature = nil
+local request
+local openPage
+local startDig
+local tapDig
+
+local screen = Instance.new("ScreenGui")
+screen.Name = "BrainrotBloom"
+screen.ResetOnSpawn = false
+screen.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+screen.DisplayOrder = 10
+screen.Parent = player:WaitForChild("PlayerGui")
+
+local function make(class, props, parent)
+	local obj = Instance.new(class)
+	for key, value in pairs(props or {}) do obj[key] = value end
+	obj.Parent = parent
+	return obj
+end
+local function corner(obj, radius)
+	make("UICorner", {CornerRadius = UDim.new(0, radius or 12)}, obj)
+end
+local function stroke(obj, color, transparency)
+	make("UIStroke", {Color = color or C.light, Transparency = transparency or 0, Thickness = 1}, obj)
+end
+local function label(parent, text, size, color, props)
+	local p = {
+		BackgroundTransparency = 1, Text = text, TextColor3 = color or C.text,
+		Font = Enum.Font.GothamMedium, TextSize = size or 16,
+		TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Center,
+		Size = UDim2.new(1, 0, 0, 24),
+	}
+	for key, value in pairs(props or {}) do p[key] = value end
+	return make("TextLabel", p, parent)
+end
+local function button(parent, text, onClick, props)
+	local p = {
+		Text = text, Font = Enum.Font.GothamBold, TextSize = 14,
+		TextColor3 = C.text, BackgroundColor3 = C.light, BorderSizePixel = 0,
+		Size = UDim2.new(0, 140, 0, 40), AutoButtonColor = true,
+	}
+	for key, value in pairs(props or {}) do p[key] = value end
+	local b = make("TextButton", p, parent)
+	corner(b, 10)
+	if onClick then b.Activated:Connect(onClick) end
+	return b
+end
+local function padding(parent, amount)
+	make("UIPadding", {PaddingLeft = UDim.new(0, amount), PaddingRight = UDim.new(0, amount),
+		PaddingTop = UDim.new(0, amount), PaddingBottom = UDim.new(0, amount)}, parent)
+end
+local function vertical(parent, gap)
+	return make("UIListLayout", {Padding = UDim.new(0, gap or 10), SortOrder = Enum.SortOrder.LayoutOrder}, parent)
+end
+local function row(parent, height)
+	return make("Frame", {Size = UDim2.new(1, 0, 0, height), BackgroundTransparency = 1}, parent)
+end
+local function card(parent, height)
+	local frame = make("Frame", {Size = UDim2.new(1, 0, 0, height), BackgroundColor3 = C.card, BorderSizePixel = 0}, parent)
+	corner(frame, 14)
+	return frame
+end
+local function money(value)
+	value = tonumber(value) or 0
+	for _, unit in ipairs({{1e12,"T"},{1e9,"B"},{1e6,"M"},{1e3,"K"}}) do
+		if value >= unit[1] then return string.format("%.1f%s", value / unit[1], unit[2]) end
+	end
+	return string.format("%d", math.floor(value))
+end
+local function seconds(value)
+	value = math.max(0, math.ceil(value))
+	return string.format("%d:%02d", math.floor(value / 60), value % 60)
+end
+local function now() return workspace:GetServerTimeNow() end
+local function find(list, id)
+	for _, item in ipairs(list) do if item.id == id then return item end end
+	return nil
+end
+local function contains(list, id)
+	for _, item in ipairs(list or {}) do if item == id then return true end end
+	return false
+end
+local function selected()
+	for _, brainrot in ipairs(state and state.brainrots or {}) do
+		if brainrot.uid == selectedUid then return brainrot end
+	end
+	return nil
+end
+local function rarity(id)
+	return find(Config.Rarities, id) or {name = tostring(id), color = C.muted}
+end
+
+local hud = make("Frame", {Position = UDim2.new(0, 12, 0, 12), Size = UDim2.new(0, 325, 0, 94),
+	BackgroundColor3 = C.bg, BorderSizePixel = 0}, screen)
+corner(hud, 16)
+stroke(hud, C.light, 0.2)
+label(hud, "BRAINROT  /  BLOOM", 11, C.lime, {Position = UDim2.new(0, 16, 0, 10), Size = UDim2.new(1, -90, 0, 18)})
+local coinsLabel = label(hud, "Loading...", 28, C.gold, {Position = UDim2.new(0, 16, 0, 30), Size = UDim2.new(1, -95, 0, 32), Font = Enum.Font.GothamBold})
+local incomeLabel = label(hud, "Passive income grows with every level", 11, C.muted, {Position = UDim2.new(0, 16, 0, 65), Size = UDim2.new(1, -25, 0, 18)})
+button(hud, "HOME", function() request("Teleport", {destination = "Home"}) end,
+	{Position = UDim2.new(1, -74, 0, 14), Size = UDim2.new(0, 60, 0, 42), TextSize = 11})
+local helpButton = button(screen, "?", function() openPage("Help") end,
+	{AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -12, 0, 12), Size = UDim2.new(0, 38, 0, 38), BackgroundColor3 = C.bg, TextSize = 21})
+
+local nav = make("Frame", {AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -12),
+	Size = UDim2.new(0.97, 0, 0, 62), BackgroundColor3 = C.bg, BorderSizePixel = 0}, screen)
+make("UISizeConstraint", {MaxSize = Vector2.new(650, 62)}, nav)
+corner(nav, 16)
+padding(nav, 6)
+make("UIGridLayout", {CellSize = UDim2.new(0.2, -5, 1, 0), CellPadding = UDim2.new(0, 6, 0, 0), SortOrder = Enum.SortOrder.LayoutOrder}, nav)
+local navButtons = {}
+for index, page in ipairs({"Collection", "Food", "Sell", "Gear", "Worlds"}) do
+	navButtons[page] = button(nav, page == "Collection" and "BAG" or string.upper(page), function()
+		if page == "Food" or page == "Sell" or page == "Gear" then
+			local result = request("Teleport", {destination = page})
+			if not result or not result.ok then return end
+		end
+		openPage(page)
+	end, {LayoutOrder = index, TextSize = 11})
+end
+local digButton = button(screen, "DETECT  [E]", function() startDig() end,
+	{AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -86), Size = UDim2.new(0, 232, 0, 58),
+		BackgroundColor3 = C.lime, TextColor3 = C.bg, TextSize = 20})
+local detectorLabel = label(screen, "Walk into a sand pit to search", 12, C.text,
+	{AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -148), Size = UDim2.new(0.95, 0, 0, 22),
+		TextXAlignment = Enum.TextXAlignment.Center, TextStrokeTransparency = 0.45})
+
+local shade = make("Frame", {Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.new(), BackgroundTransparency = 0.4,
+	Visible = false, BorderSizePixel = 0, Active = true}, screen)
+local panel = make("Frame", {AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.49),
+	Size = UDim2.new(0.94, 0, 0.72, 0), BackgroundColor3 = C.panel, BorderSizePixel = 0}, shade)
+make("UISizeConstraint", {MaxSize = Vector2.new(820, 650)}, panel)
+corner(panel, 20)
+stroke(panel, C.light)
+local title = label(panel, "COLLECTION", 23, C.text,
+	{Position = UDim2.new(0, 20, 0, 16), Size = UDim2.new(1, -88, 0, 30), Font = Enum.Font.GothamBold, TextTruncate = Enum.TextTruncate.AtEnd})
+local subtitle = label(panel, "", 11, C.muted,
+	{Position = UDim2.new(0, 20, 0, 47), Size = UDim2.new(1, -40, 0, 22), TextTruncate = Enum.TextTruncate.AtEnd})
+button(panel, "X", function() openPage(nil) end,
+	{Position = UDim2.new(1, -53, 0, 17), Size = UDim2.new(0, 35, 0, 35), BackgroundColor3 = C.light})
+local body = make("ScrollingFrame", {Position = UDim2.new(0, 12, 0, 80), Size = UDim2.new(1, -24, 1, -92),
+	BackgroundTransparency = 1, BorderSizePixel = 0, ScrollBarThickness = 4, ScrollBarImageColor3 = C.lime,
+	CanvasSize = UDim2.new(), AutomaticCanvasSize = Enum.AutomaticSize.Y, ScrollingDirection = Enum.ScrollingDirection.Y}, panel)
+padding(body, 8)
+vertical(body, 10)
+
+local toast = label(screen, "", 15, C.text, {AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 122),
+	Size = UDim2.new(0.88, 0, 0, 52), BackgroundColor3 = C.bg, BackgroundTransparency = 0.05,
+	TextXAlignment = Enum.TextXAlignment.Center, TextWrapped = true, Visible = false, ZIndex = 20})
+make("UISizeConstraint", {MaxSize = Vector2.new(620, 70)}, toast)
+corner(toast, 14)
+padding(toast, 10)
+local toastVersion = 0
+local function notify(text, kind)
+	toastVersion += 1
+	local version = toastVersion
+	toast.Text = tostring(text)
+	toast.TextColor3 = kind == "error" and C.red or C.text
+	toast.Visible = true
+	task.delay(4, function() if version == toastVersion then toast.Visible = false end end)
+end
+
+local function viewport(parent, specId, size, pos)
+	local spec = find(Config.Creatures, specId)
+	if not spec then return end
+	local frame = make("ViewportFrame", {Size = size, Position = pos or UDim2.new(), BackgroundTransparency = 1,
+		Ambient = Color3.fromRGB(210, 221, 225), LightColor = Color3.fromRGB(255, 248, 219),
+		LightDirection = Vector3.new(-1, -1, -2)}, parent)
+	local world = make("WorldModel", {}, frame)
+	local ok, model = pcall(CreatureFactory.create, spec, 1)
+	if not ok or not model then return end
+	model.Parent = world
+	model:PivotTo(CFrame.new())
+	local cf, bounds = model:GetBoundingBox()
+	local radius = math.max(bounds.X, bounds.Y, bounds.Z)
+	local camera = make("Camera", {FieldOfView = 35, CFrame = CFrame.lookAt(cf.Position + Vector3.new(radius * 1.25, radius * 0.6, -radius * 1.8), cf.Position)}, frame)
+	frame.CurrentCamera = camera
+	table.insert(viewports, {model = model, base = model:GetPivot()})
+end
+
+local function updateHud()
+	if not state then return end
+	coinsLabel.Text = "$ " .. money(state.coins)
+	incomeLabel.Text = "+$" .. money(state.income) .. " / sec  •  " .. tostring(#(state.brainrots or {})) .. " brainrots"
+	local d = find(Config.Detectors, state.detector)
+	local w = find(Config.Worlds, state.world)
+	detectorLabel.Text = (d and d.name or "Detector") .. "  /  " .. (w and w.name or "Meadow")
+end
+
+-- Coins tick continuously; rebuilding every card on each income tick would
+-- interrupt touch input and needlessly recreate the 3D models.
+local function pageSignature()
+	if not state then return "loading" end
+	local values = {tostring(state.detector), tostring(state.activeBrainrot), tostring(state.rotationEnds)}
+	for _, id in ipairs(state.ownedDetectors or {}) do table.insert(values, id) end
+	for _, id in ipairs(state.unlockedWorlds or {}) do table.insert(values, id) end
+	for _, brainrot in ipairs(state.brainrots or {}) do
+		table.insert(values, table.concat({brainrot.uid, brainrot.level, brainrot.xp, brainrot.income,
+			brainrot.growthBoostUntil or 0, brainrot.incomeBoostUntil or 0,
+			tostring((brainrot.growthBoostUntil or 0) > now()), tostring((brainrot.incomeBoostUntil or 0) > now())}, ":"))
+	end
+	for _, food in ipairs(Config.Foods) do table.insert(values, food.id .. ":" .. tostring((state.foods or {})[food.id] or 0)) end
+	for _, slot in ipairs(state.stock or {}) do table.insert(values, slot.id .. ":" .. slot.remaining) end
+	return table.concat(values, "|")
+end
+
+request = function(action, payload)
+	local ok, result = pcall(function() return Action:InvokeServer(action, payload or {}) end)
+	if not ok then notify("Connection interrupted. Please try again.", "error"); return nil end
+	if type(result) ~= "table" then notify("The server could not complete that action.", "error"); return nil end
+	if result.state then state = result.state; updateHud() end
+	if result.message and action ~= "TapDig" then notify(result.message, result.ok and "success" or "error") end
+	return result
+end
+
+local function perform(action, payload)
+	if busy then return end
+	busy = true
+	local result = request(action, payload)
+	busy = false
+	if activePage then renderPage() end
+	return result
+end
+local function empty(text)
+	local f = card(body, 112)
+	label(f, text, 15, C.muted, {Position = UDim2.new(0, 20, 0, 15), Size = UDim2.new(1, -40, 1, -30), TextWrapped = true, TextXAlignment = Enum.TextXAlignment.Center})
+end
+local function smallTag(parent, text, color, pos, width)
+	local tag = label(parent, text, 10, color or C.lime, {Position = pos, Size = UDim2.new(0, width or 100, 0, 22),
+		BackgroundColor3 = C.bg, BackgroundTransparency = 0.2, TextXAlignment = Enum.TextXAlignment.Center, Font = Enum.Font.GothamBold})
+	corner(tag, 6)
+	return tag
+end
+
+local function collectionPage(sellMode)
+	title.Text = sellMode and "SELL STATION" or "YOUR BRAINROTS"
+	subtitle.Text = sellMode and "Select a creature to see its sale value. Selling is permanent." or "Every collected brainrot earns income, even when not displayed."
+	if #(state.brainrots or {}) == 0 then
+		empty("Your expedition starts in the Meadow sand pit. Tap DETECT, then complete the capture challenge!")
+		button(body, "GO TO MEADOW", function() perform("Teleport", {destination = "Meadow"}); openPage(nil) end,
+			{Size = UDim2.new(1, 0, 0, 44), BackgroundColor3 = C.lime, TextColor3 = C.bg})
+		return
+	end
+	for _, brainrot in ipairs(state.brainrots) do
+		local r = rarity(brainrot.rarity)
+		local f = card(body, 140)
+		viewport(f, brainrot.specId, UDim2.new(0, 96, 0, 108), UDim2.new(0, 0, 0, 4))
+		label(f, brainrot.name, 16, C.text, {Position = UDim2.new(0, 102, 0, 12), Size = UDim2.new(1, -114, 0, 24), TextTruncate = Enum.TextTruncate.AtEnd})
+		label(f, r.name .. "  •  LV " .. brainrot.level, 12, r.color, {Position = UDim2.new(0, 102, 0, 39), Size = UDim2.new(1, -114, 0, 20)})
+		label(f, "+$" .. money(brainrot.income) .. "/sec", 14, C.gold, {Position = UDim2.new(0, 102, 0, 63), Size = UDim2.new(1, -114, 0, 21)})
+		local equipped = state.activeBrainrot == brainrot.uid
+		button(f, sellMode and "SELL / DETAILS" or "FEED / DETAILS", function()
+			selectedUid = brainrot.uid
+			openPage(sellMode and "SellDetail" or "Detail")
+		end, {Position = UDim2.new(0, 102, 0, 94), Size = UDim2.new(1, -114, 0, 34), BackgroundColor3 = sellMode and C.light or C.lime,
+			TextColor3 = sellMode and C.text or C.bg, TextSize = 12})
+		if equipped then smallTag(f, "DISPLAYED", C.green, UDim2.new(0, 8, 1, -29), 82) end
+	end
+end
+
+local function detailPage(sellMode)
+	local brainrot = selected()
+	if not brainrot then selectedUid = nil; activePage = sellMode and "Sell" or "Collection"; collectionPage(sellMode); return end
+	local r = rarity(brainrot.rarity)
+	title.Text = brainrot.name
+	subtitle.Text = r.name .. "  /  Level " .. brainrot.level .. "  /  +$" .. money(brainrot.income) .. " per second"
+	button(body, "<  ALL BRAINROTS", function() openPage(sellMode and "Sell" or "Collection") end, {Size = UDim2.new(1, 0, 0, 32), TextSize = 11})
+	local hero = card(body, 162)
+	viewport(hero, brainrot.specId, UDim2.new(0, 132, 0, 150), UDim2.new(0, 0, 0, 2))
+	label(hero, "LEVEL " .. brainrot.level, 18, r.color, {Position = UDim2.new(0, 140, 0, 16), Size = UDim2.new(1, -152, 0, 25), Font = Enum.Font.GothamBold})
+	label(hero, tostring(math.floor(brainrot.xp or 0)) .. " / " .. tostring(brainrot.xpNeeded or Config.xpNeeded(brainrot.level)) .. " XP", 12, C.muted,
+		{Position = UDim2.new(0, 140, 0, 47), Size = UDim2.new(1, -152, 0, 20)})
+	local track = make("Frame", {Position = UDim2.new(0, 140, 0, 75), Size = UDim2.new(1, -154, 0, 8), BackgroundColor3 = C.bg, BorderSizePixel = 0}, hero)
+	corner(track, 4)
+	local fill = make("Frame", {Size = UDim2.new(math.clamp((brainrot.xp or 0) / math.max(1, brainrot.xpNeeded or Config.xpNeeded(brainrot.level)), 0, 1), 0, 1, 0), BackgroundColor3 = r.color, BorderSizePixel = 0}, track)
+	corner(fill, 4)
+	button(hero, state.activeBrainrot == brainrot.uid and "ON DISPLAY" or "DISPLAY", function() perform("EquipBrainrot", {uid = brainrot.uid}) end,
+		{Position = UDim2.new(0, 140, 0, 102), Size = UDim2.new(1, -154, 0, 37), TextSize = 12})
+	if sellMode then
+		label(body, "Sold creatures and their levels cannot be recovered.", 12, C.muted, {Size = UDim2.new(1, 0, 0, 42), TextWrapped = true})
+		local sale = brainrot.sellValue or brainrot.value or Config.sellValue(brainrot.specId, brainrot.level)
+		button(body, sale and ("SELL FOR $" .. money(sale)) or "SELL THIS BRAINROT", function()
+			if activePage == "SellConfirm" then
+				local result = perform("Sell", {uid = brainrot.uid})
+				if result and result.ok then selectedUid = nil; openPage("Sell") end
+			else activePage = "SellConfirm"; renderPage() end
+		end, {Size = UDim2.new(1, 0, 0, 48), BackgroundColor3 = C.red, TextColor3 = C.bg})
+		if activePage == "SellConfirm" then
+			label(body, "Tap SELL again to confirm this permanent sale.", 13, C.red, {Size = UDim2.new(1, 0, 0, 42), TextWrapped = true})
+		end
+		return
+	end
+	local growthTime = (brainrot.growthBoostUntil or 0) - now()
+	local incomeTime = (brainrot.incomeBoostUntil or 0) - now()
+	if growthTime > 0 or incomeTime > 0 then
+		local status = label(body, (growthTime > 0 and "2x growth: " .. seconds(growthTime) .. "   " or "") .. (incomeTime > 0 and "2x income: " .. seconds(incomeTime) or ""),
+			12, C.lime, {Size = UDim2.new(1, 0, 0, 26)})
+		status:SetAttribute("GrowthUntil", brainrot.growthBoostUntil or 0)
+		status:SetAttribute("IncomeUntil", brainrot.incomeBoostUntil or 0)
+	end
+	label(body, "FEED TO GROW", 12, C.lime)
+	local foodFound = false
+	for _, food in ipairs(Config.Foods) do
+		local owned = (state.foods or {})[food.id] or 0
+		if owned > 0 then
+			foodFound = true
+			local f = card(body, 100)
+			label(f, food.name .. "  x" .. owned, 15, C.text, {Position = UDim2.new(0, 13, 0, 9), Size = UDim2.new(1, -26, 0, 23)})
+			label(f, "+" .. food.xp .. " XP each" .. (growthTime > 0 and "  (2x active!)" or ""), 11, C.muted,
+				{Position = UDim2.new(0, 13, 0, 34), Size = UDim2.new(1, -26, 0, 18)})
+			button(f, "FEED 1", function() perform("Feed", {uid = brainrot.uid, foodId = food.id, quantity = 1}) end,
+				{Position = UDim2.new(0, 12, 0, 61), Size = UDim2.new(0.48, -12, 0, 29), BackgroundColor3 = C.lime, TextColor3 = C.bg, TextSize = 11})
+			local feedQuantity = math.min(owned, 100)
+			button(f, owned > 100 and "FEED 100 MAX" or ("FEED ALL (" .. owned .. ")"), function() perform("Feed", {uid = brainrot.uid, foodId = food.id, quantity = feedQuantity}) end,
+				{Position = UDim2.new(0.5, 1, 0, 61), Size = UDim2.new(0.5, -13, 0, 29), TextSize = 11})
+		end
+	end
+	if not foodFound then empty("Your food bag is empty. Visit the rotating food shop to buy snacks.") end
+	button(body, "VISIT FOOD SHOP", function() local result = perform("Teleport", {destination = "Food"}); if result and result.ok then openPage("Food") end end,
+		{Size = UDim2.new(1, 0, 0, 40)})
+	label(body, "FIVE-MINUTE BOOSTS  /  THIS BRAINROT", 11, C.lime)
+	for _, kind in ipairs({"Growth", "Income"}) do
+		local boost = Config.Boosts[kind]
+		button(body, "2x " .. string.upper(kind) .. "  /  $" .. money(boost.price), function() perform("BuyBoost", {uid = brainrot.uid, kind = kind}) end,
+			{Size = UDim2.new(1, 0, 0, 42), BackgroundColor3 = C.light})
+	end
+end
+
+local function foodPage()
+	title.Text = "THE SNACK SHACK"
+	subtitle.Text = "Fresh random stock every 5 minutes. Shared rotation, personal stock."
+	local qty = row(body, 44)
+	label(qty, "BUY QUANTITY", 11, C.muted, {Size = UDim2.new(0.4, 0, 1, 0)})
+	for index, amount in ipairs({1, 5, 10}) do
+		button(qty, tostring(amount), function() chosenQuantity = amount; renderPage() end,
+			{Position = UDim2.new(0.4 + (index - 1) * 0.2, 2, 0, 2), Size = UDim2.new(0.2, -5, 1, -4),
+				BackgroundColor3 = chosenQuantity == amount and C.lime or C.light, TextColor3 = chosenQuantity == amount and C.bg or C.text})
+	end
+	local rotation = label(body, "Restocking...", 13, C.lime, {Size = UDim2.new(1, 0, 0, 28)})
+	rotation.Name = "RotationCountdown"
+	local stockMap = {}
+	for _, slot in ipairs(state.stock or {}) do stockMap[slot.id] = slot.remaining end
+	for _, food in ipairs(Config.Foods) do
+		local remaining = stockMap[food.id]
+		if remaining ~= nil then
+			local f = card(body, 112)
+			label(f, food.name, 17, C.text, {Position = UDim2.new(0, 14, 0, 10), Size = UDim2.new(1, -28, 0, 23)})
+			label(f, "+" .. food.xp .. " XP  /  $" .. money(food.price) .. " each", 12, C.gold,
+				{Position = UDim2.new(0, 14, 0, 37), Size = UDim2.new(1, -28, 0, 20)})
+			label(f, "Stock " .. remaining .. "  •  In bag " .. ((state.foods or {})[food.id] or 0), 11, C.muted,
+				{Position = UDim2.new(0, 14, 0, 76), Size = UDim2.new(0.5, -12, 0, 20)})
+			local amount = math.min(chosenQuantity, remaining)
+			button(f, remaining > 0 and ("BUY " .. amount .. "  /  $" .. money(food.price * amount)) or "SOLD OUT", function()
+				if amount > 0 then perform("BuyFood", {id = food.id, quantity = amount}) end
+			end, {Position = UDim2.new(0.5, 0, 0, 66), Size = UDim2.new(0.5, -12, 0, 34), TextSize = 11,
+				BackgroundColor3 = remaining > 0 and C.lime or C.light, TextColor3 = remaining > 0 and C.bg or C.muted})
+		end
+	end
+	if not next(stockMap) then empty("The shop is preparing today's snacks. Try again in a moment.") end
+end
+
+local function gearPage()
+	title.Text = "FIELD EQUIPMENT"
+	subtitle.Text = "Better detectors search faster and unlock rarer finds."
+	local tabs = row(body, 42)
+	for index, tab in ipairs({"Detectors", "Boosts"}) do
+		button(tabs, string.upper(tab), function() gearTab = tab; renderPage() end,
+			{Position = UDim2.new((index - 1) * 0.5, 0, 0, 0), Size = UDim2.new(0.5, -4, 1, 0),
+				BackgroundColor3 = gearTab == tab and C.lime or C.light, TextColor3 = gearTab == tab and C.bg or C.text})
+	end
+	if gearTab == "Boosts" then
+		label(body, "Choose exactly which brainrot receives a boost.", 13, C.muted, {Size = UDim2.new(1, 0, 0, 36), TextWrapped = true})
+		if #(state.brainrots or {}) == 0 then empty("Capture a brainrot first to use a growth or income boost."); return end
+		for _, brainrot in ipairs(state.brainrots) do
+			local f = card(body, 122)
+			label(f, brainrot.name .. "  /  Lv " .. brainrot.level, 15, rarity(brainrot.rarity).color,
+				{Position = UDim2.new(0, 12, 0, 10), Size = UDim2.new(1, -24, 0, 24), TextTruncate = Enum.TextTruncate.AtEnd})
+			for index, kind in ipairs({"Growth", "Income"}) do
+				local boost = Config.Boosts[kind]
+				local untilTime = brainrot[string.lower(kind) .. "BoostUntil"] or 0
+				local active = untilTime > now()
+				button(f, "2x " .. kind .. " / $" .. money(boost.price), function() perform("BuyBoost", {uid = brainrot.uid, kind = kind}) end,
+					{Position = UDim2.new((index - 1) * 0.5, 10, 0, 44), Size = UDim2.new(0.5, -15, 0, 39), TextSize = 11, BackgroundColor3 = C.light})
+				local status = label(f, active and ("Active  " .. seconds(untilTime - now())) or "Lasts 5 minutes", 10, active and C.lime or C.muted,
+					{Position = UDim2.new((index - 1) * 0.5, 12, 0, 88), Size = UDim2.new(0.5, -15, 0, 20)})
+				if active then status:SetAttribute("BoostUntil", untilTime) end
+			end
+		end
+		return
+	end
+	for _, detector in ipairs(Config.Detectors) do
+		local owned = contains(state.ownedDetectors, detector.id)
+		local equipped = state.detector == detector.id
+		local f = card(body, 140)
+		label(f, detector.name, 17, detector.color or C.text, {Position = UDim2.new(0, 14, 0, 10), Size = UDim2.new(1, -28, 0, 24)})
+		local w = find(Config.Worlds, detector.world)
+		label(f, "Power " .. detector.power .. "  •  " .. tostring(detector.speed) .. "s scan cooldown", 12, C.muted,
+			{Position = UDim2.new(0, 14, 0, 38), Size = UDim2.new(1, -28, 0, 20)})
+		label(f, w and ("Available in " .. w.name) or "Expedition equipment", 11, C.muted,
+			{Position = UDim2.new(0, 14, 0, 62), Size = UDim2.new(1, -28, 0, 19)})
+		button(f, equipped and "EQUIPPED" or (owned and "EQUIP" or ("BUY  /  $" .. money(detector.price))), function()
+			if not equipped then perform(owned and "EquipDetector" or "BuyDetector", {id = detector.id}) end
+		end, {Position = UDim2.new(0, 12, 0, 94), Size = UDim2.new(1, -24, 0, 34),
+			BackgroundColor3 = equipped and C.light or C.lime, TextColor3 = equipped and C.green or C.bg, TextSize = 12})
+	end
+end
+
+local function worldsPage()
+	title.Text = "PICK YOUR EXPEDITION"
+	subtitle.Text = "Each world hides rarer brainrots. Upgrade your detector before moving on."
+	for index, world in ipairs(Config.Worlds) do
+		local unlocked = contains(state.unlockedWorlds, world.id)
+		local f = card(body, 172)
+		smallTag(f, "WORLD " .. index, world.color, UDim2.new(0, 14, 0, 12), 80)
+		label(f, world.name, 21, C.text, {Position = UDim2.new(0, 14, 0, 42), Size = UDim2.new(1, -28, 0, 28), Font = Enum.Font.GothamBold})
+		label(f, world.description or "Discover the creatures buried beneath the sand.", 12, C.muted,
+			{Position = UDim2.new(0, 14, 0, 76), Size = UDim2.new(1, -28, 0, 34), TextWrapped = true})
+		button(f, unlocked and "TELEPORT TO PIT" or ("UNLOCK  /  $" .. money(world.unlockCost)), function()
+			local result = perform(unlocked and "Teleport" or "UnlockWorld", unlocked and {destination = world.id} or {id = world.id})
+			if result and result.ok and unlocked then openPage(nil) end
+		end, {Position = UDim2.new(0, 12, 1, -49), Size = UDim2.new(1, -24, 0, 36), BackgroundColor3 = unlocked and C.lime or C.light,
+			TextColor3 = unlocked and C.bg or C.text, TextSize = 12})
+	end
+end
+
+local function helpPage()
+	title.Text = "WELCOME, EXPLORER"
+	subtitle.Text = "Find something wonderfully weird. Help it grow. Build your collection."
+	for index, entry in ipairs({
+		{"DETECT", "Open WORLDS and teleport to the Meadow pit. Walk onto the sand, then press DETECT or E. Move between searches to explore."},
+		{"CAPTURE", "When a brainrot appears, tap the big button or press Space enough times before the timer runs out. Rarer finds are harder!"},
+		{"GROW", "Your entire collection earns coins every second. Buy food at the Snack Shack, then open BAG and select a brainrot to feed it."},
+		{"UPGRADE", "Better metal detectors search faster and uncover rarer finds. Unlock the Dunes and Cosmic worlds to expand your collection."},
+		{"BOOST", "The Gear Shop sells 5-minute 2x growth and income boosts. Choose a specific brainrot to receive each boost."},
+		{"EXPLORE", "FOOD, SELL, and GEAR buttons teleport you straight to their shops. HOME returns to the hub. Day and night change as you play."},
+	}) do
+		local f = card(body, 118)
+		label(f, string.format("0%d  /  %s", index, entry[1]), 12, C.lime, {Position = UDim2.new(0, 14, 0, 12), Size = UDim2.new(1, -28, 0, 22)})
+		label(f, entry[2], 13, C.text, {Position = UDim2.new(0, 14, 0, 40), Size = UDim2.new(1, -28, 0, 65), TextWrapped = true, TextYAlignment = Enum.TextYAlignment.Top})
+	end
+	label(body, "RARITIES", 12, C.lime)
+	for _, r in ipairs(Config.Rarities) do
+		local f = card(body, 38)
+		label(f, r.name, 14, r.color, {Position = UDim2.new(0, 14, 0, 0), Size = UDim2.new(1, -28, 1, 0)})
+	end
+end
+
+renderPage = function()
+	renderedSignature = pageSignature()
+	for _, child in ipairs(body:GetChildren()) do if child:IsA("GuiObject") then child:Destroy() end end
+	viewports = {}
+	if not state then empty("Connecting to your expedition..."); return end
+	if activePage == "Collection" or activePage == "Sell" then collectionPage(activePage == "Sell")
+	elseif activePage == "Detail" or activePage == "SellDetail" or activePage == "SellConfirm" then detailPage(activePage ~= "Detail")
+	elseif activePage == "Food" then foodPage()
+	elseif activePage == "Gear" then gearPage()
+	elseif activePage == "Worlds" then worldsPage()
+	else helpPage() end
+end
+openPage = function(page)
+	if capture then return end
+	activePage = page
+	shade.Visible = page ~= nil
+	digButton.Visible = page == nil
+	detectorLabel.Visible = page == nil
+	for key, b in pairs(navButtons) do
+		local on = key == page or (key == "Collection" and page == "Detail") or (key == "Sell" and (page == "SellDetail" or page == "SellConfirm"))
+		b.BackgroundColor3 = on and C.lime or C.light
+		b.TextColor3 = on and C.bg or C.text
+	end
+	if page then body.CanvasPosition = Vector2.zero; renderPage() end
+end
+
+-- The minigame reports taps to the server; the progress shown here never awards a creature.
+local captureShade = make("Frame", {Size = UDim2.fromScale(1, 1), BackgroundColor3 = C.bg, BackgroundTransparency = 0.22,
+	Visible = false, BorderSizePixel = 0, Active = true, ZIndex = 30}, screen)
+local capturePanel = make("Frame", {AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5),
+	Size = UDim2.new(0.9, 0, 0, 410), BackgroundColor3 = C.panel, BorderSizePixel = 0, ZIndex = 31}, captureShade)
+make("UISizeConstraint", {MaxSize = Vector2.new(480, 410)}, capturePanel)
+corner(capturePanel, 22)
+stroke(capturePanel, C.lime, 0.2)
+label(capturePanel, "SIGNAL FOUND", 12, C.lime, {Position = UDim2.new(0, 20, 0, 22), Size = UDim2.new(1, -40, 0, 22), TextXAlignment = Enum.TextXAlignment.Center})
+local captureName = label(capturePanel, "A brainrot!", 26, C.text, {Position = UDim2.new(0, 20, 0, 50), Size = UDim2.new(1, -40, 0, 40), TextXAlignment = Enum.TextXAlignment.Center, Font = Enum.Font.GothamBold, TextScaled = true})
+make("UITextSizeConstraint", {MaxTextSize = 26, MinTextSize = 15}, captureName)
+local captureRarity = label(capturePanel, "COMMON", 13, C.muted, {Position = UDim2.new(0, 20, 0, 98), Size = UDim2.new(1, -40, 0, 24), TextXAlignment = Enum.TextXAlignment.Center})
+local timerLabel = label(capturePanel, "0:10", 38, C.gold, {Position = UDim2.new(0, 20, 0, 132), Size = UDim2.new(1, -40, 0, 52), TextXAlignment = Enum.TextXAlignment.Center, Font = Enum.Font.GothamBold})
+local progressTrack = make("Frame", {Position = UDim2.new(0, 28, 0, 206), Size = UDim2.new(1, -56, 0, 12), BackgroundColor3 = C.bg, BorderSizePixel = 0}, capturePanel)
+corner(progressTrack, 6)
+local progressFill = make("Frame", {Size = UDim2.fromScale(0, 1), BackgroundColor3 = C.lime, BorderSizePixel = 0}, progressTrack)
+corner(progressFill, 6)
+local captureProgress = label(capturePanel, "0 / 0 taps", 14, C.text, {Position = UDim2.new(0, 20, 0, 226), Size = UDim2.new(1, -40, 0, 26), TextXAlignment = Enum.TextXAlignment.Center})
+local tapButton = button(capturePanel, "TAP TO CAPTURE", function() tapDig() end,
+	{Position = UDim2.new(0, 24, 0, 270), Size = UDim2.new(1, -48, 0, 72), BackgroundColor3 = C.lime, TextColor3 = C.bg, TextSize = 22})
+label(capturePanel, "Tap the button or press SPACE", 12, C.muted, {Position = UDim2.new(0, 20, 0, 358), Size = UDim2.new(1, -40, 0, 24), TextXAlignment = Enum.TextXAlignment.Center})
+
+local function endCapture(message, kind)
+	capture = nil
+	captureShade.Visible = false
+	ContextActionService:UnbindAction("BrainrotCaptureTap")
+	if message then notify(message, kind) end
+end
+local function celebrate(color)
+	for index = 1, 20 do
+		local particle = make("Frame", {AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.4),
+			Size = UDim2.new(0, index % 2 == 0 and 7 or 5, 0, 10), BackgroundColor3 = index % 3 == 0 and C.gold or color,
+			BorderSizePixel = 0, Rotation = index * 18, ZIndex = 40}, screen)
+		corner(particle, 2)
+		TweenService:Create(particle, TweenInfo.new(0.8 + index * 0.02, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+			{Position = UDim2.fromScale(0.12 + (index % 10) * 0.084, 0.55 + (index % 5) * 0.07),
+				Rotation = index * 59, BackgroundTransparency = 1}):Play()
+		task.delay(1.3, function() particle:Destroy() end)
+	end
+end
+tapDig = function()
+	if not capture or capturePending or capture.deadline <= os.clock() then return end
+	if os.clock() - (capture.lastTap or 0) < 0.06 then return end
+	capture.lastTap = os.clock()
+	capturePending = true
+	local session = capture
+	local result = request("TapDig", {sessionId = session.id})
+	capturePending = false
+	if capture ~= session then return end
+	if not result or not result.ok then
+		endCapture(result and result.message or "Capture interrupted. Try another signal.", "error")
+		return
+	end
+	session.taps = result.taps or result.count or (session.taps + 1)
+	captureProgress.Text = session.taps .. " / " .. session.required .. " taps"
+	TweenService:Create(progressFill, TweenInfo.new(0.08), {Size = UDim2.fromScale(math.clamp(session.taps / session.required, 0, 1), 1)}):Play()
+	if result.complete then
+		endCapture(result.message or ("Captured " .. session.name .. "! Open BAG to feed it."), "success")
+		celebrate(rarity(session.rarity).color)
+	end
+end
+startDig = function()
+	if busy or capture or activePage then return end
+	busy = true
+	digButton.Text = "SCANNING..."
+	digButton.BackgroundColor3 = C.gold
+	local result = request("StartDig")
+	busy = false
+	digButton.Text = UserInputService.TouchEnabled and "DETECT" or "DETECT  [E]"
+	digButton.BackgroundColor3 = C.lime
+	if not result or not result.ok or not result.dig then return end
+	local dig = result.dig
+	capture = {id = dig.id, required = dig.required, duration = dig.duration, deadline = os.clock() + dig.duration, taps = 0, name = dig.name or "brainrot", rarity = dig.rarity}
+	captureName.Text = capture.name
+	local r = rarity(dig.rarity)
+	captureRarity.Text = string.upper(r.name)
+	captureRarity.TextColor3 = r.color
+	progressFill.BackgroundColor3 = r.color
+	progressFill.Size = UDim2.fromScale(0, 1)
+	captureProgress.Text = "0 / " .. capture.required .. " taps"
+	captureShade.Visible = true
+	ContextActionService:BindActionAtPriority("BrainrotCaptureTap", function(_, inputState)
+		if inputState == Enum.UserInputState.Begin then task.spawn(tapDig) end
+		return Enum.ContextActionResult.Sink
+	end, false, 3000, Enum.KeyCode.Space)
+end
+
+State.OnClientEvent:Connect(function(newState)
+	if type(newState) ~= "table" then return end
+	state = newState
+	updateHud()
+	-- Do not destroy an active button during a purchase response.
+	if activePage and not busy and pageSignature() ~= renderedSignature then renderPage() end
+end)
+Notify.OnClientEvent:Connect(function(message, kind)
+	if type(kind) == "string" and string.sub(kind, 1, 5) == "shop:" then
+		openPage(string.sub(kind, 6))
+		return
+	end
+	notify(message, kind)
+end)
+UserInputService.InputBegan:Connect(function(input, processed)
+	if processed then return end
+	if input.KeyCode == Enum.KeyCode.E then task.spawn(startDig)
+	elseif input.KeyCode == Enum.KeyCode.B and not capture then
+		if activePage then openPage(nil) else openPage("Collection") end
+	elseif input.KeyCode == Enum.KeyCode.Escape and activePage then openPage(nil) end
+end)
+ProximityPromptService.PromptTriggered:Connect(function(prompt, triggeringPlayer)
+	if triggeringPlayer and triggeringPlayer ~= player then return end
+	local shop = prompt:GetAttribute("Shop")
+	if shop == "Food" or shop == "Sell" or shop == "Gear" then openPage(shop) end
+	if prompt:GetAttribute("WorldId") then openPage("Worlds") end
+end)
+
+local animationTime = 0
+local countdownAccumulator = 0
+RunService.RenderStepped:Connect(function(dt)
+	animationTime += dt
+	countdownAccumulator += dt
+	if activePage then
+		for _, entry in ipairs(viewports) do
+			if entry.model.Parent then entry.model:PivotTo(entry.base * CFrame.Angles(0, math.sin(animationTime * 0.55) * 0.3, 0)) end
+		end
+	end
+	if capture then
+		local remaining = capture.deadline - os.clock()
+		timerLabel.Text = string.format("%.1fs", math.max(0, remaining))
+		timerLabel.TextColor3 = remaining < 3 and C.red or C.gold
+		if remaining <= 0 then endCapture("The signal faded! Tap faster on your next find.", "error") end
+	end
+	if countdownAccumulator >= 0.25 then
+		countdownAccumulator = 0
+		local countdown = body:FindFirstChild("RotationCountdown")
+		if countdown and state then countdown.Text = "NEW ROTATION IN  " .. seconds((state.rotationEnds or now()) - now()) end
+		if activePage then
+			for _, item in ipairs(body:GetDescendants()) do
+				if item:IsA("TextLabel") then
+					local boostUntil = item:GetAttribute("BoostUntil")
+					local growthUntil = item:GetAttribute("GrowthUntil")
+					if boostUntil then
+						local remaining = boostUntil - now()
+						item.Text = remaining > 0 and ("Active  " .. seconds(remaining)) or "Boost expired"
+						item.TextColor3 = remaining > 0 and C.lime or C.muted
+					elseif growthUntil then
+						local growth = growthUntil - now()
+						local income = (item:GetAttribute("IncomeUntil") or 0) - now()
+						item.Text = (growth > 0 and "2x growth: " .. seconds(growth) .. "   " or "") .. (income > 0 and "2x income: " .. seconds(income) or "")
+						if growth <= 0 and income <= 0 then item.Text = "Boosts expired" end
+					end
+				end
+			end
+		end
+	end
+end)
+
+local function resize()
+	local size = screen.AbsoluteSize
+	hud.Size = UDim2.new(0, math.min(325, math.max(250, size.X - 70)), 0, 94)
+	helpButton.Position = UDim2.new(1, -12, 0, 12)
+	panel.Size = UDim2.new(0.94, 0, size.Y < 500 and 0.87 or 0.72, 0)
+	panel.Position = UDim2.fromScale(0.5, size.Y < 500 and 0.46 or 0.49)
+	capturePanel.Size = UDim2.new(0.9, 0, 0, math.min(410, size.Y - 24))
+	if size.Y < 450 then
+		capturePanel.Size = UDim2.new(0.9, 0, 0, 410)
+		local scale = capturePanel:FindFirstChildOfClass("UIScale") or make("UIScale", {}, capturePanel)
+		scale.Scale = (size.Y - 24) / 410
+	else
+		local scale = capturePanel:FindFirstChildOfClass("UIScale")
+		if scale then scale.Scale = 1 end
+	end
+end
+screen:GetPropertyChangedSignal("AbsoluteSize"):Connect(resize)
+resize()
+if UserInputService.TouchEnabled then digButton.Text = "DETECT" end
+
+task.spawn(function()
+	-- Profile loading may outlast replication of the remotes, especially when
+	-- Studio is waiting for DataStore retries. State events can resolve it too.
+	for attempt = 1, 30 do
+		if state then break end
+		local ok, result = pcall(function() return Action:InvokeServer("GetState", {}) end)
+		if ok and type(result) == "table" and result.ok and result.state then
+			state = result.state
+			break
+		end
+		task.wait(1)
+	end
+	if state then
+		updateHud()
+		if #(state.brainrots or {}) == 0 and not activePage and not capture then openPage("Help") end
+	else
+		notify("Could not load your collection. Rejoin if the connection does not recover.", "error")
+	end
+end)
+]]></string>
+          </Properties>
+        </Item>
+      </Item>
+    </Item>
+  </Item>
+  <Item class="Workspace" referent="15">
+    <Properties>
+      <string name="Name">Workspace</string>
+      <float name="Gravity">196.2</float>
+      <bool name="NeedsPivotMigration">false</bool>
+      <bool name="StreamingEnabled">false</bool>
+    </Properties>
+  </Item>
+</roblox>
