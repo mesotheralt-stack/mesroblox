@@ -150,7 +150,7 @@ function World.build(config)
 	local folder = Instance.new("Folder")
 	folder.Name = "BrainrotWorld"
 	folder.Parent = Workspace
-	Workspace.FallenPartsDestroyHeight = -100
+	-- Restricted Workspace settings are serialized by default.project.json.
 	local ocean = part(folder, "Ocean", Vector3.new(2200, 3, 900), Vector3.new(520, -12, 0), Color3.fromRGB(70, 168, 195), Enum.Material.Glass)
 	ocean.Transparency = 0.2
 	ocean.CanCollide = false

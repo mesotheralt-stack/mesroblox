@@ -13,7 +13,7 @@
       "StarterPlayerScripts": { "BrainrotClient": { "$path": "src/client" } }
     },
     "Workspace": {
-      "$properties": { "Gravity": 196.2, "StreamingEnabled": false }
+      "$properties": { "Gravity": 196.2, "StreamingEnabled": false, "FallenPartsDestroyHeight": -100 }
     },
     "Lighting": {
       "$properties": { "Brightness": 2, "ClockTime": 10, "GlobalShadows": true }

@@ -19,3 +19,4 @@ chmod +x "$TOOLS"/luau*
 python3 scripts/test.py --luau-dir "$TOOLS"
 mkdir -p build
 "$TOOLS/rojo" build default.project.json -o build/BrainrotBloom.rbxlx
+cp build/BrainrotBloom.rbxlx BrainrotBloom.rbxlx

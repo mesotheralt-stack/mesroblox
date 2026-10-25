@@ -48,6 +48,9 @@ def main() -> int:
             unpublished_test = Path(temporary) / 'unpublished-run.luau'
             unpublished_test.write_text(color_shim + 'local Config = (function()\n' + config + '\nend)()\n' + (ROOT / 'tests/server_harness.luau').read_text() + '\ndataStoreInitFailure=true\n(function()\n' + server.read_text() + '\nend)()\n' + (ROOT / 'tests/unpublished.luau').read_text())
             subprocess.run([runtime, str(unpublished_test)], check=True, cwd=ROOT)
+        world_test = Path(temporary) / 'world-run.luau'
+        world_test.write_text(color_shim + 'local Config = (function()\n' + config + '\nend)()\n' + (ROOT / 'tests/server_harness.luau').read_text() + '\n' + (ROOT / 'tests/world_startup.luau').read_text() + '\nlocal WorldUnderTest = (function()\n' + (ROOT / 'src/server/World.luau').read_text() + '\nend)()\nverifyWorld(WorldUnderTest)\n')
+        subprocess.run([runtime, str(world_test)], check=True, cwd=ROOT)
     print('Studio playtest remains required for rendering, multiplayer and live persistence.', flush=True)
     return 0
 
