@@ -16,11 +16,11 @@ Studio is needed to actually play Roblox. This Linux cloud workspace builds the 
 
 ## What's included
 
-- **21 original creatures**, three in each rarity: Common, Uncommon, Rare, Epic, Legendary, Mythic, Secret. Each has a distinct procedural silhouette and palette.
+- **21 detailed original creatures**, with layered wings, gills, petals, crowns, clothing, and species-specific details. Three in each rarity: Common, Uncommon, Rare, Epic, Legendary, Mythic, Secret. Each has a distinct procedural silhouette and palette.
 - **Feeding and levels** to level 100. Food grants XP; every level increases income and the displayed companion grows as it levels. All owned creatures earn income while you are online, including creatures you are not displaying.
 - **15 foods**, from Suspicious Crumb to Secret Midnight Feast. A random six-food selection refreshes at shared five-minute boundaries. The inexpensive Crumb is always available; purchase quantities are personal to the current player session.
 - **Seven detector tiers**, progressively shorter search cooldowns and higher rarity reach. Higher power also improves the weighting of rare finds. Detectors are visible tools held by the character.
-- **Three worlds** with massive sand beds, green surroundings, shops, and teleport controls:
+- **Three expanded worlds**: each island is 700 × 660 studs (four times the original area), with 320 × 280 sand pits, green surroundings, gardens, trails, benches, themed scenery, shops, and teleport controls:
 
 | World | Unlock cost | Minimum detector power to dig | Possible rarity ceiling |
 | --- | ---: | ---: | --- |
@@ -33,7 +33,8 @@ A world's rarity ceiling also requires a sufficiently strong detector. The start
 - **A ten-second capture minigame** requiring 6–30 taps depending on rarity. Failed captures award nothing. The server verifies the pit, world, time limit, tap rate, and unique session before awarding a creature.
 - **Gear Shop sections** for detectors and boosts. Growth Juice doubles food XP for a chosen creature; Golden Hour doubles its income. Each lasts five minutes. The two kinds can coexist; buying an already active kind is refused without charging.
 - **A sell station** with confirmation and level-based sale values. Collection capacity is 50 creatures.
-- **A 12-minute day/night cycle**, night lamps, original creature previews, a following companion, and a responsive interface with 3D creature cards.
+- **A 12-minute day/night cycle**, night lamps, original creature previews, and a following companion. Physical signs replace floating map pins.
+- **A redesigned Builder Sans interface** with a softer forest palette, larger touch targets, gentle transitions, persistent navigation, searchable/sortable collection cards, rarity filters, and 12-creature pagination. The capture sheet previews the actual creature.
 - **Server-owned purchases and rewards**, profile validation, request limits, DataStore session locks, autosave, leave/shutdown saving, and explicit Studio temporary-data fallback.
 
 Income is earned online only. Boost clocks continue to expire while offline. There are no Robux purchases or external account requirements.
@@ -80,6 +81,6 @@ Cloud tasks already have an isolated checkout; use this checkout without creatin
 
 ## Verification boundary
 
-The automated suite compiles every source with the official Luau compiler, executes real economy functions, and exercises the actual server action handlers with deterministic Roblox service doubles. It checks purchases, finite quantities, capture success/failure/replays, growth, boost expiration, passive income, world progression, and save/reload behavior.
+The automated suite compiles every source with the official Luau compiler, executes real economy functions, and exercises the actual server action handlers with deterministic Roblox service doubles. It checks purchases, finite quantities, capture success/failure/replays, growth, boost expiration, passive income, world progression, and save/reload behavior. It also executes every creature factory, the actual expanded map builder with the restricted Workspace-write guard, and client UI flows at three mocked viewport sizes. UI mocks do not validate real layout or rendering.
 
 These checks do **not** render the game or connect to Roblox DataStores. Follow [`docs/PLAYTEST.md`](docs/PLAYTEST.md) in Roblox Studio for real character controls, touch layouts, multiplayer, and live saving before publishing the game to players. The built place has not been published to Roblox.

@@ -46,6 +46,23 @@ local function verifyWorld(World)
 	end
 	assert(built.spawnCFrame, "Character spawn must be ready")
 	assert(#built.displaySlots == #Config.Rarities, "All rarity previews must be created")
+	local checks=0
+	local function inspect(object)
+		assert(object.ClassName~="BillboardGui","Map signs must not create floating pins")
+		if object.Name=="Grass" then
+			assert(object.Size.X==700 and object.Size.Z==660,"Island must have four times its original area")
+			checks+=1
+		end
+		for _,child in object:GetChildren() do inspect(child) end
+	end
+	inspect(workspace:FindFirstChild("BrainrotWorld"))
+	assert(checks==3,"Every island must be expanded")
+	for id,pit in built.pits do
+		assert(pit.size.X==320 and pit.size.Z==280,"Every sand pit must be expanded")
+		local frame=built.destinations[id]
+		assert(math.abs(frame.X-pit.center.X)<pit.size.X/2 and math.abs(frame.Z-pit.center.Z)<pit.size.Z/2,"Travel must land inside the actual expanded pit")
+	end
+	assert(built.pits.Dunes.center.X-built.pits.Meadow.center.X==1040,"Expanded islands must remain separate")
 	assert(lighting.ClockTime == 9, "Lighting cycle must start")
-	print("PASS actual map startup with restricted Workspace writes (11 assertions)")
+	print("PASS actual map startup with restricted Workspace writes, expanded geometry and no floating pins")
 end

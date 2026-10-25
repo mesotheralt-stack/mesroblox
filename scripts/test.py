@@ -51,6 +51,13 @@ def main() -> int:
         world_test = Path(temporary) / 'world-run.luau'
         world_test.write_text(color_shim + 'local Config = (function()\n' + config + '\nend)()\n' + (ROOT / 'tests/server_harness.luau').read_text() + '\n' + (ROOT / 'tests/world_startup.luau').read_text() + '\nlocal WorldUnderTest = (function()\n' + (ROOT / 'src/server/World.luau').read_text() + '\nend)()\nverifyWorld(WorldUnderTest)\n')
         subprocess.run([runtime, str(world_test)], check=True, cwd=ROOT)
+        model_test = Path(temporary) / 'models-run.luau'
+        scene_prefix = color_shim + 'local Config = (function()\n' + config + '\nend)()\n' + (ROOT / 'tests/server_harness.luau').read_text() + '\n' + (ROOT / 'tests/world_startup.luau').read_text() + '\n' + (ROOT / 'tests/model_details.luau').read_text() + '\nConfig = (function()\n' + config + '\nend)()\n'
+        model_test.write_text(scene_prefix + '\nlocal FactoryUnderTest = (function()\n' + (ROOT / 'src/shared/CreatureFactory.luau').read_text() + '\nend)()\nverifyModels(FactoryUnderTest, Config)\n')
+        subprocess.run([runtime, str(model_test)], check=True, cwd=ROOT)
+        client_test = Path(temporary) / 'client-run.luau'
+        client_test.write_text(scene_prefix + '\n' + (ROOT / 'tests/client_ui.luau').read_text() + '\n(function()\n' + (ROOT / 'src/client/Main.client.luau').read_text() + '\nend)()\ncheckClient()\n')
+        subprocess.run([runtime, str(client_test)], check=True, cwd=ROOT)
     print('Studio playtest remains required for rendering, multiplayer and live persistence.', flush=True)
     return 0
 

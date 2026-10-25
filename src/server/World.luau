@@ -21,41 +21,39 @@ local function part(parent, name, size, position, color, material, shape)
 	return object
 end
 
+-- Signs stay attached to the scenery. No oversized floating destination pins.
 local function label(adornee, title, subtitle, color, width)
-	local gui = Instance.new("BillboardGui")
+	local board = adornee
+	if adornee.Size.Y < 2 or adornee.Size.X < 4 then
+		board = part(adornee.Parent, "WayfindingSign", Vector3.new(math.clamp((width or 250)/22,9,16),3.2,0.35), adornee.Position+Vector3.new(0,adornee.Size.Y/2+1.7,0), Color3.fromRGB(35,52,45),Enum.Material.Wood)
+		board.CanCollide = false
+	end
+	local gui = Instance.new("SurfaceGui")
 	gui.Name = "Sign"
-	gui.Adornee = adornee
-	gui.Size = UDim2.fromOffset(width or 270, subtitle and 78 or 48)
-	gui.StudsOffset = Vector3.new(0, 2, 0)
-	gui.MaxDistance = 220
-	gui.AlwaysOnTop = false
-	gui.Parent = adornee
-	local frame = Instance.new("Frame")
-	frame.Size = UDim2.fromScale(1, 1)
-	frame.BackgroundColor3 = Color3.fromRGB(22, 38, 36)
-	frame.BackgroundTransparency = 0.06
-	frame.Parent = gui
-	local corners = Instance.new("UICorner")
-	corners.CornerRadius = UDim.new(0, 12)
-	corners.Parent = frame
-	local titleLabel = Instance.new("TextLabel")
-	titleLabel.BackgroundTransparency = 1
-	titleLabel.Size = UDim2.new(1, -12, subtitle and 0.6 or 1, 0)
-	titleLabel.Position = UDim2.fromOffset(6, 0)
-	titleLabel.Font = Enum.Font.GothamBold
-	titleLabel.TextSize = 22
-	titleLabel.TextColor3 = color or Color3.fromRGB(255, 241, 203)
-	titleLabel.Text = title
-	titleLabel.Parent = frame
+	gui.Face = Enum.NormalId.Front
+	gui.CanvasSize = Vector2.new(520,128)
+	gui.LightInfluence = 0.25
+	gui.MaxDistance = 95
+	gui.Parent = board
+	local heading = Instance.new("TextLabel")
+	heading.BackgroundTransparency = 1
+	heading.Size = UDim2.new(1,-32,subtitle and 0.58 or 1,0)
+	heading.Position = UDim2.fromOffset(16,0)
+	heading.Font = Enum.Font.BuilderSansBold
+	heading.TextSize = 32
+	heading.TextColor3 = color or Color3.fromRGB(238,239,221)
+	heading.Text = title
+	heading.TextTruncate = Enum.TextTruncate.AtEnd
+	heading.Parent = gui
 	if subtitle then
-		local sub = titleLabel:Clone()
-		sub.Size = UDim2.new(1, -12, 0.4, 0)
-		sub.Position = UDim2.new(0, 6, 0.6, -3)
-		sub.Font = Enum.Font.Gotham
-		sub.TextSize = 13
-		sub.TextColor3 = Color3.fromRGB(220, 235, 220)
+		local sub = heading:Clone()
+		sub.Size = UDim2.new(1,-32,0.42,0)
+		sub.Position = UDim2.new(0,16,0.58,-4)
+		sub.Font = Enum.Font.BuilderSans
+		sub.TextSize = 18
+		sub.TextColor3 = Color3.fromRGB(188,206,192)
 		sub.Text = subtitle
-		sub.Parent = frame
+		sub.Parent = gui
 	end
 end
 
@@ -77,7 +75,7 @@ local function specimenPlaque(parent, position, rarity, species, color, width)
 	text.Size = UDim2.new(1, -20, 1, -12)
 	text.Position = UDim2.fromOffset(10, 6)
 	text.BackgroundTransparency = 1
-	text.Font = Enum.Font.GothamBold
+	text.Font = Enum.Font.BuilderSansBold
 	text.TextColor3 = color
 	text.TextSize = 29
 	text.TextWrapped = true
@@ -122,6 +120,68 @@ local function shop(parent, name, position, color, subtitle, shopId)
 	end
 end
 
+
+local function flower(parent, position, tint, rng)
+	local stem = part(parent,"FlowerStem",Vector3.new(0.14,1.1,0.14),position+Vector3.new(0,0.7,0),Color3.fromRGB(72,123,70))
+	stem.CanCollide=false
+	for i=1,4 do
+		local a=i*math.pi/2
+		local petal=part(parent,"Petal",Vector3.new(0.58,0.25,0.58),position+Vector3.new(math.cos(a)*0.24,1.3,math.sin(a)*0.24),tint,nil,Enum.PartType.Ball)
+		petal.CanCollide=false
+	end
+end
+
+local function bench(parent, position)
+	local wood=Color3.fromRGB(151,115,78)
+	part(parent,"BenchSeat",Vector3.new(9,0.45,2.6),position+Vector3.new(0,2,0),wood,Enum.Material.WoodPlanks)
+	part(parent,"BenchBack",Vector3.new(9,2,0.4),position+Vector3.new(0,3.0,1.1),wood,Enum.Material.WoodPlanks)
+	for _,x in {-3,3} do part(parent,"BenchLeg",Vector3.new(0.5,2,2),position+Vector3.new(x,1,0),Color3.fromRGB(60,73,66),Enum.Material.Metal) end
+end
+
+local function scenery(parent, offset, index, rng)
+	-- Keep the digging rectangles completely clear. All extra exploration
+	-- space lies in the outer woodland and in the garden behind the shops.
+	local decor=Instance.new("Folder")
+	decor.Name="LandscapeDetails"
+	decor.Parent=parent
+	local tints={Color3.fromRGB(240,219,151),Color3.fromRGB(255,169,125),Color3.fromRGB(187,178,244)}
+	for j=1,20 do
+		local side=j%2==0 and -1 or 1
+		local position=offset+Vector3.new(side*rng:NextNumber(205,300),0.4,rng:NextNumber(-220,280))
+		if index==1 then
+			flower(decor,position,tints[index],rng)
+		elseif index==2 then
+			local cactus=part(decor,"WildCactus",Vector3.new(2.5,6+j%3,2.5),position+Vector3.new(0,3,0),Color3.fromRGB(103,157,106),nil,Enum.PartType.Ball)
+			part(decor,"CactusBranch",Vector3.new(3.6,1.1,1.1),cactus.Position+Vector3.new(1.5,0.5,0),cactus.Color)
+		else
+			local crystal=part(decor,"MoonCrystal",Vector3.new(1.4,4+j%4,1.4),position+Vector3.new(0,2.5,0),tints[index],Enum.Material.Neon)
+			crystal.Orientation=Vector3.new(0,j*19,12)
+			crystal.Transparency=0.22
+		end
+	end
+	for _,side in {-1,1} do
+		bench(decor,offset+Vector3.new(side*125,0.4,-168))
+		local hill=part(decor,"WoodlandHill",Vector3.new(58,22,50),offset+Vector3.new(side*285,-6,-244),Color3.fromRGB(99,151,97),Enum.Material.Grass,Enum.PartType.Ball)
+		for j=1,5 do
+			part(decor,"TrailStone",Vector3.new(5,0.18,4),offset+Vector3.new(side*(23+j*18),0.5,-170),Color3.fromRGB(186,190,160),Enum.Material.Slate)
+		end
+	end
+	if index==1 then
+		local shore=part(decor,"PondShore",Vector3.new(72,1,55),offset+Vector3.new(-236,0,-125),Color3.fromRGB(193,188,144),Enum.Material.Sand,Enum.PartType.Ball)
+		local water=part(decor,"GardenPond",Vector3.new(63,0.35,46),shore.Position+Vector3.new(0,0.7,0),Color3.fromRGB(99,176,173),Enum.Material.Glass,Enum.PartType.Ball)
+		water.Transparency=0.15
+		water.CanCollide=false
+		for j=1,4 do
+			part(decor,"LilyPad",Vector3.new(4,0.15,3.6),water.Position+Vector3.new(j*8-22,0.3,j%2*8-5),Color3.fromRGB(108,155,99),nil,Enum.PartType.Ball)
+		end
+	else
+		for j=-1,1 do
+			local color=index==2 and Color3.fromRGB(202,165,117) or Color3.fromRGB(135,137,169)
+			part(decor,"AncientPillar",Vector3.new(5,15+math.abs(j)*3,5),offset+Vector3.new(j*17,7,-278),color,Enum.Material.Slate)
+		end
+	end
+end
+
 function World.startDayNight()
 	if dayCycleStarted then return end
 	dayCycleStarted = true
@@ -151,7 +211,7 @@ function World.build(config)
 	folder.Name = "BrainrotWorld"
 	folder.Parent = Workspace
 	-- Restricted Workspace settings are serialized by default.project.json.
-	local ocean = part(folder, "Ocean", Vector3.new(2200, 3, 900), Vector3.new(520, -12, 0), Color3.fromRGB(70, 168, 195), Enum.Material.Glass)
+	local ocean = part(folder, "Ocean", Vector3.new(4000, 3, 1600), Vector3.new(1040, -12, 0), Color3.fromRGB(70, 168, 195), Enum.Material.Glass)
 	ocean.Transparency = 0.2
 	ocean.CanCollide = false
 	local result = {destinations = {}, pits = {}, displaySlots = {}}
@@ -161,21 +221,21 @@ function World.build(config)
 	local sandColors = {Color3.fromRGB(239, 215, 157), Color3.fromRGB(236, 183, 101), Color3.fromRGB(178, 159, 221)}
 	local rng = Random.new(74119)
 	for i, id in ids do
-		local offset = Vector3.new((i - 1) * 520, 0, 0)
+		local offset = Vector3.new((i - 1) * 1040, 0, 0)
 		local island = Instance.new("Model")
 		island.Name = id
 		island.Parent = folder
-		part(island, "IslandStone", Vector3.new(350, 12, 330), offset + Vector3.new(0, -9, 0), Color3.fromRGB(120, 116, 93), Enum.Material.Slate)
-		part(island, "Grass", Vector3.new(350, 6, 330), offset + Vector3.new(0, -2.7, 0), colors[i], Enum.Material.Grass)
-		local pitCenter = offset + Vector3.new(0, 0.65, 65)
-		local pitSize = Vector3.new(164, 3, 144)
+		part(island, "IslandStone", Vector3.new(700, 12, 660), offset + Vector3.new(0, -9, 0), Color3.fromRGB(120, 116, 93), Enum.Material.Slate)
+		part(island, "Grass", Vector3.new(700, 6, 660), offset + Vector3.new(0, -2.7, 0), colors[i], Enum.Material.Grass)
+		local pitCenter = offset + Vector3.new(0, 0.65, 130)
+		local pitSize = Vector3.new(320, 3, 280)
 		local digZone = part(island, "DigZone", pitSize, pitCenter - Vector3.new(0, 1.4, 0), sandColors[i], Enum.Material.Sand)
 		digZone:SetAttribute("WorldId", id)
-		for _, x in {-84, 84} do
-			part(island, "PitRim", Vector3.new(3, 1.1, 150), offset + Vector3.new(x, 0.9, 65), Color3.fromRGB(157, 117, 72), Enum.Material.WoodPlanks)
+		for _, x in {-162, 162} do
+			part(island, "PitRim", Vector3.new(3, 1.1, 286), offset + Vector3.new(x, 0.9, 130), Color3.fromRGB(157, 117, 72), Enum.Material.WoodPlanks)
 		end
-		for _, z in {-9, 139} do
-			part(island, "PitRim", Vector3.new(170, 1.1, 3), offset + Vector3.new(0, 0.9, z), Color3.fromRGB(157, 117, 72), Enum.Material.WoodPlanks)
+		for _, z in {-12, 272} do
+			part(island, "PitRim", Vector3.new(326, 1.1, 3), offset + Vector3.new(0, 0.9, z), Color3.fromRGB(157, 117, 72), Enum.Material.WoodPlanks)
 		end
 		result.pits[id] = {center = pitCenter, size = pitSize}
 		result.destinations[id] = CFrame.new(offset + Vector3.new(0, 5, 7)) * CFrame.Angles(0, math.pi, 0)
@@ -184,21 +244,22 @@ function World.build(config)
 		local world = config.Worlds and config.Worlds[i]
 		if world then names[i] = world.name end
 		label(marker, world and world.name or names[i], i == 1 and "Equip your detector and search the sand" or "Unlock this world from the Worlds menu", Color3.fromRGB(255, 235, 166), 340)
-		for j = 1, 21 do
-			local x = (j % 2 == 0 and -1 or 1) * rng:NextNumber(108, 155)
-			local z = rng:NextNumber(-142, 143)
+		for j = 1, 34 do
+			local x = (j % 2 == 0 and -1 or 1) * rng:NextNumber(208, 310)
+			local z = rng:NextNumber(-290, 288)
 			tree(island, offset + Vector3.new(x, 0, z), rng:NextNumber(0.65, 1.15), colors[i]:Lerp(Color3.fromRGB(32, 100, 53), 0.2))
 		end
 		for j = 1, 16 do
-			local x = rng:NextNumber(-150, 150)
-			local z = rng:NextNumber(-143, -112)
-			if i == 1 and math.abs(x) < 104 then z = math.max(z, -130) end
+			local x = rng:NextNumber(-305, 305)
+			local z = rng:NextNumber(-295, -230)
+			if i == 1 and math.abs(x) < 104 then x += 130 end
 			local rock = part(island, "Pebble", Vector3.new(4, 3, 4) * rng:NextNumber(0.4, 1.2), offset + Vector3.new(x, 0.6, z), sandColors[i]:Lerp(Color3.fromRGB(110, 114, 115), 0.5), Enum.Material.Rock, Enum.PartType.Ball)
 			rock.Orientation = Vector3.new(0, rng:NextNumber(0, 360), 0)
 		end
+		scenery(island, offset, i, rng)
 		-- Tiny glowing lamps keep the sand and pathways readable at night.
-		for _, x in {-94, 94} do
-			for _, z in {0, 130} do
+		for _, x in {-175, 175} do
+			for _, z in {0, 130, 260} do
 				part(island, "LampPost", Vector3.new(0.8, 9, 0.8), offset + Vector3.new(x, 4.5, z), Color3.fromRGB(69, 74, 62), Enum.Material.Metal)
 				local bulb = part(island, "Lamp", Vector3.new(2.6, 2.6, 2.6), offset + Vector3.new(x, 9.5, z), Color3.fromRGB(255, 228, 158), Enum.Material.Neon, Enum.PartType.Ball)
 				local light = Instance.new("PointLight")
@@ -209,7 +270,7 @@ function World.build(config)
 			end
 		end
 		if i > 1 then
-			local portal = part(island, "WorldPortal", Vector3.new(17, 20, 2), offset + Vector3.new(0, 10, -129), sandColors[i], Enum.Material.Neon)
+			local portal = part(island, "WorldPortal", Vector3.new(17, 20, 2), offset + Vector3.new(0, 10, -210), sandColors[i], Enum.Material.Neon)
 			portal.Transparency = 0.55
 			portal.CanCollide = false
 			label(portal, names[i], "Access requires the matching world unlock", sandColors[i])
@@ -244,10 +305,10 @@ function World.build(config)
 	local grove = Instance.new("Folder")
 	grove.Name = "RarityPreviewGrove"
 	grove.Parent = folder
-	local heading = specimenPlaque(grove, Vector3.new(0, 7.5, -156), "COLLECTION PREVIEW", "Seven rarities waiting beneath the sand", Color3.fromRGB(218, 236, 180), 19)
+	local heading = specimenPlaque(grove, Vector3.new(0, 7.5, -242), "COLLECTION PREVIEW", "Seven rarities waiting beneath the sand", Color3.fromRGB(218, 236, 180), 19)
 	heading.Name = "CollectionPreviewSign"
 	for _, x in {-8, 8} do
-		part(grove, "PreviewSignPost", Vector3.new(0.7, 7, 0.7), Vector3.new(x, 3.5, -156), Color3.fromRGB(110, 76, 47), Enum.Material.Wood)
+		part(grove, "PreviewSignPost", Vector3.new(0.7, 7, 0.7), Vector3.new(x, 3.5, -242), Color3.fromRGB(110, 76, 47), Enum.Material.Wood)
 	end
 	for i, rarity in config.Rarities do
 		local specimen
@@ -255,7 +316,7 @@ function World.build(config)
 			if candidate.rarity == rarity.id then specimen = candidate; break end
 		end
 		if specimen then
-			local x, z = (i - 4) * 31, -144
+			local x, z = (i - 4) * 31, -222
 			part(grove, "SpecimenPlinth", Vector3.new(6, 0.8, 6), Vector3.new(x, 0.7, z), Color3.fromRGB(206, 222, 185), Enum.Material.Slate)
 			local displayCFrame = CFrame.new(x, 1.2, z) * CFrame.Angles(0, math.pi, 0)
 			local model = CreatureFactory.create(specimen, 0.85)

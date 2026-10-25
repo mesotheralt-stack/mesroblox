@@ -16,3 +16,11 @@ These engine checks remain to be performed in Roblox Studio. Automated CLI check
 12. In a published private test experience, verify live persistence: buy food, capture/feed a creature, upgrade a detector, unlock a world, leave, and rejoin. Confirm everything reloads. Resetting the character must retain progress. Verify a second live session cannot overwrite the first session's collection.
 
 For tuning, use `src/shared/Config.luau`; keep game rewards and purchases on the server. No debug money grant or save-wipe endpoint is shipped.
+
+## Visual update checks
+
+- Verify the 700 × 660-stud islands and 320 × 280 sand pits have solid ground, clear digging areas, and working world teleports. Check the pond, outer trails, ruins, and crystals without getting stuck.
+- Check the physical shop/world signs are readable nearby and no floating destination panels cover the scenery.
+- Inspect all 21 creatures in the collection and as companions. Check fine details remain attached when models grow, and each preview frames the whole creature.
+- Search/filter/sort a full collection; move through the 12-creature pages and open/feed/sell the selected creature. Confirm the scroll position stays comfortable after feeding.
+- Verify the Builder Sans text and muted colors are readable at phone sizes. Switch directly between pages using the bottom navigation, including phone landscape. Complete a capture using the new creature preview sheet.
