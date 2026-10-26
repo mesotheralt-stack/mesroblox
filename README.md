@@ -10,7 +10,7 @@ A complete source project for a Roblox collection and growth game. All visuals a
 4. Tap the capture button or press **Space** enough times within 10 seconds. Your new brainrot immediately starts earning coins.
 5. Open **Collection** (or **Bag** on mobile), select a creature, and feed it. You start with 150 coins, a Tin Twig detector, and three Suspicious Crumbs.
 
-Use **Index** and **Garden** for the discovery book and personal displays. Use **FOOD**, **SELL**, and **GEAR** to teleport directly to each shop. **HOME** returns to the garden. Walk-up shop prompts use **F**, so they do not conflict with the detector's E key. Touch players use the on-screen buttons.
+Use **Index** and **Garden** for the discovery book and personal displays. Use **FOOD**, **SELL**, and **GEAR** to teleport directly to each shop. **HOME** returns to the garden. Walk-up shop prompts use **F**, so they do not conflict with the detector's E key. Touch players use the on-screen buttons. Hold **Shift** to sprint on keyboard, click **L3** to toggle sprint on a controller, or use the touch **Sprint** button. Sprint stops when opening a menu or starting a capture. Characters use classic **R6** rigs.
 
 Studio is needed to actually play Roblox. This Linux cloud workspace builds the place and runs automated checks, but it cannot run the Roblox engine.
 
@@ -20,13 +20,13 @@ Studio is needed to actually play Roblox. This Linux cloud workspace builds the 
 - **Feeding and levels** to level 100. Food grants XP; every level increases income and the displayed companion grows as it levels. All owned creatures earn income while you are online, including creatures you are not displaying.
 - **15 foods**, from Suspicious Crumb to Secret Midnight Feast. A random six-food selection refreshes at shared five-minute boundaries. The inexpensive Crumb is always available; purchase quantities are personal to the current player session.
 - **Seven detector tiers**, progressively shorter search cooldowns and higher rarity reach. Higher power also improves the weighting of rare finds. Detectors are visible tools held by the character.
-- **Three expanded worlds**: each island is 700 × 660 studs (four times the original area), with 320 × 280 sand pits, terraced rocky shores, recessed excavation basins, stone steps, rope fences, survey carts, crates, lanterns, themed woodlands, shops, and physical world portals. The hub has a fountain plaza, gabled markets with stocked shelves, a trading scale, and a specimen gallery. Each world has its own landmarks: a windmill and bridged picnic pond, a sun-arch sanctuary and palm oasis, and a telescope observatory with crystal/mushroom gardens:
+- **Three expanded worlds**: each island is 700 × 660 studs (four times the original area), with 320 × 280 sand pits, continuous natural rock boundaries, recessed excavation basins, stone steps, rope fences, survey carts, crates, lanterns, shops, and physical world portals. Mossy chalk cliffs enclose the green valley; warm sandstone walls enclose the ochre canyon; turquoise slate and lilac crystal groves enclose the cove. The garden neighborhood has its own escarpment and an open rock-framed bridge route. The hub has a fountain plaza, gabled markets with stocked shelves, a trading scale, and a specimen gallery. Each world has its own landmarks: a windmill and bridged picnic pond, a sun-arch sanctuary and palm oasis, and a telescope observatory overlooking a sheltered crystal cove with a viewing pier:
 
 | World | Unlock cost | Minimum detector power to dig | Possible rarity ceiling |
 | --- | ---: | ---: | --- |
 | Clover Commons | Free | 1 | Epic |
 | Sunset Sands | 8,000 | 4 | Mythic |
-| Moonbloom Crater | 125,000 | 6 | Secret |
+| Moonbloom Cove | 125,000 | 6 | Secret |
 
 A world's rarity ceiling also requires a sufficiently strong detector. The starter Tin Twig reaches Uncommon; upgrade to reach higher tiers. Unlocking a world grants access to its detectors in the Gear Shop.
 
@@ -35,6 +35,7 @@ A world's rarity ceiling also requires a sufficiently strong detector. The start
 - **Gear Shop sections** for detectors and boosts. Growth Juice doubles food XP for a chosen creature; Golden Hour doubles its income. Each lasts five minutes. The two kinds can coexist; buying an already active kind is refused without charging.
 - **A sell station** with confirmation and level-based sale values. Collection capacity is 50 creatures.
 - **A 12-minute day/night cycle**, night lamps, original creature previews, and a following companion. Physical signs replace floating map pins.
+- **Keyboard, controller, and touch sprint controls** with fixed server-selected walk/sprint speeds and reset on respawn. Classic **R6** is saved in the place settings; gameplay scripts do not write protected avatar settings.
 - **A Builder Sans field-journal interface** with cream paper, sage accents, illustrated world postcards, vector navigation icons, rarity-tinted sculpture stages, food tokens, readable detector stats, larger touch targets, gentle transitions, persistent navigation, searchable/sortable collection cards, rarity filters, and 12-creature pagination. The capture sheet previews the actual creature.
 - **Server-owned purchases and rewards**, profile validation, request limits, DataStore session locks, autosave, leave/shutdown saving, and explicit Studio temporary-data fallback.
 
@@ -51,7 +52,7 @@ Each world's entrance has a glowing **World portal**, including Clover Commons. 
 - Each garden has **six display pads**. New captures fill empty pads automatically until all six are occupied. Choose a slot in Garden to place, move, or clear one of your owned brainrots. Clear removes the display only; selling removes that creature from its pad. Feeding updates its displayed size.
 - Discoveries and display choices save alongside the collection. Physical plot numbers are reassigned between servers, so you always receive an available plot with your saved arrangement. Every owned brainrot still earns income; displaying it does not duplicate its income.
 
-The place file is configured with a **six-player maximum**, and the server reserves a garden before loading a profile, refusing extra joins if all six are occupied. When publishing/updating an existing Roblox experience, also set the place's **Maximum Players to 6** in Roblox's place settings so matchmaking uses six-player servers. This repository update does not change the live Creator Dashboard settings or publish the experience.
+The place file is configured with a **six-player maximum**, and the server reserves a garden before loading a profile, refusing extra joins if all six are occupied. When publishing/updating an existing Roblox experience, also set the place's **Maximum Players to 6** in Roblox's place settings so matchmaking uses six-player servers. This repository update does not change the live Creator Dashboard settings or publish the experience. The downloaded place also saves **Avatar Type: R6**. When updating an existing published experience, set its Avatar Type to **R6** in Studio’s Avatar/Game Settings so the experience uses the same rig setting.
 
 ## Persistent saves
 
@@ -92,10 +93,12 @@ Cloud tasks already have an isolated checkout; use this checkout without creatin
 | `src/server/GardenService.luau` | Six garden plots, ownership, display models and cleanup |
 | `src/server/Main.server.luau` | Profiles, saving, shops, income, validated capture sessions |
 | `src/client/Main.client.luau` | HUD, shop and collection UI, teleport controls, capture presentation |
+| `src/client/Sprint.client.luau` | Keyboard, controller, and touch sprint input |
+| `src/server/Sprint.server.luau` | Validated sprint requests and character speed lifecycle |
 
 ## Geometry previews
 
-[Creature sculpture contact sheet](docs/creature-geometry-preview.png) · [Six gardens](docs/garden-geometry-preview.png) · [Village detail](docs/village-geometry-preview.png) · [Clover Commons](docs/meadow-geometry-preview.png)
+[Creature sculpture contact sheet](docs/creature-geometry-preview.png) · [Six gardens](docs/garden-geometry-preview.png) · [Village detail](docs/village-geometry-preview.png) · [Clover Commons](docs/meadow-geometry-preview.png) · [Sunset Sands](docs/dunes-geometry-preview.png) · [Moonbloom Cove](docs/cove-geometry-preview.png)
 
 These previews are drawn from the generated Parts’ actual positions and rotations. They are **offline geometry renders**, not Roblox Studio screenshots: materials, transparency, fonts, lighting, and vegetation scatter may differ in the engine.
 
@@ -110,6 +113,6 @@ The scene exporter uses deterministic preview randomness for scattered vegetatio
 
 ## Verification boundary
 
-The automated suite compiles every source with the official Luau compiler, executes real economy functions, and exercises the actual server action handlers with deterministic Roblox service doubles. It checks purchases, finite quantities, capture success/failure/replays, growth, boost expiration, passive income, world progression, and save/reload behavior. The garden tests cover six concurrent owners, seventh-join refusal, saved placements/discovery history, and disconnect/save-retry cleanup. It also executes every creature factory, the actual expanded map builder with the restricted Workspace-write guard, and client UI flows at three mocked viewport sizes. UI mocks do not validate real layout or rendering. The build also executes every sculpture and the map using native Roblox datatypes and reflected Instances via Lune, validates finite transforms, confirms pit alignment, and bakes the editor-visible scene.
+The automated suite compiles every source with the official Luau compiler, executes real economy functions, and exercises the actual server action handlers with deterministic Roblox service doubles. It checks purchases, finite quantities, capture success/failure/replays, growth, boost expiration, passive income, world progression, and save/reload behavior. The garden tests cover six concurrent owners, seventh-join refusal, saved placements/discovery history, and disconnect/save-retry cleanup. Sprint checks execute the actual server and client scripts together for fixed speeds, malformed requests, all three input methods, UI cancellation, death, and respawn. It also executes every creature factory, the actual expanded map builder with the restricted Workspace-write guard, and client UI flows at three mocked viewport sizes. UI mocks do not validate real layout or rendering. The build also executes every sculpture and the map using native Roblox datatypes and reflected Instances via Lune, validates finite transforms, confirms pit alignment and the saved R6 setting, and bakes the editor-visible scene.
 
 These checks do **not** render the game or connect to Roblox DataStores. Follow [`docs/PLAYTEST.md`](docs/PLAYTEST.md) in Roblox Studio for real character controls, touch layouts, multiplayer, and live saving before publishing the game to players. The built place has not been published to Roblox.

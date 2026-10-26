@@ -16,15 +16,15 @@ local Action = remotes:WaitForChild("Action")
 local State = remotes:WaitForChild("State")
 local Notify = remotes:WaitForChild("Notify")
 
--- A warm field-journal palette keeps the new sculptures in focus.
+-- Soft paper, deep evergreen and restrained brass keep the scenery in focus.
 local C = {
-	bg = Color3.fromRGB(27, 44, 39), panel = Color3.fromRGB(245, 242, 232),
-	card = Color3.fromRGB(255, 254, 249), light = Color3.fromRGB(229, 233, 220),
-	text = Color3.fromRGB(35, 51, 45), muted = Color3.fromRGB(102, 116, 105),
-	lime = Color3.fromRGB(186, 216, 164), green = Color3.fromRGB(74, 118, 90),
+	bg = Color3.fromRGB(25, 43, 39), panel = Color3.fromRGB(246, 247, 240),
+	card = Color3.fromRGB(255, 255, 250), light = Color3.fromRGB(232, 238, 227),
+	text = Color3.fromRGB(34, 52, 45), muted = Color3.fromRGB(94, 112, 102),
+	lime = Color3.fromRGB(195, 221, 175), green = Color3.fromRGB(65, 111, 85),
 	gold = Color3.fromRGB(139, 98, 42), red = Color3.fromRGB(168, 75, 65),
 	paper = Color3.fromRGB(255, 254, 246), honey = Color3.fromRGB(238, 206, 141),
-	line = Color3.fromRGB(204, 212, 196), alert = Color3.fromRGB(243, 161, 153),
+	line = Color3.fromRGB(210, 221, 207), alert = Color3.fromRGB(243, 161, 153),
 }
 
 local state = nil
@@ -58,6 +58,9 @@ screen.ResetOnSpawn = false
 screen.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screen.DisplayOrder = 10
 screen.Parent = player:WaitForChild("PlayerGui")
+screen:SetAttribute("MenuOpen", false)
+screen:SetAttribute("Capturing", false)
+screen:SetAttribute("Scanning", false)
 
 local function make(class, props, parent)
 	local obj = Instance.new(class)
@@ -90,10 +93,10 @@ local function button(parent, text, onClick, props)
 	for key, value in pairs(props or {}) do p[key] = value end
 	if p.Size.Y.Scale==0 and p.Size.Y.Offset<44 then p.Size=UDim2.new(p.Size.X.Scale,p.Size.X.Offset,0,44) end
 	local b = make("TextButton", p, parent)
-	corner(b, 10)
-	local border=stroke(b,C.bg,0.9)
-	b.MouseEnter:Connect(function() TweenService:Create(border,TweenInfo.new(0.12),{Transparency=0.6}):Play() end)
-	b.MouseLeave:Connect(function() TweenService:Create(border,TweenInfo.new(0.12),{Transparency=0.9}):Play() end)
+	corner(b, 12)
+	local border=stroke(b,C.bg,0.94)
+	b.MouseEnter:Connect(function() TweenService:Create(border,TweenInfo.new(0.12),{Transparency=0.76}):Play() end)
+	b.MouseLeave:Connect(function() TweenService:Create(border,TweenInfo.new(0.12),{Transparency=0.94}):Play() end)
 	if onClick then b.Activated:Connect(onClick) end
 	return b
 end
@@ -109,8 +112,8 @@ local function row(parent, height)
 end
 local function card(parent, height)
 	local frame = make("Frame", {Size = UDim2.new(1, 0, 0, height), BackgroundColor3 = C.card, BorderSizePixel = 0}, parent)
-	corner(frame, 12)
-	stroke(frame,C.line,0.45)
+	corner(frame, 14)
+	stroke(frame,C.line,0.5)
 	return frame
 end
 local function readable(tint)
@@ -169,12 +172,13 @@ local function landscape(parent,world,position,size)
 		return piece
 	end
 	block(0.72,0.12,0.14,0.2,world.id=="Cosmic" and C.paper or C.honey,100)
-	local distant=world.color:Lerp(C.green,0.45)
+	local stone=world.id=="Meadow" and Color3.fromRGB(177,190,160) or world.id=="Dunes" and Color3.fromRGB(183,127,86) or Color3.fromRGB(125,161,169)
+	local distant=world.color:Lerp(stone,0.62)
 	block(-0.15,0.42,0.82,0.9,distant,100,-8)
-	block(0.45,0.3,0.82,0.95,world.color:Lerp(C.green,0.6),100,12)
-	local ground=world.id=="Meadow" and Color3.fromRGB(159,188,127) or world.id=="Dunes" and Color3.fromRGB(216,175,116) or Color3.fromRGB(144,149,172)
+	block(0.45,0.3,0.82,0.95,stone,35,12)
+	local ground=world.id=="Meadow" and Color3.fromRGB(159,188,127) or world.id=="Dunes" and Color3.fromRGB(216,175,116) or Color3.fromRGB(148,192,184)
 	block(0,0.7,1,0.4,ground)
-	block(0.25,0.77,0.5,0.17,world.id=="Cosmic" and Color3.fromRGB(204,185,224) or Color3.fromRGB(238,215,166),6)
+	block(0.25,0.77,0.5,0.17,world.id=="Cosmic" and Color3.fromRGB(207,223,213) or Color3.fromRGB(238,215,166),6)
 	if world.id=="Meadow" then
 		for i=1,3 do
 			local x=0.05+(i-1)*0.1
@@ -189,8 +193,14 @@ local function landscape(parent,world,position,size)
 		end
 		block(0.58,0.42,0.04,0.25,C.paper,1);block(0.7,0.42,0.04,0.25,C.paper,1);block(0.58,0.39,0.16,0.05,C.paper,1)
 	else
-		for i=1,4 do block(0.07+i*0.07,0.58-(i%2)*0.12,0.035,0.23,Color3.fromRGB(226,216,255),2,22) end
-		block(0.73,0.56,0.18,0.2,Color3.fromRGB(104,111,147),100)
+		-- A sheltered tidal pool and faceted lilac spires match Moonbloom Cove.
+		block(0.61,0.66,0.34,0.2,Color3.fromRGB(89,181,190),100)
+		block(0.66,0.69,0.24,0.08,Color3.fromRGB(168,227,221),100)
+		for i=1,5 do
+			local x=0.035+i*0.07
+			block(x,0.59-(i%2)*0.14,0.045,0.24,Color3.fromRGB(195,177,227),3,18)
+			block(x+0.01,0.59-(i%2)*0.14,0.012,0.23,Color3.fromRGB(231,224,251),1,18)
+		end
 	end
 	return stage
 end
@@ -225,18 +235,20 @@ local function rarity(id)
 	return find(Config.Rarities, id) or {name = tostring(id), color = C.muted}
 end
 
-local hud = make("Frame", {Position = UDim2.new(0, 12, 0, 12), Size = UDim2.new(0, 290, 0, 86),
+local hud = make("Frame", {Name="WalletHud", Position = UDim2.new(0, 12, 0, 12), Size = UDim2.new(0, 304, 0, 96),
 	BackgroundColor3 = C.panel, BorderSizePixel = 0}, screen)
-corner(hud, 16)
-stroke(hud, C.light, 0.2)
-label(hud, "Brainrot Bloom", 12, C.green, {Position = UDim2.new(0, 16, 0, 10), Size = UDim2.new(1, -90, 0, 18)})
-icon(hud,"Sell",C.gold,UDim2.fromOffset(16,33),UDim2.fromOffset(15,18))
-local coinsLabel = label(hud, "Loading…", 25, C.gold, {Position = UDim2.new(0, 39, 0, 27), Size = UDim2.new(1, -118, 0, 28), Font = Enum.Font.BuilderSansBold})
-local incomeLabel = label(hud, "Passive income grows with every level", 11, C.muted, {Position = UDim2.new(0, 16, 0, 62), Size = UDim2.new(1, -25, 0, 18)})
+corner(hud, 18)
+stroke(hud, C.line, 0.2)
+label(hud, "Brainrot Bloom", 12, C.green, {Position = UDim2.fromOffset(18, 11), Size = UDim2.new(1, -98, 0, 18), Font=Enum.Font.BuilderSansMedium})
+local coinSeal=make("Frame",{Position=UDim2.fromOffset(17,35),Size=UDim2.fromOffset(28,28),BackgroundColor3=C.honey,BorderSizePixel=0},hud)
+corner(coinSeal,14)
+icon(coinSeal,"Sell",C.gold,UDim2.fromOffset(7,6),UDim2.fromOffset(14,16))
+local coinsLabel = label(hud, "Loading…", 27, C.text, {Position = UDim2.fromOffset(54, 31), Size = UDim2.new(1, -132, 0, 34), Font = Enum.Font.BuilderSansBold})
+local incomeLabel = label(hud, "Your garden is growing", 13, C.green, {Position = UDim2.fromOffset(18, 69), Size = UDim2.new(1, -32, 0, 18), TextTruncate=Enum.TextTruncate.AtEnd})
 button(hud, "Home", function() request("Teleport", {destination = "Home"}) end,
-	{Position = UDim2.new(1, -74, 0, 14), Size = UDim2.new(0, 60, 0, 40), TextSize = 13})
+	{Position = UDim2.new(1, -70, 0, 28), Size = UDim2.fromOffset(54,44), TextSize = 13, BackgroundColor3=C.light})
 local helpButton = button(screen, "?", function() openPage("Help") end,
-	{AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -12, 0, 12), Size = UDim2.new(0, 38, 0, 38), BackgroundColor3 = C.panel, TextSize = 21, ZIndex=10})
+	{AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -12, 0, 12), Size = UDim2.fromOffset(44,44), BackgroundColor3 = C.panel, TextSize = 20, ZIndex=10})
 
 -- The book and garden have their own shortcuts rather than squeezing seven
 -- buttons into the phone's bottom navigation. Both pages link to one another.
@@ -249,10 +261,11 @@ for index,page in ipairs({"Index","Garden"}) do
 	icon(shortcut,page,C.green,UDim2.fromOffset(10,13),UDim2.fromOffset(18,18))
 end
 
-local nav = make("Frame", {AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -12),
+local nav = make("Frame", {Name="NavigationDock", AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -12),
 	Size = UDim2.new(0.97, 0, 0, 62), BackgroundColor3 = C.panel, BorderSizePixel = 0, ZIndex=10}, screen)
 make("UISizeConstraint", {MaxSize = Vector2.new(720, 62)}, nav)
-corner(nav, 16)
+corner(nav, 18)
+stroke(nav,C.line,0.2)
 padding(nav, 6)
 make("UIGridLayout", {CellSize = UDim2.new(0.25, -5, 1, 0), CellPadding = UDim2.new(0, 6, 0, 0), SortOrder = Enum.SortOrder.LayoutOrder}, nav)
 local navButtons = {}
@@ -271,17 +284,20 @@ end
 local digButton = button(screen, "Dig  ·  E", function() startDig() end,
 	{AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -86), Size = UDim2.new(0, 176, 0, 48),
 		BackgroundColor3 = C.bg, TextColor3 = C.paper, TextSize = 17})
-local detectorLabel = label(screen, "Walk into a sand pit to search", 12, C.paper,
-	{AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -142), Size = UDim2.new(0.95, 0, 0, 22),
-		TextXAlignment = Enum.TextXAlignment.Center, TextStrokeTransparency = 0.45})
+local detectorLabel = label(screen, "Walk into a sand pit to search", 13, C.paper,
+	{Name="ExpeditionStatus", AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -142), Size = UDim2.new(0.9, 0, 0, 30),
+		BackgroundColor3=C.bg, BackgroundTransparency=0.12, TextXAlignment = Enum.TextXAlignment.Center, TextTruncate=Enum.TextTruncate.AtEnd})
+make("UISizeConstraint",{MaxSize=Vector2.new(470,30)},detectorLabel)
+corner(detectorLabel,15)
+make("UIPadding",{PaddingLeft=UDim.new(0,14),PaddingRight=UDim.new(0,14)},detectorLabel)
 
-local shade = make("Frame", {Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.new(), BackgroundTransparency = 0.55,
+local shade = make("Frame", {Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.new(), BackgroundTransparency = 0.42,
 	Visible = false, BorderSizePixel = 0, Active = true, ZIndex=5}, screen)
 local panel = make("Frame", {AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.49),
 	Size = UDim2.new(0.94, 0, 0.72, 0), BackgroundColor3 = C.panel, BorderSizePixel = 0}, shade)
 make("UISizeConstraint", {MaxSize = Vector2.new(900, 720)}, panel)
 corner(panel, 20)
-stroke(panel, C.light)
+stroke(panel, C.line,0.2)
 label(panel,"FIELD JOURNAL",11,C.green,{Position=UDim2.fromOffset(22,12),Size=UDim2.new(1,-100,0,18),Font=Enum.Font.BuilderSansMedium})
 local title = label(panel, "Collection", 24, C.text,
 	{Position = UDim2.new(0, 22, 0, 31), Size = UDim2.new(1, -100, 0, 30), Font = Enum.Font.BuilderSansBold, TextTruncate = Enum.TextTruncate.AtEnd})
@@ -843,7 +859,7 @@ local function helpPage()
 		{"Find & collect","Stand on the sand and choose Dig (E). A scan takes one second, with a 50% chance to find a signal. Tap or press Space to capture it."},
 		{"Feed & grow","Open Collection, choose a brainrot, and feed it from your pantry. Every creature earns coins while you play."},
 		{"Upgrade your kit","Food, Sell, and Gear take you straight to their shops. Stronger detectors uncover higher rarities; boosts last five minutes."},
-		{"Explore further","Use the glowing portal near each world’s entrance to travel or unlock new worlds. Index records discoveries; Garden arranges your displays."},
+		{"Explore further","Use the glowing portal near each world’s entrance to travel or unlock new worlds. Hold Shift, click the left stick, or use Sprint on touch to move faster."},
 		{"Make it yours","Use Index (I) to track all 21 species. Garden (G) opens your six displays and teleports you home. Display choices and discoveries save with your collection."},
 	}) do
 		local f=card(body,112)
@@ -872,6 +888,7 @@ openPage = function(page)
 	if capture then return end
 	local previousPage = activePage
 	activePage = page
+	screen:SetAttribute("MenuOpen", page ~= nil)
 	shade.Visible = page ~= nil
 	journalShortcuts.Visible = page == nil
 	digButton.Visible = page == nil
@@ -919,6 +936,7 @@ local capturePreview=make("Frame",{BackgroundTransparency=1,AnchorPoint=Vector2.
 
 local function endCapture(message, kind)
 	capture = nil
+	screen:SetAttribute("Capturing", false)
 	captureShade.Visible = false
 	for _,child in capturePreview:GetChildren() do child:Destroy() end
 	ContextActionService:UnbindAction("BrainrotCaptureTap")
@@ -960,18 +978,21 @@ end
 startDig = function()
 	if busy or capture or activePage then return end
 	busy = true
+	screen:SetAttribute("Scanning", true)
 	digButton.Text = "Scanning…"
 	digButton.BackgroundColor3 = C.honey
 	digButton.TextColor3=C.bg
 	-- The server waits for the scan and rolls the find chance; this UI stays busy until it resolves.
 	local result = request("StartDig")
 	busy = false
+	screen:SetAttribute("Scanning", false)
 	digButton.Text = UserInputService.TouchEnabled and "Dig" or "Dig  ·  E"
 	digButton.BackgroundColor3 = C.bg
 	digButton.TextColor3=C.paper
 	if not result or not result.ok or not result.dig then return end
 	local dig = result.dig
 	capture = {id = dig.id, required = dig.required, duration = dig.duration, deadline = os.clock() + dig.duration, taps = 0, name = dig.name or "brainrot", rarity = dig.rarity}
+	screen:SetAttribute("Capturing", true)
 	captureName.Text = capture.name
 	local r = rarity(dig.rarity)
 	captureRarity.Text = r.name
@@ -1074,10 +1095,10 @@ end)
 local function resize()
 	local size = screen.AbsoluteSize
 	if size.X<1 or size.Y<1 then return end
-	hud.Size = UDim2.new(0, math.min(290, math.max(230, size.X - 70)), 0, 86)
+	hud.Size = UDim2.new(0, math.min(304, math.max(230, size.X - 70)), 0, 96)
 	helpButton.Position = UDim2.new(1, -12, 0, 12)
-	journalShortcuts.Position=UDim2.new(1,size.X<600 and -12 or -62,0,size.X<600 and 108 or 12)
-	toast.Position=UDim2.new(0.5,0,0,size.X<600 and 162 or 102)
+	journalShortcuts.Position=UDim2.new(1,size.X<600 and -12 or -62,0,size.X<600 and 118 or 12)
+	toast.Position=UDim2.new(0.5,0,0,size.X<600 and 172 or 118)
 	panel.Size = UDim2.new(0.94,0,0,math.min(660,math.max(180,size.Y-108)))
 	panelRestPosition=UDim2.new(0.5,0,0,(size.Y-76)/2)
 	panel.Position=panelRestPosition

@@ -8,7 +8,7 @@ These engine checks remain to be performed in Roblox Studio. Automated CLI check
 4. Verify BAG shows the real name, rarity, level, XP, and income. Display different creatures, feed one or all foods, and confirm level-ups increase income and model size. A second creature should keep earning while the first is displayed.
 5. Teleport to FOOD, buy different quantities, verify coins/stock/pantry counts, and wait for a five-minute rotation. Walk-up F prompts should open the same shops.
 6. Verify GEAR has Detectors and Boosts. Buy and equip a detector, inspect its held model, and verify its shorter scan cooldown. Buy each boost for a chosen creature; verify only that creature's XP/income doubles, five-minute expiration works, and a duplicate purchase is refused without charging.
-7. Earn enough coins, unlock Sunset Sands then Moonbloom Crater, and verify their detector requirements and expanded rarity ceilings. A locked destination must refuse teleporting. Rare/Mythic/Secret are probability-based finds; no particular number of searches guarantees one.
+7. Earn enough coins, unlock Sunset Sands then Moonbloom Cove, and verify their detector requirements and expanded rarity ceilings. A locked destination must refuse teleporting. Rare/Mythic/Secret are probability-based finds; no particular number of searches guarantees one.
 8. SELL should show the level-dependent value and require confirmation. Verify the creature disappears once, its income stops, and the displayed companion changes if necessary.
 9. In Studio's Device Emulator, check phone portrait, phone landscape, and tablet views. Open every page, scroll a full collection and food list, and complete the tap minigame without clipped buttons. Keyboard E must not double-trigger the F proximity prompts.
 10. Use **Test → Start** with two players. Confirm inventories, coins, boosts, and sales are independent. Rotation contents should match, but one player's purchases should not remove the other player's stock. Capture taps must not affect the other player's capture.
@@ -53,3 +53,12 @@ For tuning, use `src/shared/Config.luau`; keep game rewards and purchases on the
 
 - Verify there is no permanent Worlds HUD button. Approach the glowing gate near the entrance in all three worlds and use F / the mobile prompt to open Choose a world.
 - Check unlocked travel, locked-world costs, return travel to Clover Commons, and closing the menu without traveling. Confirm gates are easy to find from each sand-pit arrival and do not overlap the shop approaches.
+
+
+## Enclosed worlds, R6, and sprint
+
+- Open the new place and verify **Avatar Type: R6** in Studio’s avatar settings. Press Play with an account normally using R15; confirm the character has Torso, Left Arm, Right Arm, Left Leg, Right Leg, Head and HumanoidRootPart, and its Humanoid.RigType is R6. Reset and verify the same rig, garden spawn, held detector, walking animation, jumping, and camera controls. When updating a published experience, also save R6 in that experience’s avatar settings.
+- Walk around every edge of all three maps. The natural rock walls should meet without escape gaps, leave the whole pit unobstructed, and retain the garden bridge opening in Clover Commons. Walk through the stone-framed garden corridor in both directions and visit all six plots.
+- Inspect the new sage valley/chalk cliff, ochre sandstone canyon, and turquoise/lilac Moonbloom Cove palettes. The cove should use crystal groves instead of trees, have visible faceted crystal tips, shallow water, and an accessible viewing pier. Check walls and pathways in daylight and at night.
+- Hold/release Shift on keyboard; click L3 twice on a controller; toggle Sprint on a touch device. Confirm walking returns immediately after release or toggling off, opening a menu, focusing a text box, losing window focus, dying, and respawning. Sprint must not conflict with jump, detect, shop prompts, or the capture challenge.
+- Check the refined HUD on phone portrait, landscape, tablet, and desktop. Keep coin/income values, navigation, garden/index shortcuts, and the touch Sprint button clear of Roblox’s movement/jump controls.

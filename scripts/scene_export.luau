@@ -8,7 +8,8 @@ local process = require("@lune/process")
 local V, CF = r.Vector3, r.CFrame
 local scales = {}
 r.implementMethod("Instance", "WaitForChild", function(p, name)
-	return assert(p:FindFirstChild(name), p.Name.." missing required child "..name)
+	local child=assert(p:FindFirstChild(name), p.Name.." missing required child "..name)
+	return child
 end)
 r.implementMethod("Model", "GetScale", function(p) return scales[p] or 1 end)
 r.implementMethod("Model", "GetPivot", function(p) return p.PrimaryPart and p.PrimaryPart.CFrame or CF.new() end)
@@ -57,6 +58,9 @@ local world=environment.require(game:GetService("ServerScriptService"):WaitForCh
 local built=world.build(config)
 assert(built.pits.Meadow and built.pits.Dunes and built.pits.Cosmic,"Scene is incomplete")
 assert(config.MaxPlayers==6 and game:GetService("Players").MaxPlayers==6,"Place must be configured for six players")
+-- Avatar type is a place setting. Normal gameplay scripts cannot write this
+-- protected property; Rojo serializes it before Studio starts the server.
+assert(game:GetService("StarterPlayer").GameSettingsAvatar==r.Enum.GameAvatarType.R6,"Place must force classic R6 avatars")
 assert(built.gardens and #built.gardens==6,"Scene must include exactly six personal gardens")
 for id,plot in ipairs(built.gardens) do
 	assert(plot.id==id and #plot.slots==config.GardenSlots and plot.spawnCFrame,"Every garden needs six displays and a safe spawn")
@@ -85,6 +89,23 @@ end
 for id,pit in built.pits do
 	local zone=environment.workspace:WaitForChild("BrainrotWorld"):WaitForChild(id):FindFirstChild("DigZone",true)
 	assert(zone and math.abs(zone.CFrame.Position.X-pit.center.X)<0.1 and math.abs(zone.CFrame.Position.Z-pit.center.Z)<0.1,"Offline pit position is not aligned: "..id)
+end
+-- Include rotated boulders and wedge faces when checking the garden route.
+-- Conservative world bounds must leave a twelve-stud-wide walking corridor.
+local scene=environment.workspace:WaitForChild("BrainrotWorld")
+for _,boundary in {scene:WaitForChild("Meadow"):WaitForChild("NaturalBoundary"),scene:WaitForChild("GardenNeighborhood"):WaitForChild("GardenEscarpment")} do
+	for _,p in boundary:GetChildren() do
+		if p:IsA("BasePart") and p.CanCollide then
+			local c={p.CFrame:GetComponents()}
+			local x,y,z=p.Size.X/2,p.Size.Y/2,p.Size.Z/2
+			local ex=math.abs(c[4])*x+math.abs(c[5])*y+math.abs(c[6])*z
+			local ey=math.abs(c[7])*x+math.abs(c[8])*y+math.abs(c[9])*z
+			local ez=math.abs(c[10])*x+math.abs(c[11])*y+math.abs(c[12])*z
+			if c[2]-ey<9 and c[2]+ey>1 and c[3]-ez< -326 and c[3]+ez> -390 then
+				assert(math.abs(c[1])-ex>=6,"Rock boundary obstructs garden bridge: "..p:GetFullName())
+			end
+		end
+	end
 end
 local mapParts=validate(environment.workspace)
 assert(mapParts<6000,"Map exceeds its bounded geometry budget")
@@ -121,6 +142,7 @@ local serialized=r.serializePlace(place,"xml"):gsub('[ \t]*<token name="Font">%d
 -- Round-trip the finished artifact so serialized migrations fail in the build.
 local restored=r.deserializePlace(serialized)
 assert(restored:FindFirstChildOfClass("Workspace"):FindFirstChild("BrainrotWorld"),"Baked map did not survive serialization")
+assert(restored:FindFirstChildOfClass("StarterPlayer").GameSettingsAvatar==r.Enum.GameAvatarType.R6,"R6 setting did not survive serialization")
 fs.writeFile(output,serialized)
 print("Baked authored map into "..output)
 if process.args[2]~="--geometry" then return end

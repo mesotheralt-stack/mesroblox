@@ -70,9 +70,35 @@ function CreatureFactory.create(spec, scale)
 			rod(name,at((i-1)*math.pi*2/count),at(i*math.pi*2/count),thickness,color)
 		end
 	end
+	local function flatTriangle(name,a,b,c,depth,color)
+		-- Two right-triangle prisms fill a planar triangle exactly. Used for the
+		-- moon's continuous crescent surface, with no scalloped overlapping balls.
+		local ab=(b-a).Magnitude
+		if (c-b).Magnitude>ab and (c-b).Magnitude>(c-a).Magnitude then a,b,c=b,c,a
+		elseif (c-a).Magnitude>ab then a,b,c=c,a,b end
+		local edge=b-a
+		local length=edge.Magnitude
+		if length<0.001 then return end
+		local ux,uy=edge.X/length,edge.Y/length
+		local projection=(c.X-a.X)*ux+(c.Y-a.Y)*uy
+		local p=V(a.X+projection*ux,a.Y+projection*uy,a.Z)
+		local height=(c-p).Magnitude
+		if height<0.001 then return end
+		local y=V((c.X-p.X)/height,(c.Y-p.Y)/height,0)
+		for _,tip in {a,b} do
+			local width=(p-tip).Magnitude
+			if width>0.001 then
+				local z=V((p.X-tip.X)/width,(p.Y-tip.Y)/width,0)
+				local x=V(0,0,y.X*z.Y-y.Y*z.X)
+				local center=p+y*(height/2)-z*(width/2)
+				piece(name,V(depth,height,width),center,color,"Wedge",CFrame.fromMatrix(Vector3.zero,x,y,z))
+			end
+		end
+	end
 	local function eye(name, position, size, color)
 		orb(name.."White",V(size,size*1.14,size*0.48),position,ivory)
-		orb(name.."Iris",V(size*0.55,size*0.69,size*0.17),position+V(0.035,-0.01,-size*0.25),color or ink)
+		-- A coloured iris stays distinct from the pupil at collection-card sizes.
+		orb(name.."Iris",V(size*0.62,size*0.73,size*0.17),position+V(0.025,-0.01,-size*0.25),color or base:Lerp(ink,0.58))
 		orb(name.."Pupil",V(size*0.28,size*0.49,size*0.11),position+V(0.035,-0.01,-size*0.33),ink)
 		dot(name.."Catchlight",position+V(-size*0.08,size*0.17,-size*0.4),size*0.17,ivory)
 		-- A soft upper rim and second reflection add depth without changing
@@ -94,6 +120,7 @@ function CreatureFactory.create(spec, scale)
 	end
 	local function foot(position, size, color, claws)
 		orb("Paw",size,position,color or trim)
+		orb("PawSole",V(size.X*0.94,size.Y*0.24,size.Z*0.96),position+V(0,-size.Y*0.32,0), (color or trim):Lerp(ink,0.17))
 		if claws then
 			for i=-1,1 do
 				orb("Toe",V(size.X*0.19,size.Y*0.32,size.Z*0.3),position+V(i*size.X*0.24,-size.Y*0.12,-size.Z*0.37),ivory)
@@ -180,7 +207,7 @@ function CreatureFactory.create(spec, scale)
 	elseif shape=="mushroom" then
 		orb("StemBody",V(1.55,2.4,1.55),V(0,1.7,0),ivory)
 		orb("MushroomBell",V(4.2,1.4,3.5),V(0,3.35,0),base)
-		orb("CapCrown",V(2.8,1.15,2.6),V(0,3.86,0),base)
+		orb("CapCrown",V(3.5,1.3,3.0),V(0,3.6,0),base)
 		orb("CapUnderside",V(3.7,0.22,3.05),V(0,2.99,0),trim:Lerp(ivory,0.53))
 		for i=1,10 do
 			local a=i*math.pi/5
@@ -188,15 +215,31 @@ function CreatureFactory.create(spec, scale)
 		end
 		for i=1,7 do
 			local a=i*math.pi*2/7
-			orb("CreamCapSpot",V(0.53,0.12,0.45),V(math.cos(a)*1.2,3.96,math.sin(a)*0.83),ivory)
+			local x,z=math.cos(a)*1.12,math.sin(a)*0.96
+			local top=math.sqrt(1-(x/1.75)^2-(z/1.5)^2)
+			local normal=V(x/(1.75*1.75),top/0.65,z/(1.5*1.5))
+			local surface=V(x,3.6+0.65*top+0.025,z)
+			orb("CreamCapSpot",V(0.49,0.08,0.43),surface,ivory,CFrame.lookAt(Vector3.zero,normal,V(0,0,1))*A(math.pi/2,0,0))
 		end
+		orb("CrownCapSpot",V(0.55,0.07,0.48),V(-0.16,4.26,-0.06),ivory)
 		face(V(0,2.1,-0.79),0.34,0.44,true)
 		for _,side in {-1,1} do foot(V(side*0.47,0.27,-0.17),V(0.65,0.4,0.95),trim,false) end
 		tube("LittleWalkingStick",{V(1.35,0.2,-0.2),V(1.4,1.9,-0.2),V(1.15,2.25,-0.2)},0.13,Color3.fromRGB(146,108,69))
 		for i=1,3 do orb("StemPleat",V(0.08,0.65,0.1),V((i-2)*0.3,0.98,-0.75),trim:Lerp(ivory,0.55)) end
 	elseif shape=="bee" then
-		orb("Abdomen",V(2.2,2.05,2.8),V(0,2.0,0.65),trim)
-		for i=1,3 do orb("AbdomenBand",V(2.22,2.08,0.22),V(0,2.0,-0.1+(i-1)*0.63),base) end
+		orb("Abdomen",V(2.2,2.05,2.8),V(0,2.0,0.65),base)
+		-- Match each stripe to the curved abdomen instead of pushing full-width
+		-- discs through its tapered ends.
+		for i=1,3 do
+			local z=-0.1+(i-1)*0.63
+			local section=math.sqrt(1-((z-0.65)/1.4)^2)
+			for segment=1,16 do
+				local function at(angle)
+					return V(math.cos(angle)*(1.1*section+0.04),2+math.sin(angle)*(1.025*section+0.04),z)
+				end
+				rod("AbdomenBand",at((segment-1)*math.pi/8),at(segment*math.pi/8),0.14,trim)
+			end
+		end
 		orb("Thorax",V(1.75,1.8,1.65),V(0,2.4,-0.75),base)
 		orb("BeeHead",V(2.25,1.95,1.7),V(0,2.8,-1.35),base)
 		face(V(0,2.95,-2.14),0.5,0.56,true)
@@ -269,8 +312,11 @@ function CreatureFactory.create(spec, scale)
 		if jelly then
 			local helmet=orb("ClearSpaceHelmet",V(3.2,3.25,2.85),V(0,2.7,0),ivory)
 			helmet.Transparency=0.79
+			local reflection=orb("HelmetReflection",V(0.34,0.89,0.08),V(-0.89,3.49,-1.05),ivory,A(0,0,-0.36))
+			reflection.Transparency=0.45
 			ring("HelmetSeal",V(0,1.35,0),1.37,0.13,trim,"horizontal",12)
 			piece("AirPack",V(1.4,1.5,0.6),V(0,2.45,1.3),trim)
+			for i=1,3 do piece("AirPackVent",V(0.85,0.08,0.05),V(0,2.1+i*0.22,1.62),dark) end
 			for _,side in {-1,1} do piece("HelmetLatch",V(0.35,0.35,0.45),V(side*1.35,1.4,0),ivory) end
 		else
 			for i=1,5 do dot("MantleFreckle",V((i-3)*0.34,3.52+(i%2)*0.15,-0.55),0.14,trim) end
@@ -295,6 +341,9 @@ function CreatureFactory.create(spec, scale)
 		for i=-1,1 do
 			orb("TailPlume",V(0.45,0.5,phoenix and 3.2 or 1.8),V(i*0.35,1.9,phoenix and 2.1 or 1.5),i==0 and base or trim,A(0,i*0.25,0))
 			orb("HeadCrest",V(0.34,phoenix and 1.4 or 0.9,0.35),V(i*0.34,4.68,0),trim,nil)
+		end
+		for _,side in {-1,1} do
+			rod("WingQuill",V(side*1.12,2.77,0.12),V(side*1.85,2.34,0.15),0.055,pale)
 		end
 		if not phoenix then
 			for i=-1,1 do piece("DiscoChestTile",V(0.29,0.29,0.1),V(i*0.42,2.03,-1.01),trim,nil,A(0,0,math.pi/4)) end
@@ -387,11 +436,21 @@ function CreatureFactory.create(spec, scale)
 		face(V(0,2.84,-0.67),0.51,0.57,true)
 		for _,side in {-1,1} do foot(V(side*0.55,0.31,0),V(0.7,0.38,0.85),trim,false) end
 	elseif shape=="moon" then
-		-- Overlapping crescent segments keep the interior visibly open.
-		for i=0,10 do
-			local a=(0.32+i*0.136)*math.pi
-			local thickness=0.5+math.sin(i/10*math.pi)*0.45
-			orb("CrescentSegment",V(thickness,thickness,0.8),V(math.cos(a)*1.43,2.5+math.sin(a)*1.6,0),base)
+		-- A filled crescent ribbon has a clean silhouette and continuous front
+		-- surface. The inner edge stays hollow and both horns taper to a point.
+		local outer,inner={},{}
+		for i=0,16 do
+			local t=i/16
+			local a=(0.3+t*1.4)*math.pi
+			local thickness=0.045+math.sin(t*math.pi)^0.8*0.96
+			local center=V(math.cos(a)*1.43,2.5+math.sin(a)*1.6,0)
+			local normal=V(math.cos(a),math.sin(a),0)
+			outer[i+1]=center+normal*(thickness/2)
+			inner[i+1]=center-normal*(thickness/2)
+		end
+		for i=1,16 do
+			flatTriangle("CrescentRibbon",outer[i],outer[i+1],inner[i],0.72,base)
+			flatTriangle("CrescentRibbon",inner[i],outer[i+1],inner[i+1],0.72,base)
 		end
 		orb("MochiFace",V(1.35,1.55,0.95),V(-0.57,2.65,-0.12),pale)
 		face(V(-0.57,2.82,-0.59),0.28,0.35,false)
@@ -446,6 +505,21 @@ function CreatureFactory.create(spec, scale)
 		orb("UnknownBud",V(2.4,2.6,2.0),V(0,1.8,0),base)
 		face(V(0,2.2,-0.96),0.48,0.53,true)
 		for _,side in {-1,1} do foot(V(side*0.6,0.35,0),V(0.7,0.45,1.0),trim,false) end
+	end
+	-- Selected finishes give the sculptures a deliberate material hierarchy;
+	-- broad bodies stay soft while glass, cloth and royal metal read separately.
+	local finishes={
+		LowStone=Enum.Material.Slate,MiddleStone=Enum.Material.Slate,CrowningStone=Enum.Material.Slate,
+		EmbeddedQuartz=Enum.Material.Glass,GlassWing=Enum.Material.Glass,
+		ClearSpaceHelmet=Enum.Material.Glass,WandCrystal=Enum.Material.Glass,ScepterGem=Enum.Material.Glass,
+		CrownBand=Enum.Material.Metal,CrownProng=Enum.Material.Metal,CrownJewel=Enum.Material.Glass,
+		RoyalScepter=Enum.Material.Metal,DiscoChestTile=Enum.Material.Metal,DiscoHeadBand=Enum.Material.Metal,
+		FloatingArmorScale=Enum.Material.Metal,OrbitShard=Enum.Material.Glass,
+		ExplorerSatchel=Enum.Material.Fabric,SatchelFlap=Enum.Material.Fabric,
+		LittleWalkingStick=Enum.Material.Wood,LittleWalkingStickJoint=Enum.Material.Wood,LittleWalkingStickTip=Enum.Material.Wood,
+	}
+	for _,object in model:GetChildren() do
+		if object:IsA("BasePart") and finishes[object.Name] then object.Material=finishes[object.Name] end
 	end
 	if spec.rarity=="Mythic" or spec.rarity=="Secret" then
 		local light=Instance.new("PointLight")

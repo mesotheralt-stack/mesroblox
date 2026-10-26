@@ -64,8 +64,47 @@ local function verifyWorld(World)
 	end
 	assert(built.pits.Dunes.center.X-built.pits.Meadow.center.X==1040,"Expanded islands must remain separate")
 	local scene=workspace:FindFirstChild("BrainrotWorld")
+	local boundaryChecks=0
+	local function covered(intervals,first,last,description)
+		table.sort(intervals,function(a,b) return a[1]<b[1] end)
+		local edge=first
+		for _,range in intervals do
+			if range[2]>=first and range[1]<=last then
+				assert(range[1]<=edge+0.01,description.." contains an open gap")
+				edge=math.max(edge,range[2])
+			end
+		end
+		assert(edge>=last,description.." does not enclose the complete map edge")
+		boundaryChecks+=1
+	end
 	for id,landmark in {Meadow="CloverWindmill",Dunes="SunArchSanctuary",Cosmic="MoonwatchObservatory"} do
 		local island=scene:FindFirstChild(id)
+		local boundary=island:FindFirstChild("NaturalBoundary")
+		assert(boundary,id.." needs a natural rock enclosure")
+		local offset=built.pits[id].center.X
+		local west,east,front,back={},{},{},{}
+		for _,stone in boundary:GetChildren() do
+			if stone.Name=="CliffCore" then
+				assert(stone.Anchored and stone.CanCollide~=false,"Rock walls need solid collision")
+				assert(stone.Position.Y-stone.Size.Y/2<=0 and stone.Position.Y+stone.Size.Y/2>=50,"Cliffs must rise above the ground and normal camera height")
+				local x,z=stone.Position.X-offset,stone.Position.Z
+				local edge,coordinate
+				if math.abs(x+356)<0.01 then edge,coordinate=west,z
+				elseif math.abs(x-356)<0.01 then edge,coordinate=east,z
+				elseif math.abs(z+336)<0.01 then edge,coordinate=front,x
+				elseif math.abs(z-336)<0.01 then edge,coordinate=back,x end
+				assert(edge,"Every cliff collision core must remain on the outer rim")
+				table.insert(edge,{coordinate-stone.Size.X/2,coordinate+stone.Size.X/2})
+			end
+		end
+		covered(west,-336,336,id.." west cliff")
+		covered(east,-336,336,id.." east cliff")
+		covered(back,-356,356,id.." rear cliff")
+		if id=="Meadow" then
+			covered(front,-356,-24,id.." front-left cliff")
+			covered(front,24,356,id.." front-right cliff")
+			for _,range in front do assert(range[2]< -22 or range[1]>22,"Garden bridge opening must stay walkable") end
+		else covered(front,-356,356,id.." front cliff") end
 		local portal=island and island:FindFirstChild("WorldTravelPortal")
 		assert(portal and not island:FindFirstChild("ReturnPortal"),id.." must have an entrance world-travel portal")
 		local veil=portal:FindFirstChild("WorldPortal")
@@ -79,7 +118,46 @@ local function verifyWorld(World)
 		assert(excavation and excavation:FindFirstChild("WideEntranceStep"),"Recessed sand needs entrance steps")
 		assert(excavation:FindFirstChild("DigZone").Position.Y+1.5<island:FindFirstChild("NorthernLawn").Position.Y+3,"Sand basin must sit below the lawn")
 	end
+	local cosmic=scene:FindFirstChild("Cosmic")
+	local crystals=0
+	for _,object in cosmic:GetDescendants() do
+		assert(object.Name~="MoonPine" and object.Name~="CloverOak" and object.Name~="PalmTree","Crystal cove must use mineral groves instead of trees")
+		if object.Name=="FacetedCrystalCluster" then crystals+=1 end
+	end
+	assert(crystals>=40 and cosmic:FindFirstChild("MoonbloomTidalCove",true),"Cove needs substantial crystal groves and sheltered water")
+	assert(cosmic:FindFirstChild("CoveViewingPier",true),"Cove landmark needs its walkable viewing pier")
+	local meadowGround=scene:FindFirstChild("Meadow"):FindFirstChild("NorthernLawn")
+	local canyonGround=scene:FindFirstChild("Dunes"):FindFirstChild("NorthernLawn")
+	local coveGround=cosmic:FindFirstChild("NorthernLawn")
+	assert(meadowGround.Material==Enum.Material.Grass and canyonGround.Material==Enum.Material.Sandstone and coveGround.Material==Enum.Material.Slate,"World ground materials must express meadow, canyon and mineral cove")
+	assert(meadowGround.Color.G>meadowGround.Color.R and canyonGround.Color.R>canyonGround.Color.G and coveGround.Color.B>coveGround.Color.R,"Each world needs a distinct green, warm or turquoise palette")
 	assert(scene:FindFirstChild("CloverVillage"),"Detailed village must exist")
+	local neighborhood=scene:FindFirstChild("GardenNeighborhood")
+	local escarpment=neighborhood and neighborhood:FindFirstChild("GardenEscarpment")
+	assert(escarpment,"Garden neighborhood must have its own continuous rock enclosure")
+	local gardenWest,gardenEast,gardenRear,gardenFront={},{},{},{}
+	for _,stone in escarpment:GetChildren() do
+		if stone.Name=="CliffCore" then
+			local x,z=stone.Position.X,stone.Position.Z
+			local edge,coordinate
+			if math.abs(x+244)<0.01 then edge,coordinate=gardenWest,z
+			elseif math.abs(x-244)<0.01 then edge,coordinate=gardenEast,z
+			elseif math.abs(z+801)<0.01 then edge,coordinate=gardenRear,x
+			elseif math.abs(z+382)<0.01 then edge,coordinate=gardenFront,x
+			else
+				assert(math.abs(x)==34 and z== -359 and stone.Size.Z/2<math.abs(x)-20,"Bridge corridor cliffs must leave ample character clearance")
+			end
+			if edge then table.insert(edge,{coordinate-stone.Size.X/2,coordinate+stone.Size.X/2}) end
+		end
+	end
+	covered(gardenWest,-801,-382,"Garden west cliff")
+	covered(gardenEast,-801,-382,"Garden east cliff")
+	covered(gardenRear,-244,244,"Garden rear cliff")
+	covered(gardenFront,-244,-24,"Garden front-left cliff")
+	covered(gardenFront,24,244,"Garden front-right cliff")
+	for _,range in gardenFront do assert(range[2]< -22 or range[1]>22,"Garden neighborhood entry must remain open") end
+	local arch=escarpment:FindFirstChild("GardenRockArch")
+	assert(arch and arch.Position.Y-arch.Size.Y/2>12,"Garden arch must clear walking and jumping characters")
 	assert(#built.gardens==Config.MaxPlayers and #built.gardens==6,"Map must build exactly six personal gardens")
 	for id,plot in ipairs(built.gardens) do
 		assert(plot.id==id and #plot.slots==Config.GardenSlots and #plot.slotSigns==6,"Every garden needs six display locations and labels")
@@ -111,5 +189,5 @@ local function verifyWorld(World)
 	assert(#plot.displays:GetChildren()==0 and plot.model:GetAttribute("OwnerUserId")==0,"Released gardens must clear models and ownership")
 	assert(manager:claim(owners[1])==1 and #plot.displays:GetChildren()==0,"A reused plot must start empty")
 	assert(lighting.ClockTime == 9, "Lighting cycle must start")
-	print("PASS actual map startup with restricted Workspace writes, expanded geometry, entrance travel portals, six gardens and real display lifecycle")
+	print("PASS actual map startup, "..boundaryChecks.." continuous cliff edges, crystal cove, clear garden approaches, portals, six gardens and display lifecycle")
 end

@@ -144,7 +144,7 @@ end
 
 local function shoreline(parent,offset,index)
 	local cliffs=folder(parent,"TerracedShore")
-	local stone=index==3 and rgb(112,112,146) or index==2 and rgb(169,139,96) or rgb(123,135,111)
+	local stone=index==3 and rgb(89,137,151) or index==2 and rgb(155,108,77) or rgb(130,148,116)
 	part(cliffs,"IslandStone",V(684,18,644),offset+V(0,-16,0),stone,Enum.Material.Slate)
 	part(cliffs,"LowerIslandShelf",V(655,12,615),offset+V(0,-29,0),stone:Lerp(P.darkStone,0.18),Enum.Material.Rock)
 	for j=1,20 do
@@ -156,6 +156,69 @@ local function shoreline(parent,offset,index)
 			rock.CanCollide=true
 		end
 	end
+end
+
+-- Continuous collision lives inside sculpted strata. Overlapping stone cores
+-- keep every edge closed while the visible faces read as natural escarpments.
+local function cliffSegment(parent,position,width,depth,height,index,seed,yaw,inward)
+	local tones={rgb(153,166,143),rgb(169,111,77),rgb(91,139,151)}
+	local tint=tones[index]:Lerp(P.cream,(seed%5)*0.018)
+	part(parent,"CliffCore",V(width+0.8,height,depth),position+V(0,height/2-5,0),tint,Enum.Material.Rock,nil,CFrame.Angles(0,yaw,0))
+	-- Large, overlapping weathered masses cover the straight collision cores.
+	-- Varied summits break their silhouette instead of repeating flat wall caps.
+	part(parent,"WeatheredRockButtress",V(width*1.5,height*(1.35+(seed%3)*0.04),depth*2),position+inward*(depth*0.08)+V(0,height*0.40,0),tint:Lerp(P.cream,0.035+(seed%3)*0.03),index==2 and Enum.Material.Sandstone or Enum.Material.Rock,Enum.PartType.Ball,CFrame.Angles(0,yaw,0))
+	local along=V(math.cos(yaw),0,-math.sin(yaw))
+	part(parent,"BrokenRockSummit",V(width*(0.64+(seed%3)*0.08),height*(0.60+(seed%2)*0.12),depth*1.7),position+along*((seed%3-1)*width*0.12)+V(0,height*(0.81+(seed%3)*0.035),0),tint:Lerp(P.darkStone,0.05+(seed%3)*0.045),Enum.Material.Rock,"Wedge",CFrame.Angles(0,yaw+(seed%2)*math.pi,0)*CFrame.Angles((seed%3-1)*0.13,0,(seed%2==0 and -1 or 1)*0.12))
+	detail(parent,"FracturedMineralPlate",V(width*0.72,height*0.37,depth*0.63),position+inward*(depth*0.73)+along*(width*0.12)+V(0,height*0.31,0),tint:Lerp(P.cream,index==2 and 0.20 or 0.12),index==2 and Enum.Material.Sandstone or Enum.Material.Slate,"Wedge",CFrame.Angles(0,yaw+(seed%2)*math.pi,0)*CFrame.Angles(0.1,0,(seed%2==0 and -0.1 or 0.15)))
+	local toe=part(parent,"WeatheredCliffFoot",V(width*0.64,12+(seed%3)*2,depth*1.12),position+inward*(depth*0.46)+V(0,2,0),tint:Lerp(P.darkStone,0.12),Enum.Material.Rock,Enum.PartType.Ball,CFrame.Angles(0,yaw+seed*0.13,0))
+	toe.CanTouch=false
+	if index==1 and seed%3==0 then
+		detail(parent,"ClingingCliffMoss",V(width*0.46,7,depth*0.8),position+inward*(depth*0.64)+V(0,height*0.68,0),rgb(113,143,99),Enum.Material.Grass,Enum.PartType.Ball,CFrame.Angles(0,yaw,0.14))
+	elseif index==3 and seed%2==0 then
+		detail(parent,"ExposedQuartzVein",V(width*0.28,height*0.38,0.4),position+inward*(depth*0.98)+V(0,height*0.53,0),rgb(154,217,213),Enum.Material.Glass,"Wedge",CFrame.Angles(0,yaw,0.26))
+	end
+end
+
+local function cliffEdge(parent,offset,index,startPoint,endPoint,inward,count,seedBase)
+	local delta=endPoint-startPoint
+	local length=delta.Magnitude
+	local width=length/count
+	local along=delta*(1/length)
+	local yaw=math.abs(along.X)>0.5 and 0 or math.pi/2
+	for j=1,count do
+		local center=offset+startPoint+along*((j-0.5)*width)
+		cliffSegment(parent,center,width,28,57+((j+seedBase)%4)*5,index,j+seedBase,yaw,inward)
+	end
+end
+
+local function naturalBoundary(parent,offset,index)
+	local rim=folder(parent,"NaturalBoundary")
+	cliffEdge(rim,offset,index,V(-356,0,-336),V(-356,0,336),V(1,0,0),11,1)
+	cliffEdge(rim,offset,index,V(356,0,-336),V(356,0,336),V(-1,0,0),11,7)
+	cliffEdge(rim,offset,index,V(-356,0,336),V(356,0,336),V(0,0,-1),12,4)
+	if index==1 then
+		-- The only opening leads into an enclosed, walkable garden corridor.
+		cliffEdge(rim,offset,index,V(-356,0,-336),V(-24,0,-336),V(0,0,1),6,2)
+		cliffEdge(rim,offset,index,V(24,0,-336),V(356,0,-336),V(0,0,1),6,8)
+	else
+		cliffEdge(rim,offset,index,V(-356,0,-336),V(356,0,-336),V(0,0,1),12,2)
+	end
+	return rim
+end
+
+local function gardenBoundary(neighborhood)
+	local rim=folder(neighborhood,"GardenEscarpment")
+	local zero=V(0,0,0)
+	cliffEdge(rim,zero,1,V(-244,0,-801),V(-244,0,-382),V(1,0,0),7,1)
+	cliffEdge(rim,zero,1,V(244,0,-801),V(244,0,-382),V(-1,0,0),7,7)
+	cliffEdge(rim,zero,1,V(-244,0,-801),V(244,0,-801),V(0,0,1),8,3)
+	cliffEdge(rim,zero,1,V(-244,0,-382),V(-24,0,-382),V(0,0,-1),4,4)
+	cliffEdge(rim,zero,1,V(24,0,-382),V(244,0,-382),V(0,0,-1),4,8)
+	for _,side in {-1,1} do
+		cliffSegment(rim,V(side*34,0,-359),46,16,44,1,3,math.pi/2,V(-side,0,0))
+	end
+	-- A high stone lintel frames the open bridge without obstructing R6 rigs.
+	part(rim,"GardenRockArch",V(61,10,24),V(0,35,-335),rgb(153,166,143),Enum.Material.Rock,"Wedge",CFrame.Angles(0,0,0))
 end
 
 local function digSite(parent,offset,tint,id)
@@ -340,19 +403,52 @@ local function sunRuins(parent,position)
 end
 
 local function crystalCluster(parent,position,scale,tint)
+	local cluster=folder(parent,"FacetedCrystalCluster")
+	local base=detail(cluster,"CrystalMatrix",V(7.3,1.3,6.6)*scale,position+V(0,0.15,0),rgb(93,127,140),Enum.Material.Slate,Enum.PartType.Ball)
 	for j=1,4 do
-		local a=j*math.pi/2
+		local a=j*math.pi/2+0.22
 		local h=(j%2==0 and 7 or 4.5)*scale
-		local pos=position+V(math.sin(a)*1.6*scale,h/2,math.cos(a)*1.6*scale)
-		local stem=detail(parent,"CrystalPrism",V(1.4*scale,h,1.4*scale),pos,tint,Enum.Material.Glass,nil,CFrame.Angles(0,a,0.1*math.sin(a)))
-		stem.Transparency=0.16
-		detail(parent,"CrystalTip",V(1.4,1.7,1.4)*scale,pos+V(0,h/2+0.7*scale,0),tint,Enum.Material.Neon,"Wedge",CFrame.Angles(0,a,0))
+		local w=1.8*scale
+		local pos=position+V(math.sin(a)*1.65*scale,h/2,math.cos(a)*1.65*scale)
+		local stem=detail(cluster,"CrystalPrism",V(w,h,w),pos,tint,Enum.Material.Glass,nil,CFrame.Angles(0,a,0))
+		stem.Transparency=0.12
+		-- Paired sloping planes make a clean mineral termination, rather than a
+		-- blunt neon cube. Opaque faces retain color against the pale ground.
+		for _,side in {-1,1} do
+			detail(cluster,"CutCrystalTip",V(w/2,w*1.05,w),pos+V(math.cos(a)*side*w/4,h/2+w*0.52,-math.sin(a)*side*w/4),tint:Lerp(P.cream,side==1 and 0.2 or 0.05),Enum.Material.SmoothPlastic,"Wedge",CFrame.Angles(0,a+side*math.pi/2,0))
+		end
+		detail(cluster,"CrystalFaceReflection",V(w*0.12,h*0.76,0.035),pos+V(math.sin(a)*(w/2+0.025),h*0.03,math.cos(a)*(w/2+0.025)),tint:Lerp(P.cream,0.65),Enum.Material.SmoothPlastic,nil,CFrame.Angles(0,a,0))
 	end
+	return base
+end
+
+local function crystalCove(parent,position)
+	local cove=folder(parent,"MoonbloomTidalCove")
+	detail(cove,"CoveShingle",V(91,1.1,94),position+V(0,0.15,0),rgb(151,190,185),Enum.Material.Pebble,Enum.PartType.Ball)
+	local water=detail(cove,"ShelteredCoveWater",V(74,0.24,77),position+V(0,0.85,0),rgb(81,179,188),Enum.Material.Glass,Enum.PartType.Ball)
+	water.Transparency=0.19
+	for j=1,12 do
+		local a=j*math.pi*2/12
+		local pos=position+V(math.sin(a)*38,1.0,math.cos(a)*39)
+		detail(cove,"CoveShoreBoulder",V(12,6+(j%3),10),pos,rgb(110,155,164),Enum.Material.Slate,Enum.PartType.Ball,CFrame.Angles(0,a,0))
+		if j%2==0 then crystalCluster(cove,pos+V(0,2,0),0.8+(j%3)*0.2,j%4==0 and rgb(176,166,220) or rgb(137,218,212)) end
+	end
+	for j=1,5 do
+		local x=-18+j*7
+		detail(cove,"SubmergedCrystal",V(3,0.12,4),position+V(x,1.0,8+(j%2)*11),rgb(169,218,211),Enum.Material.Neon,nil,CFrame.Angles(0,j*0.8,0))
+	end
+	local pier=folder(cove,"CoveViewingPier")
+	for j=0,7 do part(pier,"BleachedBoardwalkPlank",V(12,0.35,2.8),position+V(0,1.55,39-j*2.8),rgb(191,198,184),Enum.Material.WoodPlanks) end
+	for _,x in {-5.5,5.5} do
+		for _,z in {20,38} do part(pier,"PierMooringPost",V(0.65,4.4,0.65),position+V(x,2.0,z),rgb(107,138,136),Enum.Material.Wood) end
+		part(pier,"PierHandrail",V(0.3,0.3,19),position+V(x,4.05,29),rgb(191,198,184),Enum.Material.Wood)
+	end
+	plaque(cove,position+V(-21,4.4,43),"The crystal cove","Moonlit quartz · sheltered turquoise water",P.cream,25)
 end
 
 local function observatory(parent,position)
 	local place=folder(parent,"MoonwatchObservatory")
-	local stone=rgb(136,144,172)
+	local stone=rgb(132,169,178)
 	for j=1,3 do disk(place,"ObservatoryTerrace",position+V(0,j*0.65,0),39-j*3.5,0.65,stone,Enum.Material.Slate) end
 	for j=1,8 do
 		local a=j*math.pi/4
@@ -364,7 +460,7 @@ local function observatory(parent,position)
 		local a=j*math.pi*2/16
 		part(place,"DomeCornice",V(11.0,1.2,2.8),position+V(math.sin(a)*26.6,15.4,math.cos(a)*26.6),stone,Enum.Material.Marble,nil,CFrame.Angles(0,a,0))
 	end
-	local dome=detail(place,"ObservatoryGlassDome",V(52,22,52),position+V(0,20,0),rgb(143,173,205),Enum.Material.Glass,Enum.PartType.Ball)
+	local dome=detail(place,"ObservatoryGlassDome",V(52,22,52),position+V(0,20,0),rgb(136,195,200),Enum.Material.Glass,Enum.PartType.Ball)
 	dome.Transparency=0.6
 	for j=1,6 do
 		local a=j*math.pi/3
@@ -377,67 +473,76 @@ local function observatory(parent,position)
 	end
 	local lens=detail(place,"TelescopeLens",V(0.2,4.7,4.7),position+V(math.cos(0.35)*9.6,14.5+math.sin(0.35)*9.6,0),rgb(165,229,231),Enum.Material.Glass,Enum.PartType.Cylinder,CFrame.Angles(0,0,0.35)); lens.Transparency=0.25
 	for j=1,4 do part(place,"ObservatoryEntranceStep",V(18,0.45,5.0),position+V(0,j*0.45,-42+j*4.5),stone,Enum.Material.Slate) end
-	plaque(place,position+V(-21,4.5,-29),"Moonwatch observatory","Follow the stars beneath your feet",P.cream,23)
+	plaque(place,position+V(-21,4.5,-29),"Moonwatch observatory","A quiet lookout above the crystal coast",P.cream,23)
 end
 
 local function landscapes(parent,offset,index,rng)
-	local vegetation=folder(parent,"Woodland")
-	local tints={rgb(94,155,87),rgb(103,154,103),rgb(89,139,143)}
+	local vegetation=folder(parent,index==3 and "CrystalGroves" or "Woodland")
+	local tints={rgb(99,148,99),rgb(137,155,102),rgb(129,210,205)}
+	local function grove(point,scale,seed)
+		if index==3 then
+			local tint=seed%3==0 and rgb(181,168,220) or seed%3==1 and rgb(130,207,208) or rgb(161,214,224)
+			crystalCluster(vegetation,point,scale*2.25,tint)
+		else
+			tree(vegetation,point,scale,index,tints[index],seed*0.9)
+		end
+	end
 	for j=1,23 do
 		local side=j%2==0 and -1 or 1
-		local x=side*rng:NextNumber(215,308)
+		local x=side*rng:NextNumber(218,302)
 		local z=rng:NextNumber(-298,286)
-		-- Landmarks reserve the rear corners; trees occupy broad side groves.
 		if z< -105 then z=60+(j%4)*56 end
-		tree(vegetation,offset+V(x,0.3,z),rng:NextNumber(0.85,1.25),index,tints[index],j*0.9)
+		grove(offset+V(x,0.3,z),rng:NextNumber(0.85,1.25),j)
 	end
-	-- Rear and far-edge stands give the island a composed woodland outline,
-	-- not just isolated trees along the sides of a flat rectangle.
 	for j=1,10 do
 		local x=-166+(j-1)*37
-		local z=-292+(j%3)*5
-		tree(vegetation,offset+V(x,0.3,z),0.92+(j%4)*0.095,index,tints[index]:Lerp(P.cream,(j%2)*0.035),j*1.37)
+		local z=-291+(j%3)*5
+		-- The personal-garden approach remains open through the meadow rim.
+		if index~=1 or math.abs(x)>26 then grove(offset+V(x,0.3,z),0.92+(j%4)*0.095,j+23) end
 	end
 	for j=1,9 do
-		local x=-276+(j-1)*69
-		local z=305+(j%2)*6
-		tree(vegetation,offset+V(x,0.3,z),0.91+(j%3)*0.12,index,tints[index],j*0.73)
+		grove(offset+V(-276+(j-1)*69,0.3,302+(j%2)*4),0.91+(j%3)*0.12,j+33)
 	end
+	local groundMaterial=index==1 and Enum.Material.Grass or index==2 and Enum.Material.Sandstone or Enum.Material.Slate
 	for _,x in {-265,-109,111,267} do
 		local z=math.abs(x)>200 and 295 or -294
-		part(vegetation,"WoodlandHill",V(57,17,39),offset+V(x,-4.4,z),tints[index]:Lerp(P.darkStone,0.07),Enum.Material.Grass,Enum.PartType.Ball)
+		part(vegetation,"SculptedLandscapeMound",V(57,17,39),offset+V(x,-4.4,z),tints[index]:Lerp(P.darkStone,index==3 and 0.26 or 0.07),groundMaterial,Enum.PartType.Ball)
 	end
 	for j=1,9 do
 		local x=-168+(j-1)*42
 		local z=j%2==0 and -264 or 289
-		for k=-1,1 do
-			detail(vegetation,"WoodlandShrub",V(7,5.4+(k%2)*1.3,7),offset+V(x+k*3.6,1.5,z+(k%2)*2.5),tints[index]:Lerp(P.ink,0.12+(j%2)*0.05),Enum.Material.Grass,Enum.PartType.Ball)
+		if index~=1 or math.abs(x)>25 then
+			for k=-1,1 do
+				if index==3 then
+					detail(vegetation,"QuartzShingle",V(7,2.6+(k%2)*1.1,6),offset+V(x+k*3.6,0.5,z+(k%2)*2.5),rgb(131,164,175):Lerp(P.cream,(j%3)*0.06),Enum.Material.Slate,Enum.PartType.Ball,CFrame.Angles(0,j*0.7,0))
+				else
+					detail(vegetation,"WoodlandShrub",V(7,5.4+(k%2)*1.3,7),offset+V(x+k*3.6,1.5,z+(k%2)*2.5),tints[index]:Lerp(P.ink,0.12+(j%2)*0.05),Enum.Material.Grass,Enum.PartType.Ball)
+				end
+			end
 		end
 	end
 	for j=1,28 do
 		local side=j%2==0 and -1 or 1
-		local point=offset+V(side*rng:NextNumber(218,319),0.35,rng:NextNumber(-290,290))
-		for blade=1,3 do
-			detail(vegetation,"GrassTuft",V(0.3,1.6+(blade%2)*0.4,1.1),point+V((blade-2)*0.45,0.6,0),tints[index]:Lerp(P.cream,0.12),Enum.Material.Grass,"Wedge",CFrame.Angles(0,j,0.1*(blade-2)))
-		end
-		if j%3==0 then
-			if index==3 then crystalCluster(vegetation,point,0.4,rgb(167,188,236))
-			else flowerCluster(vegetation,point,index==1 and rgb(234,204,145) or rgb(221,150,108)) end
+		local point=offset+V(side*rng:NextNumber(222,315),0.35,rng:NextNumber(-290,290))
+		if index==3 then
+			for pebble=1,3 do
+				detail(vegetation,"PolishedCovePebble",V(1.7,0.7,1.2),point+V((pebble-2)*1.6,0.2,(pebble%2)*1.3),rgb(169,195,197):Lerp(P.cream,(j%3)*0.08),Enum.Material.Pebble,Enum.PartType.Ball,CFrame.Angles(0,j,0))
+			end
+		else
+			for blade=1,3 do
+				detail(vegetation,"GrassTuft",V(0.3,1.6+(blade%2)*0.4,1.1),point+V((blade-2)*0.45,0.6,0),tints[index]:Lerp(P.cream,0.12),Enum.Material.Grass,"Wedge",CFrame.Angles(0,j,0.1*(blade-2)))
+			end
+			if j%3==0 then flowerCluster(vegetation,point,index==1 and rgb(229,202,155) or rgb(220,164,119)) end
 		end
 	end
 	for _,side in {-1,1} do
-		local hill=part(vegetation,"LandscapedMound",V(64,19,57),offset+V(side*294,-4,-285),tints[index],Enum.Material.Grass,Enum.PartType.Ball)
+		part(vegetation,"LandscapedMound",V(64,19,57),offset+V(side*294,-4,-285),tints[index]:Lerp(P.darkStone,index==3 and 0.25 or 0),groundMaterial,Enum.PartType.Ball)
 		bench(vegetation,offset+V(side*126,0.3,-171))
 		for j=1,12 do
-			local x=side*(32+j*14)
-			if side<0 or index==3 or j<12 then
-				part(vegetation,"GardenTrailPaver",V(13.0,0.15,8),offset+V(x,0.42,-171),P.stone,Enum.Material.Slate,nil,CFrame.Angles(0,(j%2)*0.045,0))
-			end
+			if side<0 or index==3 or j<12 then part(vegetation,"GardenTrailPaver",V(13.0,0.15,8),offset+V(side*(32+j*14),0.42,-171),P.stone,Enum.Material.Slate,nil,CFrame.Angles(0,(j%2)*0.045,0)) end
 		end
 		for j=1,3 do
-			if side<0 or index==3 then
-				part(vegetation,"LandmarkApproachPaver",V(13,0.15,8),offset+V(side*(200+j*13),0.42,-171),P.stone,Enum.Material.Slate)
-			end
+			if side<0 or index==3 then part(vegetation,"LandmarkApproachPaver",V(13,0.15,8),offset+V(side*(200+j*13),0.42,-171),P.stone,Enum.Material.Slate) end
 		end
 	end
 	local trails=folder(vegetation,"LandmarkTrails")
@@ -454,7 +559,8 @@ local function landscapes(parent,offset,index,rng)
 	else
 		for j=1,5 do part(trails,"ObservatorySidePaver",V(10,0.16,11),offset+V(-196,0.44,-171-j*10),P.stone,Enum.Material.Slate) end
 		for j=1,3 do part(trails,"ObservatoryEntrancePaver",V(13,0.16,9),offset+V(-196-j*14,0.44,-222),P.stone,Enum.Material.Slate) end
-		for j=1,4 do part(trails,"CrystalGardenPaver",V(10,0.16,11),offset+V(198,0.44,-171-j*12),P.stone,Enum.Material.Slate) end
+		for j=1,3 do part(trails,"CoveApproachPaver",V(11,0.16,9),offset+V(198+j*12,0.44,-164),P.stone,Enum.Material.Slate) end
+		for j=1,3 do part(trails,"CovePierEntranceStep",V(12,0.4,2.7),offset+V(235,0.45+j*0.36,-160-j*2.7),rgb(191,198,184),Enum.Material.WoodPlanks) end
 	end
 	local landmarks=folder(parent,"Landmarks")
 	if index==1 then
@@ -471,17 +577,7 @@ local function landscapes(parent,offset,index,rng)
 		for _,x in {279,295} do part(oasis,"CanopyPost",V(0.7,10,0.7),offset+V(x,5,-207),P.wood) end
 	else
 		observatory(landmarks,offset+V(-240,0.3,-190))
-		local garden=folder(landmarks,"AstralCrystalGarden")
-		for j=1,7 do
-			local a=j*math.pi*2/7
-			crystalCluster(garden,offset+V(231+math.sin(a)*23,0.3,-176+math.cos(a)*28),0.9+(j%3)*0.25,rgb(157,171+(j%2)*23,221))
-		end
-		for j=1,7 do
-			local pos=offset+V(207+(j%3)*16,0.3,-238+math.floor(j/3)*16)
-			part(garden,"MoonMushroomStem",V(1.2,4,1.2),pos+V(0,2,0),rgb(183,193,200),nil,Enum.PartType.Cylinder,CFrame.Angles(0,0,math.pi/2))
-			detail(garden,"MoonMushroomCap",V(6,1.6,6),pos+V(0,4.1,0),rgb(150,198,213),Enum.Material.Neon,Enum.PartType.Ball)
-			for k=1,3 do local a=k*math.pi*2/3; detail(garden,"MushroomSpot",V(0.7,0.15,0.7),pos+V(math.sin(a)*1.8,4.9,math.cos(a)*1.8),P.cream,nil,Enum.PartType.Ball) end
-		end
+		crystalCove(landmarks,offset+V(235,0.3,-203))
 	end
 end
 
@@ -556,23 +652,25 @@ function World.build(config)
 	local scene=folder(Workspace,"BrainrotWorld")
 	-- FallenPartsDestroyHeight is intentionally configured in the place file:
 	-- normal server scripts lack the PluginOrOpenCloud capability to set it.
-	local ocean=detail(scene,"Ocean",V(4000,3,1600),V(1040,-20,0),rgb(70,156,177),Enum.Material.Glass)
+	local ocean=detail(scene,"Ocean",V(4000,3,1600),V(1040,-20,0),rgb(67,137,157),Enum.Material.Glass)
 	ocean.Transparency=0.16
 	local result={destinations={},pits={},displaySlots={}}
 	local ids={"Meadow","Dunes","Cosmic"}
-	local grass={rgb(105,163,87),rgb(141,171,104),rgb(99,145,136)}
-	local sand={rgb(231,208,153),rgb(224,180,114),rgb(178,170,205)}
+	local grass={rgb(117,158,106),rgb(190,145,102),rgb(126,171,174)}
+	local sand={rgb(225,211,173),rgb(224,174,119),rgb(195,216,215)}
 	local rng=Random.new(74119)
 	for index,id in ids do
 		local island=Instance.new("Model"); island.Name=id; island.Parent=scene
 		local offset=V((index-1)*1040,0,0)
 		shoreline(island,offset,index)
+		naturalBoundary(island,offset,index)
+		local groundMaterial=index==1 and Enum.Material.Grass or index==2 and Enum.Material.Sandstone or Enum.Material.Slate
 		-- A lower full-size base plus four surrounding lawns leaves a real
 		-- recessed sand basin instead of laying the sand on top of the grass.
-		part(island,"Grass",V(700,6,660),offset+V(0,-7,0),grass[index],Enum.Material.Grass)
-		part(island,"NorthernLawn",V(700,6,320),offset+V(0,-2.7,-170),grass[index],Enum.Material.Grass)
-		part(island,"SouthernLawn",V(700,6,60),offset+V(0,-2.7,300),grass[index],Enum.Material.Grass)
-		for _,side in {-1,1} do part(island,"SideLawn",V(190,6,280),offset+V(side*255,-2.7,130),grass[index],Enum.Material.Grass) end
+		part(island,"Grass",V(700,6,660),offset+V(0,-7,0),grass[index],groundMaterial)
+		part(island,"NorthernLawn",V(700,6,320),offset+V(0,-2.7,-170),grass[index],groundMaterial)
+		part(island,"SouthernLawn",V(700,6,60),offset+V(0,-2.7,300),grass[index],groundMaterial)
+		for _,side in {-1,1} do part(island,"SideLawn",V(190,6,280),offset+V(side*255,-2.7,130),grass[index],groundMaterial) end
 		local center,size=digSite(island,offset,sand[index],id)
 		result.pits[id]={center=center,size=size}
 		result.destinations[id]=CFrame.new(offset+V(0,4,7))*CFrame.Angles(0,math.pi,0)
@@ -598,6 +696,7 @@ function World.build(config)
 	end
 	centralHub(scene,result); gallery(scene,config,result)
 	result.gardens=GardenService.build(scene,config)
+	gardenBoundary(scene:FindFirstChild("GardenNeighborhood"))
 	World.startDayNight()
 	return result
 end

@@ -22,9 +22,9 @@ Config.Rarities = {
 }
 
 Config.Worlds = {
-	{id = "Meadow", name = "Clover Commons", unlockCost = 0, minPower = 1, maxRarity = 4, color = Color3.fromRGB(150, 229, 118), description = "A green beginning. Dig up Common through Epic creatures."},
-	{id = "Dunes", name = "Sunset Sands", unlockCost = 8000, minPower = 4, maxRarity = 6, color = Color3.fromRGB(255, 193, 111), description = "A bigger signal. Mythic creatures hide below the warm sand."},
-	{id = "Cosmic", name = "Moonbloom Crater", unlockCost = 125000, minPower = 6, maxRarity = 7, color = Color3.fromRGB(188, 161, 255), description = "The final frontier. A tiny chance of a Secret discovery."},
+	{id = "Meadow", name = "Clover Commons", unlockCost = 0, minPower = 1, maxRarity = 4, color = Color3.fromRGB(139, 183, 127), description = "A sheltered clover valley beneath mossy chalk cliffs. Common through Epic discoveries."},
+	{id = "Dunes", name = "Sunset Sands", unlockCost = 8000, minPower = 4, maxRarity = 6, color = Color3.fromRGB(219, 165, 111), description = "Warm sandstone canyons and a quiet oasis. Mythic creatures hide beneath the sand."},
+	{id = "Cosmic", name = "Moonbloom Cove", unlockCost = 125000, minPower = 6, maxRarity = 7, color = Color3.fromRGB(137, 209, 206), description = "Turquoise tidal pools and lilac crystal groves. A tiny chance of a Secret discovery."},
 }
 
 Config.Detectors = {

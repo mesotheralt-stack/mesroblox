@@ -131,7 +131,17 @@ local function checkClient()
 		local screen
 		for _,object in uiNodes do if object.ClassName=="ScreenGui" then screen=object;break end end
 		screen:GetPropertyChangedSignal("AbsoluteSize"):Fire()
+		assert(screen:GetAttribute("MenuOpen")==false and screen:GetAttribute("Capturing")==false,"Exploration must expose clear input state to sprint")
+		local wallet=screen:FindFirstChild("WalletHud")
+		local help
+		for _,item in screen:GetChildren() do if item.ClassName=="TextButton" and item.Text=="?" then help=item end end
+		local walletRight=wallet.Position.X.Offset+wallet.Size.X.Offset
+		local helpLeft=size.X+help.Position.X.Offset-help.Size.X.Offset
+		assert(walletRight<=helpLeft,"Wallet must leave the help touch target unobstructed")
+		local status=screen:FindFirstChild("ExpeditionStatus")
+		assert(status.TextStrokeTransparency~=0.45 and status.BackgroundTransparency<0.3,"World and detector text must have a readable status surface")
 		click(size.X<500 and "Bag" or "Collection")
+		assert(screen:GetAttribute("MenuOpen")==true,"Open pages must suspend sprint")
 		assert(textExists("Your collection"),"Collection must open")
 		local previews=0
 		for _,object in uiNodes do if object.ClassName=="ViewportFrame" and visible(object) then previews+=1 end end
@@ -142,6 +152,7 @@ local function checkClient()
 		click("Feed & grow");assert(textExists("Feed to grow"),"Creature detail must open")
 		click("Feed one");assert(requests[#requests].kind=="Feed" and requests[#requests].payload.quantity==1,"Feed uses selected creature")
 		click("×")
+		assert(screen:GetAttribute("MenuOpen")==false,"Closing a page must restore exploration input")
 		for _,page in {"Food","Gear","Sell"} do click(page);click("×") end
 		for _,object in uiNodes do
 			assert(object.Destroyed or object.ClassName~="TextButton" or object.Text~="Worlds","World travel must not retain an on-screen Worlds button")
@@ -199,19 +210,24 @@ local function checkClient()
 		return count
 	end
 	local beforeSearches=searches()
+	local gameScreen=gui:FindFirstChild("BrainrotBloom")
 	click("Dig  ·  E")
+	assert(gameScreen:GetAttribute("Scanning")==true and gameScreen:GetAttribute("Capturing")==false,"A pending scan must suspend sprint without claiming a capture")
 	assert(textExists("Scanning…"),"The button must visibly stay busy while waiting for a result")
 	click("Scanning…")
 	assert(searches()==beforeSearches+1,"Clicking again during a scan must not send another request")
 	advance(Config.SearchSeconds-0.01)
 	assert(textExists("Scanning…") and not textExists("Tap to collect"),"No capture sheet may open before the scan result")
 	advance(0.02)
+	assert(gameScreen:GetAttribute("Scanning")==false and gameScreen:GetAttribute("Capturing")==false,"An empty scan must release the movement block")
 	assert(textExists("Dig  ·  E") and not textExists("Tap to collect"),"An empty scan must reset the button without showing capture controls")
 	assert(textExists("No signal this time. Try another spot in the sand."),"An empty scan needs clear feedback")
 	click("Dig  ·  E")
 	advance(Config.SearchSeconds+0.001)
 	assert(textExists("Tap to collect"),"A successful delayed search must open the capture sheet")
+	assert(gameScreen:GetAttribute("Capturing")==true and gameScreen:GetAttribute("Scanning")==false,"A capture must suspend sprint until finished")
 	click("Tap to collect")
+	assert(gameScreen:GetAttribute("Capturing")==false,"Finishing a capture must restore exploration input")
 	assert(not visible((function() for i=#uiNodes,1,-1 do if uiNodes[i].Text=="Tap to collect" then return uiNodes[i] end end end)()),"Completed capture must close")
-	print("PASS client pages, persistent index silhouettes, six-slot gardens, portal-only world travel at three viewport sizes, and delayed searches")
+	print("PASS client pages, responsive wallet/status surfaces, sprint input states, persistent index, gardens, portal travel and delayed searches")
 end

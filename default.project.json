@@ -10,7 +10,7 @@
       "BrainrotServer": { "$path": "src/server" }
     },
     "StarterPlayer": {
-      "$properties": { "CameraMaxZoomDistance": 60, "CameraMinZoomDistance": 8 },
+      "$properties": { "CameraMaxZoomDistance": 60, "CameraMinZoomDistance": 8, "CharacterWalkSpeed": 16, "EnableMouseLockOption": false, "GameSettingsAvatar": "R6" },
       "StarterPlayerScripts": { "BrainrotClient": { "$path": "src/client" } }
     },
     "Workspace": {

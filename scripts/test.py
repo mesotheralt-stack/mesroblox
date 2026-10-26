@@ -60,6 +60,13 @@ def main() -> int:
         client_test = Path(temporary) / 'client-run.luau'
         client_test.write_text(scene_prefix + '\n' + (ROOT / 'tests/client_ui.luau').read_text() + '\n(function()\n' + (ROOT / 'src/client/Main.client.luau').read_text() + '\nend)()\ncheckClient()\n')
         subprocess.run([runtime, str(client_test)], check=True, cwd=ROOT)
+        sprint_test = Path(temporary) / 'sprint-run.luau'
+        sprint_test.write_text((ROOT / 'tests/sprint.luau').read_text()
+            + '\n;(function()\n' + (ROOT / 'src/server/Sprint.server.luau').read_text()
+            + '\nend)()\nverifySprintServer()\n;(function()\n'
+            + (ROOT / 'src/client/Sprint.client.luau').read_text()
+            + '\nend)()\nverifySprintClient()\n')
+        subprocess.run([runtime, str(sprint_test)], check=True, cwd=ROOT)
     print('Studio playtest remains required for rendering, multiplayer and live persistence.', flush=True)
     return 0
 
