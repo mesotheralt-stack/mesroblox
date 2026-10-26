@@ -132,22 +132,29 @@ def main():
     content=json.loads((ROOT/'build/scene-geometry.json').read_text())
     output=ROOT/'build/previews';output.mkdir(exist_ok=True)
     w,h=720,650
-    sheet=Image.new('RGB',(w*3,h*7+130),(239,235,222)); pen=ImageDraw.Draw(sheet)
+    columns=4 if len(content['creatures'])>24 else 3
+    rows=math.ceil(len(content['creatures'])/columns)
+    sheet=Image.new('RGB',(w*columns,h*rows+130),(239,235,222)); pen=ImageDraw.Draw(sheet)
     pen.text((38,24),'BRAINROT BLOOM / CREATURE SCULPTURES',font=font(30,True),fill=(34,53,43))
     pen.text((38,72),'Geometry previews • Actual Part positions and rotations • Studio materials and lighting may differ',font=font(20),fill=(92,108,93))
     for i,creature in enumerate(content['creatures']):
         image=render(creature['parts'],(w,h-110))
         draw=ImageDraw.Draw(image)
         image.save(output/(creature['id']+'.png'))
-        x=(i%3)*w;y=(i//3)*h+130
+        x=(i%columns)*w;y=(i//columns)*h+130
         sheet.paste(image,(x,y))
         pen.text((x+34,y+h-100),creature['name'],font=font(25,True),fill=(34,53,43))
         pen.text((x+34,y+h-62),creature['rarity']+'  /  '+str(len(creature['parts']))+' sculpted pieces',font=font(21),fill=(92,108,93))
-    sheet.resize((1080,2340),Image.Resampling.LANCZOS).save(output/'creature-contact-sheet.png')
+    sheet.resize((columns*360,round((h*rows+130)/2)),Image.Resampling.LANCZOS).save(output/'creature-contact-sheet.png')
     for world in content['worlds']:
         image=render(world['parts'],(1600,1200),camera=(1.1,1.0,-1.4),background=(222,236,230))
         ImageDraw.Draw(image).text((32,24),world['name']+' • geometry preview',font=font(28,True),fill=(30,50,42))
         image.save(output/(world['id'].lower()+'-map.png'))
+    for detail in content.get('details',[]):
+        camera=(1.2,0.85,-1.5) if detail['id']=='Dunes' else (-1.2,0.85,-1.5)
+        image=render(detail['parts'],(1600,1100),camera=camera,background=(222,236,230))
+        ImageDraw.Draw(image).text((32,24),detail['name']+' • geometry preview',font=font(28,True),fill=(30,50,42))
+        image.save(output/(detail['id'].lower()+'-terrain.png'))
     meadow=content['worlds'][0]
     village=[p for p in meadow['parts'] if abs(p['cf'][0])<128 and -190<p['cf'][2]<-30 and (max(p['size'])<90 or p['name'] in {'VillagePlaza','PlazaInlay','CentralWalkway'})]
     village.append({'shape':'Block','size':[275,.2,180],'cf':[0,.15,-110,1,0,0,0,1,0,0,0,1],'color':[.55,.66,.46],'alpha':1,'material':'Grass'})

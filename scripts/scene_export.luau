@@ -90,9 +90,49 @@ for id,pit in built.pits do
 	local zone=environment.workspace:WaitForChild("BrainrotWorld"):WaitForChild(id):FindFirstChild("DigZone",true)
 	assert(zone and math.abs(zone.CFrame.Position.X-pit.center.X)<0.1 and math.abs(zone.CFrame.Position.Z-pit.center.Z)<0.1,"Offline pit position is not aligned: "..id)
 end
+local scene=environment.workspace:WaitForChild("BrainrotWorld")
+assert(not scene:FindFirstChild("RarityPreviewGrove"),"Public showcase must be removed")
+for _,id in {"Meadow","Dunes","Cosmic"} do
+	local biome=assert(scene:WaitForChild(id):FindFirstChild("LayeredBiome"),id.." needs its own layered terrain")
+	local routes={}
+	local solids={}
+	for _,piece in biome:GetDescendants() do
+		if piece:IsA("BasePart") and piece.CanCollide then table.insert(solids,piece) end
+		if piece:IsA("BasePart") and piece:GetAttribute("WalkableTerrace")==true then
+			local core=assert(piece.Parent:FindFirstChild("TerraceCore"),"Terrace walking surface needs solid support")
+			assert(core.CFrame.Position.Y+core.Size.Y/2<=piece.CFrame.Position.Y-piece.Size.Y/2+0.01,"Terrace core must not overlap the walking cap and cause flickering")
+		end
+		if piece:IsA("BasePart") and piece:GetAttribute("TerrainStep")==true then
+			assert(piece.Anchored and piece.CanCollide and piece.Size.X>=10,"Terrain steps must support walking characters")
+			routes[piece.Parent]=routes[piece.Parent] or {}
+			table.insert(routes[piece.Parent],piece)
+		end
+	end
+	local routeCount=0
+	for route,steps in routes do
+		routeCount+=1
+		table.sort(steps,function(a,b) return a:GetAttribute("StepIndex")<b:GetAttribute("StepIndex") end)
+		local previous=route:GetAttribute("StartHeight")
+		assert(type(previous)=="number" and type(route:GetAttribute("EndHeight"))=="number","Terrain routes need explicit landing heights")
+		for _,step in steps do
+			local top=step.CFrame.Position.Y+step.Size.Y/2
+			assert(top>previous and top-previous<=0.75,"Terrain stair rises must be walkable: "..step:GetFullName())
+			-- Conservative bounds protect the torso/head corridor from scenery.
+			local body=step.CFrame.Position+V.new(0,step.Size.Y/2+3.5,0)
+			for _,solid in solids do
+				if solid~=step then
+					local q=solid.CFrame:PointToObjectSpace(body)
+					assert(math.abs(q.X)>=solid.Size.X/2+0.8 or math.abs(q.Y)>=solid.Size.Y/2+1.5 or math.abs(q.Z)>=solid.Size.Z/2+0.8,"Scenery blocks a terrain stair: "..solid:GetFullName())
+				end
+			end
+			previous=top
+		end
+		assert(math.abs(previous-route:GetAttribute("EndHeight"))<0.01,"Terrain stairs must reach the next landing")
+	end
+	assert(routeCount>=3,id.." must have three connected terrain climbs")
+end
 -- Include rotated boulders and wedge faces when checking the garden route.
 -- Conservative world bounds must leave a twelve-stud-wide walking corridor.
-local scene=environment.workspace:WaitForChild("BrainrotWorld")
 for _,boundary in {scene:WaitForChild("Meadow"):WaitForChild("NaturalBoundary"),scene:WaitForChild("GardenNeighborhood"):WaitForChild("GardenEscarpment")} do
 	for _,p in boundary:GetChildren() do
 		if p:IsA("BasePart") and p.CanCollide then
@@ -115,7 +155,7 @@ for _,spec in config.Creatures do
 	assert(count>=25 and count<=150,"Creature geometry budget invalid: "..spec.id.." / "..count)
 	model:Destroy()
 end
-print("Validated all 21 sculptures and "..mapParts.." map pieces using native Roblox datatypes")
+print("Validated all "..#config.Creatures.." sculptures and "..mapParts.." map pieces using native Roblox datatypes")
 -- Save the assembled map into the place so Studio's edit view is useful too.
 local output=process.args[1] or "BrainrotBloom.rbxlx"
 local editorCamera=environment.workspace:FindFirstChildOfClass("Camera") or r.Instance.new("Camera")
@@ -158,7 +198,7 @@ local function parts(model)
 	end
 	return result
 end
-local geometry={creatures={},worlds={}}
+local geometry={creatures={},worlds={},details={}}
 for _,spec in config.Creatures do
 	local model=factory.create(spec,1)
 	table.insert(geometry.creatures,{id=spec.id,name=spec.name,rarity=spec.rarity,parts=parts(model)})
@@ -169,7 +209,7 @@ for index,id in {"Meadow","Dunes","Cosmic"} do
 	local island=root:FindFirstChild(id)
 	local content=parts(island)
 	if index==1 then
-		-- The shops and garden gallery are directly under the world folder.
+		-- The village shops are directly under the world folder.
 		for _,child in root:GetChildren() do
 			if child.Name~="Meadow" and child.Name~="Dunes" and child.Name~="Cosmic" and child.Name~="Ocean" and child.Name~="GardenNeighborhood" then
 				for _,p in parts(child) do table.insert(content,p) end
@@ -177,8 +217,13 @@ for index,id in {"Meadow","Dunes","Cosmic"} do
 		end
 	end
 	table.insert(geometry.worlds,{id=id,name=config.Worlds[index].name,parts=content})
+	local biome=island:FindFirstChild("LayeredBiome")
+	if biome then
+		local focus=id=="Dunes" and biome:FindFirstChild("SandstoneMesas") or biome
+		table.insert(geometry.details,{id=id,name=config.Worlds[index].name.." / terrain detail",parts=parts(focus or biome)})
+	end
 end
 local neighborhood=environment.workspace:WaitForChild("BrainrotWorld"):FindFirstChild("GardenNeighborhood")
 if neighborhood then geometry.gardens={name="Personal Gardens",parts=parts(neighborhood)} end
 fs.writeFile("build/scene-geometry.json",serde.encode("json",geometry))
-print("Exported real transformed geometry for 21 creatures and three worlds")
+print("Exported real transformed geometry for "..#config.Creatures.." creatures and three worlds")

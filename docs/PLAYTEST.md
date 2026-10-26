@@ -2,7 +2,7 @@
 
 These engine checks remain to be performed in Roblox Studio. Automated CLI checks are not a substitute for this pass.
 
-1. Open the built `BrainrotBloom.rbxlx` and press Play. Confirm three islands, a green hub, trees, sand pits, shops, gallery, a held detector, and no errors in Output. If save APIs are unavailable, confirm the explicit temporary-progress warning and that the game still plays.
+1. Open the built `BrainrotBloom.rbxlx` and press Play. Confirm three islands, a green hub, trees, sand pits, shops, a held detector, and no errors in Output. If save APIs are unavailable, confirm the explicit temporary-progress warning and that the game still plays.
 2. Use the World portal near the entrance to travel to Clover Commons. Walk onto and out of the sand: E/DETECT should only start a capture on the sand. Verify ground collision, jumping, walking, respawn, and HOME.
 3. Complete a capture using Space, then another with the touch/mouse button. Let one expire and verify it awards nothing. Teleporting out must prevent capture rewards; rapid duplicated requests must not duplicate a reward.
 4. Verify BAG shows the real name, rarity, level, XP, and income. Display different creatures, feed one or all foods, and confirm level-ups increase income and model size. A second creature should keep earning while the first is displayed.
@@ -21,13 +21,13 @@ For tuning, use `src/shared/Config.luau`; keep game rewards and purchases on the
 
 - Verify the 700 × 660-stud islands and 320 × 280 sand pits have solid ground, clear digging areas, and working world teleports. Check the pond, outer trails, ruins, and crystals without getting stuck.
 - Check the physical shop/world signs are readable nearby and no floating destination panels cover the scenery.
-- Inspect all 21 creatures in the collection and as companions. Check fine details remain attached when models grow, and each preview frames the whole creature.
+- Inspect all 28 creatures in the collection and as companions. Check fine details remain attached when models grow, and each preview frames the whole creature.
 - Search/filter/sort a full collection; move through the 12-creature pages and open/feed/sell the selected creature. Confirm the scroll position stays comfortable after feeding.
-- Verify the Builder Sans text and muted colors are readable at phone sizes. Switch directly between pages using the bottom navigation, including phone landscape. Complete a capture using the new creature preview sheet.
+- Verify the Builder Sans text and muted colors are readable at phone sizes. Switch directly between pages using the top navigation, including phone landscape. Complete a capture using the new creature preview sheet.
 
 ## Sculpture and scenery pass
 
-- Before Play, confirm the complete map is visible in the downloaded place. Press Play and confirm the server refreshes it once, with one BrainrotWorld and one gallery.
+- Before Play, confirm the complete map is visible in the downloaded place. Press Play and confirm the server refreshes it once, with one BrainrotWorld and no public rarity showcase. Personal garden displays must still work.
 - Inspect distinct body shapes: the frog’s four legs, shark’s long body/slippers, capybara’s muzzle/four feet, wizard’s robe, moon’s crescent, octopus’s curled tentacles, and bee’s abdomen/wings. Check all species at both level 1 and high levels. Native build validation checks finite transforms; Studio still needs to check materials and appearance.
 - Walk the sunken pit entrance steps and all landmark trails. Check the windmill, pond bridge stairs, oasis paths, observatory entrance, shop counters and trading post without blocked teleports or trapping collisions.
 - Verify the cream/sage journal UI contrast in daylight and at night; inspect the illustrated world cards, sculpture stages, food tokens, detector stats, and complete a capture on a phone.
@@ -62,3 +62,12 @@ For tuning, use `src/shared/Config.luau`; keep game rewards and purchases on the
 - Inspect the new sage valley/chalk cliff, ochre sandstone canyon, and turquoise/lilac Moonbloom Cove palettes. The cove should use crystal groves instead of trees, have visible faceted crystal tips, shallow water, and an accessible viewing pier. Check walls and pathways in daylight and at night.
 - Hold/release Shift on keyboard; click L3 twice on a controller; toggle Sprint on a touch device. Confirm walking returns immediately after release or toggling off, opening a menu, focusing a text box, losing window focus, dying, and respawning. Sprint must not conflict with jump, detect, shop prompts, or the capture challenge.
 - Check the refined HUD on phone portrait, landscape, tablet, and desktop. Keep coin/income values, navigation, garden/index shortcuts, and the touch Sprint button clear of Roblox’s movement/jump controls.
+
+
+## Terrain depth and top navigation
+
+- Confirm the public rarity showcase, specimen plinths, and showcase sign are gone. The six personal gardens and their display pads must remain intact.
+- Explore every new elevated route: meadow orchard/brook trails, canyon mesa/mining trails, and cove mineral shelves/grotto. Walk up and down each route with a normal R6 character and without sprint or jumping. Check stair lips, platform joins, headroom, and that scenery does not block the digging sand.
+- Check the terrain from ground level as well as an elevated lookout: the worlds should have different silhouettes, materials, scenery, and landmarks. Confirm doors, portals, garden bridge, shops, and world arrival locations remain accessible.
+- In portrait, landscape, tablet, and desktop sizes, confirm Collection/Food/Sell/Gear are at the top. Index and Garden must show each icon to the left of its label, with no overlap or padding shift. Open every menu and complete a capture; top controls must not cover modal titles, close buttons, or touch targets.
+- Find the seven new species across the seven rarity tiers. Check all 28 species in the index, collection previews, following companion, and personal gardens; feed a new species, sell it, and confirm discovery history remains saved.

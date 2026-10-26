@@ -2,8 +2,6 @@
 -- and destination frames; scenery never grants rewards or changes progression.
 local Lighting = game:GetService("Lighting")
 local Workspace = game:GetService("Workspace")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local CreatureFactory = require(ReplicatedStorage:WaitForChild("BrainrotShared"):WaitForChild("CreatureFactory"))
 local GardenService = require(script.Parent:WaitForChild("GardenService"))
 
 local World = {}
@@ -476,6 +474,212 @@ local function observatory(parent,position)
 	plaque(place,position+V(-21,4.5,-29),"Moonwatch observatory","A quiet lookout above the crystal coast",P.cream,23)
 end
 
+-- Traversable landforms have flat, supported walking surfaces. Their stair
+-- routes rise in small increments instead of asking a classic R6 rig to jump.
+local function terrace(parent,name,position,size,top,tint,material,capTint,capMaterial)
+	local terrain=folder(parent,name)
+	local radius=material==Enum.Material.Sandstone and 8 or math.min(14,size.X*0.18)
+	local function roundedLayer(core,height,y,color,surface)
+		local first=part(terrain,core and "TerraceCore" or "TerraceTread",V(size.X-radius*2,height,size.Z),position+V(0,y,0),color,surface)
+		if not core then first:SetAttribute("WalkableTerrace",true) end
+		part(terrain,core and "RoundedTerrainCore" or "RoundedTerrainCap",V(size.X,height,size.Z-radius*2),position+V(0,y,0),color,surface)
+		for _,x in {-1,1} do for _,z in {-1,1} do
+			part(terrain,core and "RoundedTerrainCore" or "RoundedTerrainCap",V(height,radius*2,radius*2),position+V(x*(size.X/2-radius),y,z*(size.Z/2-radius)),color,surface,Enum.PartType.Cylinder,CFrame.Angles(0,0,math.pi/2))
+		end end
+	end
+	-- The core stops below the half-stud cap. Keeping their upper faces apart
+	-- avoids the coplanar flicker that is especially visible on mineral shelves.
+	roundedLayer(true,top+3.5,(top-4.5)/2,tint,material)
+	roundedLayer(false,0.5,top-0.25,capTint,capMaterial)
+	-- Tapered mineral/earth layers give the sides depth without obstructing
+	-- the exact walking surface or extending inward over the excavation pit.
+	for layer=1,3 do
+		local h=top*layer/4
+		for _,side in {-1,1} do
+			detail(terrain,"ExposedEarthStratum",V(0.7,0.8,size.Z*(0.29+layer*0.09)),position+V(side*(size.X/2+0.05),h,(layer-2)*size.Z*0.14),tint:Lerp(P.cream,0.06+layer*0.045),material,nil,CFrame.Angles(0,0,side*(layer-2)*0.035))
+		end
+	end
+	for j=1,4 do
+		local z=-size.Z/2+size.Z*(j-0.5)/4
+		for _,side in {-1,1} do
+			detail(terrain,"ErodedTerraceFace",V(7,math.max(4,top*0.69),size.Z/4.6),position+V(side*(size.X/2-1.5),top*0.34,z),tint:Lerp(P.darkStone,(j%3)*0.045),material,Enum.PartType.Ball,CFrame.Angles(0,0,(j%2==0 and 1 or -1)*0.08))
+		end
+	end
+	-- An asymmetric rounded lip and matching weathered mass break the front
+	-- outline while leaving the stair approach on the other side unobstructed.
+	local side=material==Enum.Material.Sandstone and -1 or 1
+	local lipRadius=math.min(18,size.X*0.18)
+	local lipX=side*size.X*0.38
+	part(terrain,"NaturalShelfLip",V(0.5,lipRadius*2,lipRadius*2),position+V(lipX,top-0.25,-size.Z/2+3),capTint,capMaterial,Enum.PartType.Cylinder,CFrame.Angles(0,0,math.pi/2))
+	part(terrain,"WeatheredShelfPromontory",V(lipRadius*2,math.max(5,top*1.12),lipRadius*2),position+V(lipX,top*0.43,-size.Z/2+4),tint:Lerp(P.darkStone,0.05),material,Enum.PartType.Ball)
+	return terrain
+end
+
+local function terraceSteps(parent,name,offset,x,startZ,endZ,startTop,endTop,count,tint,material,wood)
+	local route=folder(parent,name)
+	route:SetAttribute("StartHeight",startTop)
+	route:SetAttribute("EndHeight",endTop)
+	local rise=(endTop-startTop)/count
+	local run=(endZ-startZ)/count
+	for j=1,count do
+		local top=startTop+rise*j
+		local tread=part(route,"TerrainStep",V(16,top-startTop,run+0.025),offset+V(x,(top+startTop)/2,startZ+(j-0.5)*run),tint,material)
+		tread:SetAttribute("TerrainStep",true)
+		tread:SetAttribute("StepIndex",j)
+		if j==1 or j==count or j%5==0 then
+			for _,side in {-1,1} do
+				part(route,"TrailRailPost",V(0.5,3.6,0.5),offset+V(x+side*8.5,top+1.8,startZ+(j-0.5)*run),wood and P.darkWood or tint:Lerp(P.darkStone,0.2),wood and Enum.Material.Wood or material)
+			end
+		end
+	end
+	local length=math.sqrt((endZ-startZ)^2+(endTop-startTop)^2)
+	for _,side in {-1,1} do
+		local rail=part(route,"TrailHandrail",V(0.3,0.3,length),offset+V(x+side*8.5,(startTop+endTop)/2+3.4,(startZ+endZ)/2),wood and P.lightWood or tint:Lerp(P.cream,0.26),wood and Enum.Material.Wood or material,nil,CFrame.Angles(-math.atan((endTop-startTop)/(endZ-startZ)),0,0))
+		rail.CanTouch=false
+	end
+	return route
+end
+
+local function cascade(parent,name,position,top,bottom,width,tint)
+	local fall=folder(parent,name)
+	local rock=part(fall,"WaterfallRockLip",V(6,2,width+5),position+V(0,top-0.7,0),rgb(100,124,121),Enum.Material.Slate,Enum.PartType.Ball)
+	rock.CanCollide=false
+	local curtain=detail(fall,"FallingWater",V(0.28,top-bottom,width),position+V(-2.4,(top+bottom)/2,0),tint,Enum.Material.Glass)
+	curtain.Transparency=0.24
+	for stripe=1,3 do
+		local stream=detail(fall,"WaterfallHighlight",V(0.045,top-bottom,0.16),position+V(-2.57,(top+bottom)/2,(stripe-2)*width*0.28),rgb(201,237,227),Enum.Material.Glass)
+		stream.Transparency=0.45
+	end
+	local pool=detail(fall,"CascadePool",V(18,0.28,width+15),position+V(-8,bottom+0.15,0),tint,Enum.Material.Glass,Enum.PartType.Ball)
+	pool.Transparency=0.15
+	for j=1,3 do
+		local foam=detail(fall,"WaterfallFoam",V(3.8,0.15,1.8),position+V(-3.8-j*2,bottom+0.3,(j%2-0.5)*width*0.34),P.cream,Enum.Material.Glass,Enum.PartType.Ball)
+		foam.Transparency=0.38
+	end
+	return fall
+end
+
+local function layeredBiomes(parent,offset,index)
+	local biome=folder(parent,"LayeredBiome")
+	if index==1 then
+		local hills=folder(biome,"CloverHighlands")
+		local earth=rgb(120,106,79)
+		local grass=rgb(117,159,103)
+		terrace(hills,"LowOrchardTerrace",offset+V(255,0,154),V(122,0,252),8.3,earth,Enum.Material.Ground,grass,Enum.Material.Grass)
+		terrace(hills,"BrookTerrace",offset+V(260,0,180),V(92,0,180),20.3,earth:Lerp(P.stone,0.15),Enum.Material.Ground,grass:Lerp(P.cream,0.05),Enum.Material.Grass)
+		terrace(hills,"CloverLookoutTerrace",offset+V(267,0,214),V(66,0,108),36.3,earth:Lerp(P.stone,0.3),Enum.Material.Rock,grass:Lerp(P.cream,0.1),Enum.Material.Grass)
+		terraceSteps(hills,"OrchardApproach",offset,228,-8,28,0.3,8.3,12,P.lightWood,Enum.Material.WoodPlanks,true)
+		terraceSteps(hills,"BrookClimb",offset,246,45,90,8.3,20.3,18,P.lightWood,Enum.Material.WoodPlanks,true)
+		terraceSteps(hills,"LookoutClimb",offset,268,104,160,20.3,36.3,24,P.lightWood,Enum.Material.WoodPlanks,true)
+		for j=1,4 do
+			local x=j==1 and 263 or j==3 and 294 or 297
+			local pos=offset+V(x,j<=2 and 8.3 or 20.3,j<=2 and 44+j*11 or 100+j*12)
+			tree(hills,pos,0.95+(j%2)*0.2,1,rgb(94,145,91),j)
+			flowerCluster(hills,pos+V(-7,0,3),rgb(236,205,155))
+		end
+		tree(hills,offset+V(297,36.3,242),1.1,1,rgb(113,158,98),0.5)
+		bench(hills,offset+V(276,36.3,252))
+		plaque(hills,offset+V(283,40.5,257),"Clover highlands","Follow the timber trail to the valley lookout",P.cream,25)
+		cascade(hills,"UpperBrookCascade",offset+V(215,0,195),20.3,8.3,12,rgb(111,183,180))
+		cascade(hills,"LowerBrookCascade",offset+V(194,0,202),8.3,0.3,15,rgb(111,183,180))
+		local stream=detail(hills,"MeanderingBrook",V(10,0.2,61),offset+V(204,8.46,184),rgb(111,183,180),Enum.Material.Glass)
+		stream.Transparency=0.18
+		for j=1,8 do
+			local pos=offset+V(197+(j%2)*13,8.5,158+j*6)
+			detail(hills,"BrookBankStone",V(3.5,1.6,3.0),pos,rgb(151,164,143),Enum.Material.Slate,Enum.PartType.Ball)
+		end
+		-- A small timber crossing sits over shallow water on the lower shelf.
+		for j=0,6 do part(hills,"BrookBridgePlank",V(18,0.25,2),offset+V(204,9,171+j*1.9),P.lightWood,Enum.Material.WoodPlanks) end
+		for j=1,3 do part(hills,"BrookBridgeStep",V(18,0.22,1.5),offset+V(204,8.35+j*0.22,168+j*1.5),P.lightWood,Enum.Material.WoodPlanks) end
+		for _,x in {195,213} do lamp(hills,offset+V(x,8.3,188),rgb(255,232,179),true) end
+	elseif index==2 then
+		local mesas=folder(biome,"SandstoneMesas")
+		local stone=rgb(165,103,71)
+		local cap=rgb(221,168,114)
+		terrace(mesas,"LowerCanyonBench",offset+V(-260,0,151),V(112,0,254),10.3,stone,Enum.Material.Sandstone,cap,Enum.Material.Sandstone)
+		terrace(mesas,"ArchiveMesaBench",offset+V(-270,0,185),V(92,0,170),24.3,stone:Lerp(rgb(127,73,58),0.18),Enum.Material.Sandstone,cap:Lerp(P.cream,0.12),Enum.Material.Sandstone)
+		terrace(mesas,"SunArchSummit",offset+V(-283,0,225),V(66,0,86),39.3,stone:Lerp(rgb(127,73,58),0.3),Enum.Material.Sandstone,cap:Lerp(P.cream,0.22),Enum.Material.Sandstone)
+		terraceSteps(mesas,"CanyonApproach",offset,-228,-21,24,0.3,10.3,15,cap,Enum.Material.Sandstone,false)
+		terraceSteps(mesas,"MesaSwitchback",offset,-246,47.5,100,10.3,24.3,21,cap,Enum.Material.Sandstone,false)
+		terraceSteps(mesas,"SunSummitClimb",offset,-280,124.5,182,24.3,39.3,23,cap,Enum.Material.Sandstone,false)
+		local arch=folder(mesas,"WeatheredMesaArch")
+		for _,side in {-1,1} do
+			part(arch,"ArchStoneLeg",V(6.2,19,9),offset+V(-283+side*13,48.8,229),stone,Enum.Material.Sandstone,nil,CFrame.Angles(0,side*0.08,side*0.07))
+			detail(arch,"ArchErosionLayer",V(7.4,1.4,10),offset+V(-283+side*13,47.3,229),cap,Enum.Material.Sandstone)
+			part(arch,"ArchUpperShoulder",V(11,8.5,10),offset+V(-283+side*9,59,229),stone:Lerp(P.cream,0.08),Enum.Material.Sandstone,"Wedge",CFrame.Angles(0,side<0 and 0 or math.pi,side*0.15))
+		end
+		part(arch,"ArchKeystone",V(12,6.5,10),offset+V(-283,61.8,229),cap,Enum.Material.Sandstone,nil,CFrame.Angles(0,0,0.07))
+		plaque(mesas,offset+V(-283,43.3,258),"The red mesa","Ancient layers · a trail above the canyon",P.cream,26)
+		for _,pos in {V(-300,10.3,47),V(-286,24.3,117),V(-302,39.3,252)} do
+			part(mesas,"MesaCactusStem",V(2.2,7,2.2),offset+pos+V(0,3.5,0),rgb(111,143,98),Enum.Material.Grass,Enum.PartType.Ball)
+			for _,side in {-1,1} do part(mesas,"MesaCactusArm",V(2.2,3,1.7),offset+pos+V(side*1.6,3.6+side,0),rgb(111,143,98),Enum.Material.Grass,Enum.PartType.Ball,CFrame.Angles(0,0,side*-0.5)) end
+		end
+		local camp=folder(biome,"CanyonMiningCamp")
+		local p=offset+V(260,0.3,93)
+		part(camp,"CanvasCampFloor",V(42,0.22,41),p+V(0,0.12,0),rgb(198,147,101),Enum.Material.Ground)
+		for _,side in {-1,1} do
+			part(camp,"CanvasTentWing",V(17,0.55,25),p+V(side*7,8,0),rgb(198,151,103),Enum.Material.Fabric,nil,CFrame.Angles(0,0,side*-0.66))
+			part(camp,"TentSupport",V(0.6,12.8,0.6),p+V(0,6.4,side*11),P.darkWood,Enum.Material.Wood)
+		end
+		for j=1,10 do
+			part(camp,"MineRailSleeper",V(9,0.32,1.0),p+V(0,0.35,25+j*4),P.darkWood,Enum.Material.WoodPlanks)
+		end
+		for _,x in {-2.9,2.9} do part(camp,"MineRail",V(0.28,0.45,44),p+V(x,0.5,47),rgb(98,91,81),Enum.Material.Metal) end
+		part(camp,"OreCartBed",V(8,2.5,7),p+V(0,3.5,43),rgb(114,103,89),Enum.Material.Metal)
+		for _,x in {-4,4} do for _,z in {40.5,45.5} do part(camp,"OreCartWheel",V(0.6,2.2,2.2),p+V(x,1.9,z),P.darkWood,Enum.Material.Metal,Enum.PartType.Cylinder) end end
+		for j=1,5 do detail(camp,"ExposedCopperOre",V(2.5,2.2,2.5),p+V((j%3-1)*2,5.4,(j%2)*2+42),rgb(173,125,88),Enum.Material.Rock,Enum.PartType.Ball) end
+		crate(camp,p+V(-16,0,-7),1.1);barrel(camp,p+V(16,0,-5))
+		plaque(camp,p+V(0,5,-18),"The survey camp","Copper tracks beneath the red mesas",P.cream,24)
+	else
+		local grotto=folder(biome,"GeodeGrotto")
+		local rock=rgb(93,135,151)
+		local cap=rgb(160,194,197)
+		terrace(grotto,"TidalRockShelf",offset+V(260,0,155),V(112,0,250),6.3,rock,Enum.Material.Slate,cap,Enum.Material.Slate)
+		terrace(grotto,"QuartzWaterfallShelf",offset+V(276,0,180),V(68,0,180),18.3,rock:Lerp(rgb(115,104,159),0.22),Enum.Material.Slate,cap:Lerp(P.cream,0.1),Enum.Material.Slate)
+		terrace(grotto,"GeodeCaveShelf",offset+V(283,0,229),V(66,0,78),32.3,rock:Lerp(rgb(115,104,159),0.4),Enum.Material.Slate,cap:Lerp(P.cream,0.2),Enum.Material.Slate)
+		terraceSteps(grotto,"TidalApproach",offset,228,6,30,0.3,6.3,12,cap,Enum.Material.Slate,false)
+		terraceSteps(grotto,"QuartzClimb",offset,264,45,90,6.3,18.3,18,cap,Enum.Material.Slate,false)
+		terraceSteps(grotto,"GeodeClimb",offset,280,107.5,160,18.3,32.3,21,cap,Enum.Material.Slate,false)
+		local skyBridge=folder(grotto,"GrottoSkyBridge")
+		local bridge=part(skyBridge,"BridgeLanding",V(16,0.5,34),offset+V(280,32.05,177),P.lightWood,Enum.Material.WoodPlanks)
+		bridge:SetAttribute("WalkableLanding",true)
+		for j=1,10 do detail(skyBridge,"SkyBridgeDeckSeam",V(16,0.035,0.12),offset+V(280,32.32,160+j*3),P.darkWood,Enum.Material.Wood) end
+		for _,x in {271.5,288.5} do
+			part(skyBridge,"SkyBridgeHandrail",V(0.4,0.4,34),offset+V(x,35.7,177),P.lightWood,Enum.Material.Wood)
+			for _,z in {161,177,193} do part(skyBridge,"SkyBridgePost",V(0.6,3.4,0.6),offset+V(x,34, z),P.darkWood,Enum.Material.Wood) end
+		end
+		local cave=folder(grotto,"WalkInCrystalCave")
+		for j=1,4 do
+			for _,side in {-1,1} do
+				part(cave,"GeodeCaveButtress",V(10,25+(j%2)*3,15),offset+V(283+side*26,44.8,190+j*14),rock:Lerp(rgb(123,109,164),(j%3)*0.12),Enum.Material.Rock,Enum.PartType.Ball)
+			end
+		end
+		part(cave,"GeodeBackWall",V(52,30,11),offset+V(283,47.3,252),rock,Enum.Material.Rock,Enum.PartType.Ball)
+		for j=1,5 do
+			part(cave,"GeodeCaveRoof",V(16,13+(j%2)*3,58),offset+V(249+j*11,61+(j%3)*1.5,223),rock:Lerp(rgb(123,109,164),(j%3)*0.12),Enum.Material.Rock,Enum.PartType.Ball,CFrame.Angles(0,0,(j-3)*0.13))
+		end
+		for j=1,9 do
+			local pos=offset+V(j%2==0 and 263 or 303,32.3,185+j*6)
+			crystalCluster(cave,pos,0.75+(j%3)*0.24,j%2==0 and rgb(178,164,222) or rgb(127,216,213))
+		end
+		local mirror=detail(cave,"GeodeMirrorPool",V(25,0.18,25),offset+V(283,32.48,228),rgb(103,193,202),Enum.Material.Glass,Enum.PartType.Ball)
+		mirror.Transparency=0.15
+		local heart=detail(cave,"GeodeHeart",V(4,8,4),offset+V(283,39.3,244),rgb(179,163,227),Enum.Material.Neon,"Wedge")
+		local light=Instance.new("PointLight");light.Color=rgb(163,207,228);light.Brightness=1.2;light.Range=39;light.Parent=heart
+		plaque(grotto,offset+V(283,36.5,175),"The geode grotto","Climb into the heart of the crystal coast",P.cream,27)
+		cascade(grotto,"UpperQuartzFalls",offset+V(243,0,201),18.3,6.3,15,rgb(100,193,201))
+		cascade(grotto,"LowerQuartzFalls",offset+V(204,0,207),6.3,0.3,18,rgb(100,193,201))
+		for _,pos in {V(293,6.3,49),V(300,6.3,75),V(302,18.3,114),V(260,18.3,135),V(301,18.3,151)} do crystalCluster(grotto,offset+pos,1.3,rgb(158,210,221)) end
+		for j=1,8 do part(grotto,"MineralViewingDeck",V(21,0.25,2.5),offset+V(213,6.8,227+j*2.4),rgb(192,202,193),Enum.Material.WoodPlanks) end
+		for j=1,2 do part(grotto,"ViewingDeckStep",V(21,0.24,2),offset+V(213,6.3+j*0.24,224+j*2),rgb(192,202,193),Enum.Material.WoodPlanks) end
+		for _,x in {202.5,223.5} do
+			part(grotto,"ViewingDeckRail",V(0.4,0.4,22),offset+V(x,10.1,238),P.cream,Enum.Material.Wood)
+			for _,z in {228,248} do part(grotto,"ViewingDeckPost",V(0.6,3.4,0.6),offset+V(x,8.4,z),P.cream,Enum.Material.Wood) end
+		end
+	end
+	return biome
+end
+
 local function landscapes(parent,offset,index,rng)
 	local vegetation=folder(parent,index==3 and "CrystalGroves" or "Woodland")
 	local tints={rgb(99,148,99),rgb(137,155,102),rgb(129,210,205)}
@@ -492,7 +696,12 @@ local function landscapes(parent,offset,index,rng)
 		local x=side*rng:NextNumber(218,302)
 		local z=rng:NextNumber(-298,286)
 		if z< -105 then z=60+(j%4)*56 end
-		grove(offset+V(x,0.3,z),rng:NextNumber(0.85,1.25),j)
+		local scale=rng:NextNumber(0.85,1.25)
+		-- Raised biomes supply their own vegetation at the correct heights.
+		-- Avoid burying random ground-level trees/crystals inside the shelves.
+		local onRaisedBiome=z> -25 and ((index==2 and x< -195) or (index~=2 and x>195))
+		local inMiningCamp=index==2 and x>220 and x<300 and z>48 and z<178
+		if not onRaisedBiome and not inMiningCamp then grove(offset+V(x,0.3,z),scale,j) end
 	end
 	for j=1,10 do
 		local x=-166+(j-1)*37
@@ -588,7 +797,6 @@ local function centralHub(parent,result)
 	part(hub,"CentralWalkway",V(22,0.2,150),V(0,0.44,-76),rgb(218,211,180),Enum.Material.Cobblestone)
 	for _,side in {-1,1} do
 		part(hub,"ShopApproach",V(70,0.18,16),V(side*43,0.45,-88),rgb(218,211,180),Enum.Material.Cobblestone)
-		part(hub,"GalleryWalkway",V(12,0.16,78),V(side*28,0.43,-202),rgb(210,207,175),Enum.Material.Cobblestone)
 		for j=1,5 do detail(hub,"WalkwayInset",V(0.6,0.06,6),V(side*11,0.57,-132+j*25),rgb(177,172,138)) end
 		lamp(hub,V(side*105,0.3,-97),rgb(255,229,179),false)
 		lamp(hub,V(side*105,0.3,-159),rgb(255,229,179),false)
@@ -613,24 +821,39 @@ local function centralHub(parent,result)
 	result.destinations.Sell=CFrame.new(-64,5,-113)
 	local spawn=Instance.new("SpawnLocation"); spawn.Name="GardenSpawn"; spawn.Size=V(8,0.2,8)
 	spawn.CFrame=CFrame.new(0,0.85,-91); spawn.Anchored=true; spawn.Transparency=1; spawn.CanCollide=false; spawn.Neutral=true; spawn.Duration=0; spawn.Parent=hub
-end
-
-local function gallery(parent,config,result)
-	local grove=folder(parent,"RarityPreviewGrove")
-	part(grove,"GalleryPaving",V(226,0.2,35),V(0,0.45,-223),rgb(174,187,159),Enum.Material.Slate)
-	plaque(grove,V(0,6.3,-247),"The discovery garden","Seven rarities waiting beneath the sand",P.cream,27)
-	for i,rarity in config.Rarities do
-		local specimen
-		for _,candidate in config.Creatures do if candidate.rarity==rarity.id then specimen=candidate;break end end
-		if specimen then
-			local x=(i-4)*31
-			local frame=CFrame.new(x,1.2,-222)*CFrame.Angles(0,math.pi,0)
-			disk(grove,"DisplayPlinth",V(x,0.8,-222),5.1,0.6,P.cream,Enum.Material.Marble)
-			disk(grove,"PlinthInlay",V(x,1.12,-222),4.5,0.08,rarity.color,Enum.Material.Slate)
-			local creature=CreatureFactory.create(specimen,0.85); creature.Name=rarity.id.."Preview"; creature:SetAttribute("DecorativePreview",true); creature:PivotTo(frame); creature.Parent=grove
-			plaque(grove,V(x,2.1,-214),rarity.name,specimen.name,rarity.color,12)
-			table.insert(result.displaySlots,frame)
-		end
+	-- The old rarity showcase is now an open village green, with a clear route
+	-- from the shops through the rock arch to the personal gardens.
+	local green=folder(hub,"VillageGreen")
+	part(green,"GardenNeighborhoodPath",V(18,0.18,148),V(0,0.43,-255),rgb(212,207,175),Enum.Material.Cobblestone)
+	for _,side in {-1,1} do
+		part(green,"GreenSidePath",V(89,0.15,12),V(side*49,0.42,-225),rgb(212,207,175),Enum.Material.Cobblestone)
+		lamp(green,V(side*16,0.3,-260),rgb(255,229,179),false)
+		for j=1,4 do flowerCluster(green,V(side*(28+j*16),0.4,-198),rgb(233,205,158)) end
+	end
+	local gazebo=folder(green,"CloverGazebo")
+	local center=V(-68,0.3,-237)
+	disk(gazebo,"GazeboStoneBase",center+V(0,0.3,0),19,0.6,P.stone,Enum.Material.Cobblestone)
+	disk(gazebo,"GazeboDeck",center+V(0,0.67,0),17.6,0.2,P.lightWood,Enum.Material.WoodPlanks)
+	for j=1,6 do
+		local a=j*math.pi/3
+		part(gazebo,"GazeboColumn",V(0.7,11.6,0.7),center+V(math.sin(a)*15.6,6.4,math.cos(a)*15.6),P.darkWood,Enum.Material.Wood)
+	end
+	for _,side in {-1,1} do
+		part(gazebo,"GazeboRoofSlope",V(22,0.6,38),center+V(side*8.8,14.4,0),rgb(126,157,124),Enum.Material.WoodPlanks,nil,CFrame.Angles(0,0,side*-0.33))
+	end
+	part(gazebo,"GazeboRidge",V(0.8,0.8,40),center+V(0,17.9,0),P.darkWood,Enum.Material.Wood)
+	for j=1,2 do part(gazebo,"GazeboEntryStep",V(15,0.25,2.5),center+V(0,j*0.25,-20+j*2),P.lightWood,Enum.Material.WoodPlanks) end
+	bench(gazebo,center+V(-7,0.8,5));bench(gazebo,center+V(5,0.8,5))
+	local brook=detail(green,"VillageBrook",V(15,0.22,72),V(68,0.49,-240),rgb(112,179,174),Enum.Material.Glass)
+	brook.Transparency=0.2
+	for j=1,10 do
+		local z=-272+j*6.5
+		for _,side in {-1,1} do detail(green,"BrookEdgeStone",V(4,1.3,4.5),V(68+side*8.1,0.65,z),rgb(151,164,143),Enum.Material.Slate,Enum.PartType.Ball) end
+	end
+	for j=0,12 do part(green,"VillageBrookCrossing",V(2.6,0.25,12),V(51+j*2.7,0.88,-225),P.lightWood,Enum.Material.WoodPlanks) end
+	for _,z in {-231.3,-218.7} do
+		part(green,"BrookCrossingRail",V(37,0.3,0.3),V(68,3.6,z),P.darkWood,Enum.Material.Wood)
+		for _,x in {51,68,85} do part(green,"BrookCrossingPost",V(0.4,2.8,0.4),V(x,2.2,z),P.darkWood,Enum.Material.Wood) end
 	end
 end
 
@@ -654,7 +877,7 @@ function World.build(config)
 	-- normal server scripts lack the PluginOrOpenCloud capability to set it.
 	local ocean=detail(scene,"Ocean",V(4000,3,1600),V(1040,-20,0),rgb(67,137,157),Enum.Material.Glass)
 	ocean.Transparency=0.16
-	local result={destinations={},pits={},displaySlots={}}
+	local result={destinations={},pits={}}
 	local ids={"Meadow","Dunes","Cosmic"}
 	local grass={rgb(117,158,106),rgb(190,145,102),rgb(126,171,174)}
 	local sand={rgb(225,211,173),rgb(224,174,119),rgb(195,216,215)}
@@ -678,6 +901,7 @@ function World.build(config)
 		local name=config.Worlds[index] and config.Worlds[index].name or id
 		plaque(island,offset+V(39,4.3,-26),name,"Choose Dig while standing in the sand",P.cream,24)
 		landscapes(island,offset,index,rng)
+		layeredBiomes(island,offset,index)
 		-- Every world's arrival area has a physical travel gate, including the
 		-- starter world. The world selection menu is opened here, not from HUD.
 		local portal=folder(island,"WorldTravelPortal")
@@ -694,7 +918,7 @@ function World.build(config)
 		plaque(portal,entrance+V(0,19.5,-1),"World portal","Travel · unlock new worlds",P.cream,23)
 		prompt(veil,"Travel to worlds","World portal","WorldTravel",true)
 	end
-	centralHub(scene,result); gallery(scene,config,result)
+	centralHub(scene,result)
 	result.gardens=GardenService.build(scene,config)
 	gardenBoundary(scene:FindFirstChild("GardenNeighborhood"))
 	World.startDayNight()

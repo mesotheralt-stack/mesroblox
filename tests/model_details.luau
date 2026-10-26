@@ -1,5 +1,5 @@
--- Execute every real procedural model branch, including the uncommon species
--- that the seven-specimen world gallery does not instantiate.
+-- Execute every real procedural model branch, including species not owned by
+-- the current player. The public specimen showcase has been removed.
 vectorMeta.__div=function(a,b) return vec(a.X/b,a.Y/b,a.Z/b) end
 CFrame.lookAt=function(position,_target) return position end
 CFrame.fromMatrix=function(position) return position end
@@ -26,7 +26,8 @@ local function verifyModels(Factory, content)
 				parts+=1
 			end
 		end
-		assert(parts>=30 and parts<=125,spec.id.." detail budget outside 30–125 pieces: "..parts)
+		assert(parts>=30 and parts<=150,spec.id.." detail budget outside 30–150 pieces: "..parts)
+		assert(not model:FindFirstChild("UnknownBud"),"Every catalogue species needs an authored sculpture")
 		if spec.shape=="mushroom" then
 			local spots=0
 			for _,piece in model:GetChildren() do
@@ -50,8 +51,24 @@ local function verifyModels(Factory, content)
 			local soles=0
 			for _,piece in model:GetChildren() do if piece.Name=="PawSole" then soles+=1 end end
 			assert(soles==4,"Quadrupeds need four grounded, layered paws")
+		elseif spec.shape=="croissant" then
+			assert(model:FindFirstChild("PastryFold") and model:FindFirstChild("CurledPastryTip") and model:FindFirstChild("BakerScarf"),"Croissant needs pastry anatomy and its baker scarf")
+		elseif spec.shape=="snail" then
+			assert(model:FindFirstChild("SnailFoot") and model:FindFirstChild("ShellSpiral") and model:FindFirstChild("SnailEyeStalk"),"Snail needs a low foot, coiled shell and raised eyes")
+		elseif spec.shape=="teapot" then
+			assert(model:FindFirstChild("CurvedSpout") and model:FindFirstChild("TeapotHandle") and model:FindFirstChild("PorcelainLid"),"Teapot needs spout, open handle and lid")
+		elseif spec.shape=="turtle" then
+			local soles=0
+			for _,piece in model:GetChildren() do if piece.Name=="PawSole" then soles+=1 end end
+			assert(soles==4 and model:FindFirstChild("ShellMosaic") and model:FindFirstChild("ShellGardenBud"),"Terrapin needs four feet, a plated shell and living garden")
+		elseif spec.shape=="koi" then
+			assert(model:FindFirstChild("KoiFanTail") and model:FindFirstChild("KoiWhisker") and model:FindFirstChild("FinRay"),"Koi needs fan tail, barbels and patterned fins")
+		elseif spec.shape=="clock" then
+			assert(model:FindFirstChild("ClockMinuteHand") and model:FindFirstChild("ClockHourHand") and model:FindFirstChild("WatchBow"),"Pocketwatch needs separate hands and winding bow")
+		elseif spec.shape=="manta" then
+			assert(model:FindFirstChild("SweptRayWing") and model:FindFirstChild("CephalicFin") and model:FindFirstChild("CometRayTail") and model:FindFirstChild("RayConstellationStar"),"Manta needs broad ray wings, forward fins and celestial details")
 		end
 		checks+=4
 	end
-	print("PASS all 21 detailed creature factories ("..checks.." model assertions plus per-part safety checks)")
+	print("PASS all "..#content.Creatures.." detailed creature factories ("..checks.." model assertions plus per-part safety checks)")
 end

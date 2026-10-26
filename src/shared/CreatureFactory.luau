@@ -98,7 +98,9 @@ function CreatureFactory.create(spec, scale)
 	local function eye(name, position, size, color)
 		orb(name.."White",V(size,size*1.14,size*0.48),position,ivory)
 		-- A coloured iris stays distinct from the pupil at collection-card sizes.
-		orb(name.."Iris",V(size*0.62,size*0.73,size*0.17),position+V(0.025,-0.01,-size*0.25),color or base:Lerp(ink,0.58))
+		local iris=orb(name.."Iris",V(size*0.62,size*0.73,size*0.17),position+V(0.025,-0.01,-size*0.25),color or base:Lerp(ink,0.58))
+		iris.Material=Enum.Material.Glass
+		iris.Reflectance=0.06
 		orb(name.."Pupil",V(size*0.28,size*0.49,size*0.11),position+V(0.035,-0.01,-size*0.33),ink)
 		dot(name.."Catchlight",position+V(-size*0.08,size*0.17,-size*0.4),size*0.17,ivory)
 		-- A soft upper rim and second reflection add depth without changing
@@ -406,11 +408,17 @@ function CreatureFactory.create(spec, scale)
 					rod("WingRib",V(side*0.8,2.6,0.1),V(side*(1.4+panel*0.6),3.0+panel*0.17,0.15+panel*0.55),0.09,pale)
 				end
 				dot("DragonNostril",V(side*0.28,3.1,-2.62),0.11,dark)
+				piece("DragonFang",V(0.12,0.21,0.1),V(side*0.37,2.63,-2.64),ivory,"Wedge")
 			end
+			orb("DragonSmile",V(0.88,0.085,0.1),V(0,2.74,-2.65),ink)
 			tube("LongDragonTail",{V(0,1.58,1.8),V(0.38,1.39,2.5),V(0.9,1.16,3.1),V(1.52,1.37,3.35),V(1.86,1.63,3.1)},0.53,base)
 			for i=1,5 do piece("BackSpine",V(0.3,0.48,0.47),V(0,2.57,0.0+i*0.4),trim,"Wedge") end
 		else
 			orb("LionHead",V(2.0,1.8,1.75),V(0,2.61,-1.04),base)
+			for _,side in {-1,1} do
+				orb("LionEar",V(0.64,0.7,0.46),V(side*0.74,3.54,-0.65),base)
+				orb("LionEarVelvet",V(0.36,0.4,0.09),V(side*0.74,3.57,-0.89),blush:Lerp(base,0.35))
+			end
 			for i=1,14 do
 				local a=i*math.pi*2/14
 				orb("LayeredManeLock",V(0.61,0.91,0.61),V(math.sin(a)*1.18,2.61+math.cos(a)*1.18,-0.65),i%2==0 and trim or trim:Lerp(ink,0.13),A(0,0,-a))
@@ -501,6 +509,152 @@ function CreatureFactory.create(spec, scale)
 		end
 		rod("RoyalScepter",V(1.63,0.5,-0.1),V(1.63,3.17,-0.1),0.16,trim)
 		dot("ScepterGem",V(1.63,3.4,-0.1),0.45,base)
+	elseif shape=="croissant" then
+		-- An arched pastry with layered folds, tapered tips and a baker's scarf.
+		orb("PastryBelly",V(1.65,1.75,1.1),V(0,1.41,0.02),base:Lerp(ivory,0.17))
+		for i=0,8 do
+			local a=math.pi*(0.12+i*0.095)
+			local t=0.63+math.sin(i/8*math.pi)*0.68
+			orb("PastryFold",V(t,1.04,1.25),V(math.cos(a)*1.42,1.76+math.sin(a)*0.66,0),i%2==0 and base or base:Lerp(ivory,0.14),A(0,0,a-math.pi/2))
+			rod("ToastedFold",V(math.cos(a)*1.42-0.16,1.93+math.sin(a)*0.66,-0.53),V(math.cos(a)*1.42+0.06,2.17+math.sin(a)*0.66,-0.47),0.055,dark)
+		end
+		for _,side in {-1,1} do
+			orb("CurledPastryTip",V(0.59,0.8,0.9),V(side*1.57,1.49,-0.1),base,A(0,0,side*0.38))
+			foot(V(side*0.63,0.33,0),V(0.7,0.43,1.05),trim,false)
+		end
+		orb("PastryFace",V(1.4,1.03,0.35),V(0,2.07,-0.65),pale)
+		face(V(0,2.23,-0.83),0.33,0.42,true)
+		piece("BakerScarf",V(1.65,0.22,0.45),V(0,1.38,-0.48),trim)
+		piece("ScarfTail",V(0.34,0.7,0.14),V(0.54,1.02,-0.7),trim,nil,A(0,0,-0.19))
+		for i=1,3 do dot("FlourDust",V((i-2)*0.35,2.88+(i%2)*0.08,-0.18),0.1,ivory) end
+	elseif shape=="snail" then
+		-- A low foot, raised head and a genuinely coiled shell make this a snail.
+		orb("SnailFoot",V(2.2,0.43,3.65),V(0,0.43,0.12),base)
+		orb("SnailBody",V(1.54,0.9,2.92),V(0,0.83,0.1),pale)
+		orb("SnailNeck",V(1.25,1.38,1.02),V(0,1.2,-1.13),base)
+		orb("SnailHead",V(1.6,1.04,1.03),V(0,1.8,-1.27),base)
+		orb("SnailMuzzle",V(1.1,0.55,0.38),V(0,1.53,-1.64),pale)
+		orb("CoiledShell",V(2.4,2.35,1.5),V(0,1.98,0.6),trim)
+		local previous=nil
+		for i=0,18 do
+			local t=i/18
+			local a=t*math.pi*3.8
+			local p=V(math.cos(a)*(0.13+t*0.9),1.98+math.sin(a)*(0.13+t*0.89),-0.17)
+			if previous then rod("ShellSpiral",previous,p,0.1,trim:Lerp(ink,0.22)) end
+			previous=p
+		end
+		for _,side in {-1,1} do
+			rod("SnailEyeStalk",V(side*0.45,2.07,-1.38),V(side*0.64,2.9,-1.37),0.13,dark)
+			eye("SnailEye",V(side*0.64,2.93,-1.48),0.43,trim:Lerp(ink,0.5))
+			for i=1,3 do dot("FootFreckle",V(side*(0.84-i*0.05),0.52,-0.8+i*0.57),0.12,trim) end
+		end
+		orb("SnailSmile",V(0.48,0.1,0.09),V(0,1.43,-1.84),ink)
+		orb("SnailCheek",V(0.27,0.12,0.08),V(-0.36,1.5,-1.84),blush)
+	elseif shape=="teapot" then
+		orb("GlazedTeapot",V(2.6,2.25,2.1),V(0,1.77,0),base)
+		orb("TeapotFootRing",V(1.85,0.28,1.55),V(0,0.7,0),trim)
+		orb("PorcelainLid",V(2.05,0.35,1.79),V(0,2.94,0),pale)
+		orb("LidFinial",V(0.45,0.48,0.45),V(0,3.3,0),trim)
+		tube("CurvedSpout",{V(-1.0,1.7,0),V(-1.6,1.94,0),V(-1.88,2.46,0),V(-2.13,2.7,0)},0.44,base)
+		orb("SpoutRim",V(0.46,0.23,0.46),V(-2.13,2.73,0),trim,A(0,0,-0.4))
+		ring("TeapotHandle",V(1.39,1.99,0.14),0.79,0.18,trim,"front",12)
+		face(V(0,1.97,-1.03),0.47,0.52,true)
+		for _,side in {-1,1} do foot(V(side*0.55,0.33,-0.01),V(0.66,0.4,0.96),trim,false) end
+		for i=-1,1 do
+			piece("PorcelainPetal",V(0.2,0.25,0.055),V(i*0.33,1.17,-0.94),trim,nil,A(0,0,i*0.55))
+		end
+		for i=1,3 do
+			local steam=orb("TeaSteam",V(0.18,0.65,0.17),V(-0.36+(i-1)*0.36,3.67+(i%2)*0.23,0.04),ivory,A(0,0,i%2==0 and 0.25 or -0.25))
+			steam.Transparency=0.48
+		end
+	elseif shape=="turtle" then
+		orb("TerrapinBody",V(2.65,1.2,3.0),V(0,1.03,0.24),base)
+		orb("TerrariumShell",V(3.25,1.8,3.1),V(0,1.7,0.45),trim)
+		orb("ShellRim",V(3.4,0.3,3.2),V(0,1.13,0.45),trim:Lerp(ink,0.17))
+		for i=1,7 do
+			local a=i*math.pi*2/7
+			local x,z=math.cos(a)*0.94,math.sin(a)*0.82
+			local top=math.sqrt(1-(x/1.625)^2-(z/1.55)^2)
+			local normal=V(x/(1.625*1.625),top/0.9,z/(1.55*1.55))
+			orb("ShellMosaic",V(0.72,0.1,0.82),V(x,1.7+0.9*top+0.005,0.45+z),i%2==0 and pale or base,CFrame.lookAt(Vector3.zero,normal,V(0,0,1))*A(math.pi/2,0,0))
+		end
+		orb("ShellCrownMosaic",V(1.05,0.22,1.16),V(0,2.62,0.45),pale)
+		orb("TurtleNeck",V(1.15,0.74,0.95),V(0,1.14,-1.31),base)
+		orb("TerrapinHead",V(1.7,1.1,1.36),V(0,1.48,-1.83),base)
+		face(V(0,1.65,-2.43),0.36,0.45,false)
+		for _,side in {-1,1} do
+			for _,z in {-0.59,1.36} do foot(V(side*1.23,0.48,z),V(0.85,0.5,1.19),base,false) end
+		end
+		tube("TurtleTail",{V(0,0.91,1.59),V(0,0.7,2.08),V(0.22,0.73,2.4)},0.24,base)
+		-- A living little garden grows from the shell's crown.
+		rod("TerrariumSprig",V(0,2.62,0.45),V(0.06,3.33,0.45),0.1,dark)
+		for _,side in {-1,1} do orb("ShellGardenLeaf",V(0.71,0.17,0.35),V(side*0.3,3.18,0.45),base,A(0,side*0.2,side*0.25)) end
+		dot("ShellGardenBud",V(0.06,3.45,0.45),0.31,ivory)
+	elseif shape=="koi" then
+		orb("KoiBody",V(2.2,2.03,3.65),V(0,1.94,0.24),base)
+		orb("KoiBelly",V(1.65,1.22,2.8),V(0,1.47,-0.1),ivory)
+		orb("KoiHead",V(1.95,1.82,1.8),V(0,2.05,-1.15),base)
+		face(V(0,2.24,-1.98),0.43,0.46,false)
+		orb("KoiLips",V(0.54,0.24,0.18),V(0,1.65,-2.05),trim)
+		for _,side in {-1,1} do
+			piece("KoiFanTail",V(1.65,1.5,0.2),V(side*0.61,1.94,2.58),trim,"Wedge",A(0,0,side*0.65))
+			orb("PectoralFin",V(1.72,0.2,1.1),V(side*1.4,1.76,-0.12),trim,A(0,side*0.52,side*-0.2))
+			tube("KoiWhisker",{V(side*0.38,1.75,-1.99),V(side*0.77,1.57,-2.15),V(side*1.02,1.7,-2.11)},0.06,ivory)
+			for i=1,3 do orb("KoiSideScale",V(0.12,0.53,0.58),V(side*1.05,2.0,-0.3+i*0.53),trim:Lerp(base,i*0.11),A(0,0,side*0.12)) end
+			for i=1,3 do rod("FinRay",V(side*0.94,1.87,-0.1),V(side*(1.58+i*0.13),1.82,-0.66+i*0.29),0.045,ivory) end
+		end
+		for i=1,4 do piece("KoiDorsal",V(0.17,0.62,0.74),V(0,2.96,0.03+i*0.43),trim,"Wedge") end
+		orb("KoiForeheadMark",V(0.8,0.15,0.65),V(0,2.99,-1.17),trim)
+		ring("FloatingRipple",V(0,0.34,0.24),1.41,0.055,trim,"horizontal",14)
+	elseif shape=="clock" then
+		local brass=trim
+		piece("WatchCase",V(0.79,3.15,3.15),V(0,2.13,0),brass,Enum.PartType.Cylinder,A(0,math.pi/2,0))
+		piece("WatchDial",V(0.12,2.76,2.76),V(0,2.13,-0.45),pale,Enum.PartType.Cylinder,A(0,math.pi/2,0))
+		for i=1,12 do
+			local a=i*math.pi/6
+			piece("DialHourMark",V(0.09,i%3==0 and 0.24 or 0.15,0.06),V(math.sin(a)*1.15,2.13+math.cos(a)*1.15,-0.54),brass,nil,A(0,0,-a))
+		end
+		rod("ClockMinuteHand",V(0,2.32,-0.59),V(-0.44,2.95,-0.59),0.09,dark)
+		rod("ClockHourHand",V(0,2.32,-0.62),V(0.5,2.62,-0.62),0.13,dark)
+		dot("ClockPin",V(0,2.32,-0.7),0.21,brass)
+		face(V(0,1.88,-0.56),0.48,0.4,false)
+		piece("WindingCrown",V(0.62,0.33,0.5),V(0,3.89,0),brass)
+		ring("WatchBow",V(0,4.26,0),0.35,0.11,brass,"front",10)
+		for _,side in {-1,1} do
+			foot(V(side*0.64,0.29,0),V(0.78,0.4,1.05),brass,false)
+			orb("WatchGlove",V(0.48,0.6,0.44),V(side*1.63,1.83,0),ivory)
+		end
+		for i=1,3 do
+			local a=i*math.pi/2
+			piece("OrbitTick",V(0.16,0.24,0.14),V(math.sin(a)*2.03,2.13+math.cos(a)*1.86,0),brass,nil,A(0,0,-a))
+		end
+	elseif shape=="manta" then
+		-- Broad swept wings, cephalic fins and a flowing tail create a ray silhouette.
+		orb("NebulaRayBody",V(2.9,1.12,3.0),V(0,1.83,0),base)
+		orb("RayIvoryBelly",V(2.55,0.36,2.65),V(0,1.42,-0.07),pale)
+		for _,side in {-1,1} do
+			orb("SweptRayWing",V(4.0,0.33,2.3),V(side*2.37,1.79,0.37),base,A(0,side*0.37,side*0.14))
+			tube("CephalicFin",{V(side*0.78,1.85,-1.04),V(side*1.02,1.96,-1.66),V(side*0.75,2.15,-1.91)},0.29,base)
+			local function onWing(i)
+				local u,v=side*(-0.9+i*0.65),(i%2)*0.2
+				local y=0.165*math.sqrt(1-(u/2)^2-(v/1.15)^2)+0.055
+				local yaw,roll=side*0.37,side*0.14
+				local x=math.cos(roll)*u-math.sin(roll)*y
+				return V(side*2.37+math.cos(yaw)*x+math.sin(yaw)*v,1.79+math.sin(roll)*u+math.cos(roll)*y,0.37-math.sin(yaw)*x+math.cos(yaw)*v)
+			end
+			for i=1,3 do
+				dot("RayConstellationStar",onWing(i),0.15,ivory)
+				if i<3 then rod("RayConstellationLine",onWing(i),onWing(i+1),0.035,trim) end
+			end
+			eye("RayEye",V(side*0.48,2.08,-1.38),0.41,trim:Lerp(ink,0.5))
+		end
+		tube("CometRayTail",{V(0,1.82,1.3),V(0.23,1.81,2.17),V(0.73,2.06,3.0),V(1.38,2.55,3.56),V(1.7,2.93,3.38)},0.26,dark)
+		orb("RaySmile",V(0.48,0.1,0.13),V(0,1.68,-1.5),ink)
+		for i=1,3 do
+			piece("AstralRayCrest",V(0.19,0.66+(i%2)*0.23,0.18),V((i-2)*0.33,2.7,0.1),trim,"Wedge",A(0,0,(i-2)*0.22))
+		end
+		local crystal=piece("RayCrestGem",V(0.25,0.34,0.21),V(0,3.22,0.08),trim,"Wedge")
+		crystal.Material=Enum.Material.Glass
 	else
 		orb("UnknownBud",V(2.4,2.6,2.0),V(0,1.8,0),base)
 		face(V(0,2.2,-0.96),0.48,0.53,true)
@@ -516,6 +670,10 @@ function CreatureFactory.create(spec, scale)
 		RoyalScepter=Enum.Material.Metal,DiscoChestTile=Enum.Material.Metal,DiscoHeadBand=Enum.Material.Metal,
 		FloatingArmorScale=Enum.Material.Metal,OrbitShard=Enum.Material.Glass,
 		ExplorerSatchel=Enum.Material.Fabric,SatchelFlap=Enum.Material.Fabric,
+		SatchelBuckle=Enum.Material.Metal,BakerScarf=Enum.Material.Fabric,ScarfTail=Enum.Material.Fabric,
+		GlazedTeapot=Enum.Material.Glass,PorcelainLid=Enum.Material.Glass,PorcelainPetal=Enum.Material.Metal,
+		WatchCase=Enum.Material.Metal,WindingCrown=Enum.Material.Metal,WatchBow=Enum.Material.Metal,
+		DialHourMark=Enum.Material.Metal,ClockPin=Enum.Material.Metal,OrbitTick=Enum.Material.Metal,
 		LittleWalkingStick=Enum.Material.Wood,LittleWalkingStickJoint=Enum.Material.Wood,LittleWalkingStickTip=Enum.Material.Wood,
 	}
 	for _,object in model:GetChildren() do

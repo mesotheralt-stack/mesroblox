@@ -45,10 +45,12 @@ local function verifyWorld(World)
 		assert(built.destinations[id], "Shop/home destination missing: "..id)
 	end
 	assert(built.spawnCFrame, "Character spawn must be ready")
-	assert(#built.displaySlots == #Config.Rarities, "All rarity previews must be created")
+	assert(built.displaySlots==nil,"Removed public showcase must not expose unused display slots")
 	local checks=0
 	local function inspect(object)
 		assert(object.ClassName~="BillboardGui","Map signs must not create floating pins")
+		assert(object.Name~="RarityPreviewGrove" and object.Name~="DisplayPlinth" and object.Name~="GalleryWalkway","Public showcase scenery must be removed")
+		assert(object:GetAttribute("DecorativePreview")~=true,"Showcase specimens must be removed while personal displays remain")
 		if object.Name=="Grass" then
 			assert(object.Size.X==700 and object.Size.Z==660,"Island must have four times its original area")
 			checks+=1
@@ -65,6 +67,7 @@ local function verifyWorld(World)
 	assert(built.pits.Dunes.center.X-built.pits.Meadow.center.X==1040,"Expanded islands must remain separate")
 	local scene=workspace:FindFirstChild("BrainrotWorld")
 	local boundaryChecks=0
+	local terrainRoutes=0
 	local function covered(intervals,first,last,description)
 		table.sort(intervals,function(a,b) return a[1]<b[1] end)
 		local edge=first
@@ -79,6 +82,57 @@ local function verifyWorld(World)
 	end
 	for id,landmark in {Meadow="CloverWindmill",Dunes="SunArchSanctuary",Cosmic="MoonwatchObservatory"} do
 		local island=scene:FindFirstChild(id)
+		local biome=island:FindFirstChild("LayeredBiome")
+		local themedName=id=="Meadow" and "CloverHighlands" or id=="Dunes" and "SandstoneMesas" or "GeodeGrotto"
+		local themed=biome and biome:FindFirstChild(themedName)
+		assert(themed,id.." needs a distinct traversable landscape")
+		local levels={}
+		local landings={}
+		local routes={}
+		for _,object in themed:GetDescendants() do
+			if object.Name=="TerraceTread" then
+				assert(object.CanCollide~=false and object.Anchored,"Raised walking surfaces need solid support")
+				table.insert(levels,object)
+				table.insert(landings,object)
+			elseif object:GetAttribute("WalkableLanding")==true then table.insert(landings,object)
+			elseif object.ClassName=="Folder" and object:GetAttribute("StartHeight")~=nil then table.insert(routes,object) end
+		end
+		assert(#levels==3 and #routes==3,id.." needs three distinct walking levels and stair routes")
+		table.sort(levels,function(a,b) return a.Position.Y<b.Position.Y end)
+		assert(levels[3].Position.Y+levels[3].Size.Y/2>=32,"Every world needs a substantial raised lookout")
+		for _,route in routes do
+			local steps={}
+			for _,object in route:GetChildren() do if object:GetAttribute("TerrainStep")==true then table.insert(steps,object) end end
+			table.sort(steps,function(a,b) return a:GetAttribute("StepIndex")<b:GetAttribute("StepIndex") end)
+			assert(#steps>=12,"Landform access must be a gradual staircase")
+			local previousTop=route:GetAttribute("StartHeight")
+			local previousStep=nil
+			for _,step in steps do
+				local top=step.Position.Y+step.Size.Y/2
+				assert(step.Anchored and step.CanCollide~=false and step.Size.X>=12 and step.Size.Z>=2,"Steps must support classic R6 movement")
+				assert(top>previousTop and top-previousTop<=0.75,"Terrain step rises must be walkable rather than jumps")
+				if previousStep then assert(step.Position.Z-step.Size.Z/2<=previousStep.Position.Z+previousStep.Size.Z/2+0.01,"Stair treads must meet without holes") end
+				previousTop=top;previousStep=step
+			end
+			assert(math.abs(previousTop-route:GetAttribute("EndHeight"))<0.01,"Staircase must reach its destination level")
+			local last=steps[#steps]
+			local connected=false
+			for _,level in landings do
+				if math.abs(level.Position.Y+level.Size.Y/2-previousTop)<0.01 then
+					connected=math.abs(last.Position.Z+last.Size.Z/2-(level.Position.Z-level.Size.Z/2))<0.1 and math.abs(last.Position.X-level.Position.X)+last.Size.X/2<=level.Size.X/2
+				end
+			end
+			assert(connected,"Every stair route must physically meet its raised walking surface")
+			terrainRoutes+=1
+		end
+		local pit=built.pits[id]
+		for _,object in biome:GetDescendants() do
+			if object:IsA("BasePart") and object.CanCollide~=false then
+				local pos=object.Position
+				if object.CFrame and object.CFrame.X then pos=object.CFrame end
+				assert(math.abs(pos.X-pit.center.X)-object.Size.X/2>pit.size.X/2 or math.abs(pos.Z-pit.center.Z)-object.Size.Z/2>pit.size.Z/2,"New landforms must leave the sand pit unobstructed")
+			end
+		end
 		local boundary=island:FindFirstChild("NaturalBoundary")
 		assert(boundary,id.." needs a natural rock enclosure")
 		local offset=built.pits[id].center.X
@@ -126,12 +180,16 @@ local function verifyWorld(World)
 	end
 	assert(crystals>=40 and cosmic:FindFirstChild("MoonbloomTidalCove",true),"Cove needs substantial crystal groves and sheltered water")
 	assert(cosmic:FindFirstChild("CoveViewingPier",true),"Cove landmark needs its walkable viewing pier")
+	assert(scene:FindFirstChild("Meadow"):FindFirstChild("UpperBrookCascade",true),"Meadow highlands need a woodland brook and cascades")
+	assert(scene:FindFirstChild("Dunes"):FindFirstChild("WeatheredMesaArch",true) and scene:FindFirstChild("Dunes"):FindFirstChild("CanyonMiningCamp",true),"Canyon theme needs its own mesa arch and mining camp")
+	assert(cosmic:FindFirstChild("WalkInCrystalCave",true) and cosmic:FindFirstChild("UpperQuartzFalls",true),"Crystal coast needs a raised walk-in geode cave and waterfall")
 	local meadowGround=scene:FindFirstChild("Meadow"):FindFirstChild("NorthernLawn")
 	local canyonGround=scene:FindFirstChild("Dunes"):FindFirstChild("NorthernLawn")
 	local coveGround=cosmic:FindFirstChild("NorthernLawn")
 	assert(meadowGround.Material==Enum.Material.Grass and canyonGround.Material==Enum.Material.Sandstone and coveGround.Material==Enum.Material.Slate,"World ground materials must express meadow, canyon and mineral cove")
 	assert(meadowGround.Color.G>meadowGround.Color.R and canyonGround.Color.R>canyonGround.Color.G and coveGround.Color.B>coveGround.Color.R,"Each world needs a distinct green, warm or turquoise palette")
 	assert(scene:FindFirstChild("CloverVillage"),"Detailed village must exist")
+	assert(scene:FindFirstChild("CloverVillage"):FindFirstChild("VillageGreen") and scene:FindFirstChild("CloverVillage"):FindFirstChild("CloverGazebo",true),"Showcase replacement should be a usable village green")
 	local neighborhood=scene:FindFirstChild("GardenNeighborhood")
 	local escarpment=neighborhood and neighborhood:FindFirstChild("GardenEscarpment")
 	assert(escarpment,"Garden neighborhood must have its own continuous rock enclosure")
@@ -189,5 +247,6 @@ local function verifyWorld(World)
 	assert(#plot.displays:GetChildren()==0 and plot.model:GetAttribute("OwnerUserId")==0,"Released gardens must clear models and ownership")
 	assert(manager:claim(owners[1])==1 and #plot.displays:GetChildren()==0,"A reused plot must start empty")
 	assert(lighting.ClockTime == 9, "Lighting cycle must start")
-	print("PASS actual map startup, "..boundaryChecks.." continuous cliff edges, crystal cove, clear garden approaches, portals, six gardens and display lifecycle")
+	assert(terrainRoutes==9,"All three worlds need their own complete three-stage climbing route")
+	print("PASS actual map startup, removed showcase, "..terrainRoutes.." connected biome stair routes, "..boundaryChecks.." continuous cliff edges, portals, six gardens and display lifecycle")
 end

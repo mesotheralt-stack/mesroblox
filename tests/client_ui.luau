@@ -116,17 +116,17 @@ end
 local function click(text)
 	for i=#uiNodes,1,-1 do
 		local object=uiNodes[i]
-		if object.ClassName=="TextButton" and object.Text==text and visible(object) then task.spawn(function() object.Activated:Fire() end); return object end
+		if object.ClassName=="TextButton" and (object.Text==text or object:GetAttribute("ShortcutPage")==text) and visible(object) then task.spawn(function() object.Activated:Fire() end); return object end
 	end
 	error("Visible button not found: "..text)
 end
 local function textExists(text)
-	for _,object in uiNodes do if object.Text==text and visible(object) then return true end end
+	for _,object in uiNodes do if (object.Text==text or object:GetAttribute("ShortcutPage")==text) and visible(object) then return true end end
 	return false
 end
 local function checkClient()
 	assert(textExists("Brainrot Bloom"),"HUD must initialize")
-	for _,size in {vec(1280,720,0),vec(375,812,0),vec(844,390,0)} do
+	for _,size in {vec(1280,720,0),vec(375,812,0),vec(844,390,0),vec(568,320,0),vec(760,390,0),vec(768,1024,0)} do
 		viewportSize=size
 		local screen
 		for _,object in uiNodes do if object.ClassName=="ScreenGui" then screen=object;break end end
@@ -138,11 +138,50 @@ local function checkClient()
 		local walletRight=wallet.Position.X.Offset+wallet.Size.X.Offset
 		local helpLeft=size.X+help.Position.X.Offset-help.Size.X.Offset
 		assert(walletRight<=helpLeft,"Wallet must leave the help touch target unobstructed")
+		local function bounds(object,parentWidth,parentHeight)
+			local width=parentWidth*object.Size.X.Scale+object.Size.X.Offset
+			local height=parentHeight*object.Size.Y.Scale+object.Size.Y.Offset
+			local anchor=object.AnchorPoint or {X=0,Y=0}
+			local left=parentWidth*object.Position.X.Scale+object.Position.X.Offset-anchor.X*width
+			local top=parentHeight*object.Position.Y.Scale+object.Position.Y.Offset-anchor.Y*height
+			return {left=left,top=top,right=left+width,bottom=top+height,width=width,height=height}
+		end
+		local function separated(a,b)
+			return a.right<=b.left or b.right<=a.left or a.bottom<=b.top or b.bottom<=a.top
+		end
+		local nav=screen:FindFirstChild("NavigationDock")
+		local shortcuts=screen:FindFirstChild("JournalShortcuts")
+		local navBounds=bounds(nav,size.X,size.Y)
+		local walletBounds=bounds(wallet,size.X,size.Y)
+		local helpBounds=bounds(help,size.X,size.Y)
+		local shortcutBounds=bounds(shortcuts,size.X,size.Y)
+		assert(nav.AnchorPoint.Y==0 and nav.Position.Y.Scale==0 and navBounds.top<=118,"Navigation must be at the top of the screen")
+		assert(navBounds.left>=12 and navBounds.right<=size.X-12,"Top navigation must fit within the screen")
+		assert(separated(navBounds,walletBounds) and separated(navBounds,helpBounds) and separated(navBounds,shortcutBounds),"Header controls must not overlap")
+		assert(separated(shortcutBounds,walletBounds) and separated(shortcutBounds,helpBounds),"Journal shortcuts must leave wallet/help clear")
+		assert((navBounds.width-30)/4>=44,"Every top navigation button must retain a comfortable touch target")
+		for _,name in {"Index","Garden"} do
+			local shortcut=shortcuts:FindFirstChild(name.."Shortcut")
+			local symbol=shortcut:FindFirstChild("ShortcutIcon")
+			local word=shortcut:FindFirstChild("ShortcutLabel")
+			assert(shortcut.Text=="" and not shortcut:FindFirstChildOfClass("UIPadding"),"Shortcut children must not inherit text padding")
+			local iconBounds=bounds(symbol,98,44)
+			local labelBounds=bounds(word,98,44)
+			assert(iconBounds.right+6<=labelBounds.left,"Journal icon must sit to the left of its word with a clear gap")
+			assert((iconBounds.top+iconBounds.bottom)/2==(labelBounds.top+labelBounds.bottom)/2,"Journal icon and word must share a vertical center")
+		end
 		local status=screen:FindFirstChild("ExpeditionStatus")
 		assert(status.TextStrokeTransparency~=0.45 and status.BackgroundTransparency<0.3,"World and detector text must have a readable status surface")
-		click(size.X<500 and "Bag" or "Collection")
+		click(size.X<900 and "Bag" or "Collection")
 		assert(screen:GetAttribute("MenuOpen")==true,"Open pages must suspend sprint")
 		assert(textExists("Your collection"),"Collection must open")
+		local modal=screen:FindFirstChild("JournalPanel",true)
+		local modalBounds=bounds(modal,size.X,size.Y)
+		navBounds=bounds(nav,size.X,size.Y)
+		if size.X<760 and size.Y<450 then
+			assert(not wallet.Visible and not help.Visible and navBounds.top==12,"Short landscape pages must reclaim the header for reachable controls")
+		end
+		assert(modalBounds.top>=navBounds.bottom+8 and modalBounds.bottom<=size.Y-12,"Top navigation must not cover the page header or clip the modal")
 		local previews=0
 		for _,object in uiNodes do if object.ClassName=="ViewportFrame" and visible(object) then previews+=1 end end
 		assert(previews==12,"Pagination must limit visible models to twelve, got "..previews)
@@ -179,17 +218,18 @@ local function checkClient()
 		state.brainrots={fullCollection[1]}
 		state.garden.slots={"pet-1","","","","",""}
 		click("Index");click("All rarities")
-		assert(textExists("Brainrot index") and textExists("1 / 21 discovered"),"Index book must show unique lifetime progress")
+		assert(textExists("Brainrot index") and textExists("1 / "..#Config.Creatures.." discovered"),"Index book must show unique lifetime progress")
 		local unknown=0
 		for _,object in uiNodes do if object.ClassName=="ViewportFrame" and visible(object) and object:GetAttribute("Silhouette") then unknown+=1 end end
-		assert(unknown==20 and textExists("???"),"Uncaught species must use hidden names and silhouette previews")
-		click("Common 1/3")
+		assert(unknown==#Config.Creatures-1 and textExists("???"),"Uncaught species must use hidden names and silhouette previews")
+		local commonCount=0;for _,spec in Config.Creatures do if spec.rarity=="Common" then commonCount+=1 end end
+		click("Common 1/"..commonCount)
 		local entries=0
 		for _,object in uiNodes do if visible(object) and object:GetAttribute("IndexSpecies") then entries+=1 end end
-		assert(entries==3,"Index rarity chapters must filter to that rarity's species")
+		assert(entries==commonCount,"Index rarity chapters must filter to that rarity's species")
 		state.brainrots={}
 		click("Index book")
-		assert(textExists("1 / 21 discovered"),"Selling all owned creatures must not erase the client index")
+		assert(textExists("1 / "..#Config.Creatures.." discovered"),"Selling all owned creatures must not erase the client index")
 		state.brainrots={fullCollection[1]}
 		click("My garden")
 		assert(textExists("My garden") and textExists("Garden 01"),"Garden management must identify the assigned plot")
@@ -229,5 +269,5 @@ local function checkClient()
 	click("Tap to collect")
 	assert(gameScreen:GetAttribute("Capturing")==false,"Finishing a capture must restore exploration input")
 	assert(not visible((function() for i=#uiNodes,1,-1 do if uiNodes[i].Text=="Tap to collect" then return uiNodes[i] end end end)()),"Completed capture must close")
-	print("PASS client pages, responsive wallet/status surfaces, sprint input states, persistent index, gardens, portal travel and delayed searches")
+	print("PASS client pages, top navigation bounds, left-aligned journal icons, modal clearance, sprint input states, persistent index, gardens, portal travel and delayed searches")
 end

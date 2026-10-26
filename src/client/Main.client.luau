@@ -46,6 +46,7 @@ local capture = nil
 local capturePending = false
 local viewports = {}
 local renderPage
+local resize
 local renderedSignature = nil
 local request
 local openPage
@@ -180,20 +181,31 @@ local function landscape(parent,world,position,size)
 	block(0,0.7,1,0.4,ground)
 	block(0.25,0.77,0.5,0.17,world.id=="Cosmic" and Color3.fromRGB(207,223,213) or Color3.fromRGB(238,215,166),6)
 	if world.id=="Meadow" then
+		-- Woodland terraces and the brook give this postcard its own profile.
+		block(0.61,0.61,0.32,0.1,Color3.fromRGB(120,163,107),9)
+		block(0.69,0.52,0.22,0.11,Color3.fromRGB(143,178,119),8)
+		block(0.77,0.38,0.028,0.32,Color3.fromRGB(182,221,219),4)
+		block(0.69,0.67,0.23,0.07,Color3.fromRGB(139,194,191),20)
 		for i=1,3 do
 			local x=0.05+(i-1)*0.1
 			block(x+0.035,0.56,0.025,0.23,C.gold,2)
 			block(x,0.4,0.1,0.25,C.green,20)
 		end
 	elseif world.id=="Dunes" then
-		for _,x in ipairs({0.09,0.8}) do
-			block(x,0.4,0.04,0.4,Color3.fromRGB(172,130,86),2)
-			block(x-0.04,0.36,0.14,0.05,C.green,3,-18)
-			block(x-0.05,0.34,0.14,0.05,C.green,3,18)
+		-- Layered mesa silhouettes frame the desert arch and canyon floor.
+		for _,x in ipairs({0.03,0.79}) do
+			block(x,0.38,0.18,0.34,Color3.fromRGB(183,123,80),5)
+			block(x-0.01,0.36,0.2,0.055,Color3.fromRGB(218,165,109),3)
+			block(x,0.5,0.18,0.026,Color3.fromRGB(235,185,126),1)
+			block(x,0.62,0.18,0.025,Color3.fromRGB(150,99,70),1)
 		end
 		block(0.58,0.42,0.04,0.25,C.paper,1);block(0.7,0.42,0.04,0.25,C.paper,1);block(0.58,0.39,0.16,0.05,C.paper,1)
+		block(0.24,0.61,0.027,0.13,C.green,3);block(0.22,0.64,0.055,0.025,C.green,2)
 	else
-		-- A sheltered tidal pool and faceted lilac spires match Moonbloom Cove.
+		-- A dark geode grotto sits above the sheltered pool and lilac spires.
+		block(0.6,0.4,0.34,0.3,Color3.fromRGB(107,149,162),25)
+		block(0.67,0.48,0.2,0.22,Color3.fromRGB(60,94,111),20)
+		block(0.75,0.5,0.025,0.16,Color3.fromRGB(176,210,225),2,16)
 		block(0.61,0.66,0.34,0.2,Color3.fromRGB(89,181,190),100)
 		block(0.66,0.69,0.24,0.08,Color3.fromRGB(168,227,221),100)
 		for i=1,5 do
@@ -250,18 +262,19 @@ button(hud, "Home", function() request("Teleport", {destination = "Home"}) end,
 local helpButton = button(screen, "?", function() openPage("Help") end,
 	{AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -12, 0, 12), Size = UDim2.fromOffset(44,44), BackgroundColor3 = C.panel, TextSize = 20, ZIndex=10})
 
--- The book and garden have their own shortcuts rather than squeezing seven
--- buttons into the phone's bottom navigation. Both pages link to one another.
-local journalShortcuts=make("Frame",{AnchorPoint=Vector2.new(1,0),Position=UDim2.new(1,-62,0,12),Size=UDim2.fromOffset(204,44),BackgroundTransparency=1,ZIndex=4},screen)
+-- Journal shortcuts use separate icon and label bounds so padding cannot
+-- shift the icons over the words. Both pages also link to one another.
+local journalShortcuts=make("Frame",{Name="JournalShortcuts",AnchorPoint=Vector2.new(1,0),Position=UDim2.new(1,-62,0,12),Size=UDim2.fromOffset(204,44),BackgroundTransparency=1,ZIndex=4},screen)
 for index,page in ipairs({"Index","Garden"}) do
-	local shortcut=button(journalShortcuts,page,function() openPage(page) end,
-		{Position=UDim2.fromOffset((index-1)*106,0),Size=UDim2.fromOffset(98,44),BackgroundColor3=C.panel,
-			TextXAlignment=Enum.TextXAlignment.Left,TextSize=14})
-	make("UIPadding",{PaddingLeft=UDim.new(0,36),PaddingRight=UDim.new(0,5)},shortcut)
-	icon(shortcut,page,C.green,UDim2.fromOffset(10,13),UDim2.fromOffset(18,18))
+	local shortcut=button(journalShortcuts,"",function() openPage(page) end,
+		{Name=page.."Shortcut",Position=UDim2.fromOffset((index-1)*106,0),Size=UDim2.fromOffset(98,44),BackgroundColor3=C.panel})
+	shortcut:SetAttribute("ShortcutPage",page)
+	local symbol=icon(shortcut,page,C.green,UDim2.new(0,12,0.5,-9),UDim2.fromOffset(18,18))
+	symbol.Name="ShortcutIcon"
+	label(shortcut,page,14,C.text,{Name="ShortcutLabel",Position=UDim2.new(0,38,0,0),Size=UDim2.new(1,-46,1,0),Font=Enum.Font.BuilderSansMedium})
 end
 
-local nav = make("Frame", {Name="NavigationDock", AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -12),
+local nav = make("Frame", {Name="NavigationDock", AnchorPoint = Vector2.new(0, 0), Position = UDim2.fromOffset(328,12),
 	Size = UDim2.new(0.97, 0, 0, 62), BackgroundColor3 = C.panel, BorderSizePixel = 0, ZIndex=10}, screen)
 make("UISizeConstraint", {MaxSize = Vector2.new(720, 62)}, nav)
 corner(nav, 18)
@@ -282,10 +295,10 @@ for index, page in ipairs({"Collection", "Food", "Sell", "Gear"}) do
 	navIcons[page]=icon(navButtons[page],page,C.muted,UDim2.new(0.5,-9,0,3),UDim2.fromOffset(18,18))
 end
 local digButton = button(screen, "Dig  ·  E", function() startDig() end,
-	{AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -86), Size = UDim2.new(0, 176, 0, 48),
+	{AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -24), Size = UDim2.new(0, 176, 0, 48),
 		BackgroundColor3 = C.bg, TextColor3 = C.paper, TextSize = 17})
 local detectorLabel = label(screen, "Walk into a sand pit to search", 13, C.paper,
-	{Name="ExpeditionStatus", AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -142), Size = UDim2.new(0.9, 0, 0, 30),
+	{Name="ExpeditionStatus", AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -80), Size = UDim2.new(0.9, 0, 0, 30),
 		BackgroundColor3=C.bg, BackgroundTransparency=0.12, TextXAlignment = Enum.TextXAlignment.Center, TextTruncate=Enum.TextTruncate.AtEnd})
 make("UISizeConstraint",{MaxSize=Vector2.new(470,30)},detectorLabel)
 corner(detectorLabel,15)
@@ -293,7 +306,7 @@ make("UIPadding",{PaddingLeft=UDim.new(0,14),PaddingRight=UDim.new(0,14)},detect
 
 local shade = make("Frame", {Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.new(), BackgroundTransparency = 0.42,
 	Visible = false, BorderSizePixel = 0, Active = true, ZIndex=5}, screen)
-local panel = make("Frame", {AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.49),
+local panel = make("Frame", {Name="JournalPanel", AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.49),
 	Size = UDim2.new(0.94, 0, 0.72, 0), BackgroundColor3 = C.panel, BorderSizePixel = 0}, shade)
 make("UISizeConstraint", {MaxSize = Vector2.new(900, 720)}, panel)
 corner(panel, 20)
@@ -860,7 +873,7 @@ local function helpPage()
 		{"Feed & grow","Open Collection, choose a brainrot, and feed it from your pantry. Every creature earns coins while you play."},
 		{"Upgrade your kit","Food, Sell, and Gear take you straight to their shops. Stronger detectors uncover higher rarities; boosts last five minutes."},
 		{"Explore further","Use the glowing portal near each world’s entrance to travel or unlock new worlds. Hold Shift, click the left stick, or use Sprint on touch to move faster."},
-		{"Make it yours","Use Index (I) to track all 21 species. Garden (G) opens your six displays and teleports you home. Display choices and discoveries save with your collection."},
+		{"Make it yours","Use Index (I) to track all "..#Config.Creatures.." species. Garden (G) opens your six displays and teleports you home. Display choices and discoveries save with your collection."},
 	}) do
 		local f=card(body,112)
 		label(f,entry[1],16,C.text,{Position=UDim2.fromOffset(16,10),Size=UDim2.new(1,-32,0,24),Font=Enum.Font.BuilderSansMedium})
@@ -893,6 +906,7 @@ openPage = function(page)
 	journalShortcuts.Visible = page == nil
 	digButton.Visible = page == nil
 	detectorLabel.Visible = page == nil
+	if resize then resize(true) end
 	for key, b in pairs(navButtons) do
 		local on = key == page or (key == "Collection" and page == "Detail") or (key == "Sell" and (page == "SellDetail" or page == "SellConfirm"))
 		b.BackgroundColor3 = on and C.bg or C.panel
@@ -1092,21 +1106,45 @@ RunService.RenderStepped:Connect(function(dt)
 	end
 end)
 
-local function resize()
+resize = function(skipPageRender)
 	local size = screen.AbsoluteSize
 	if size.X<1 or size.Y<1 then return end
-	hud.Size = UDim2.new(0, math.min(304, math.max(230, size.X - 70)), 0, 96)
+	local wideHeader=size.X>=760
+	local shortScreen=size.Y<450
+	local shareShortcuts=wideHeader or (shortScreen and size.X>=520)
+	local compactPage=shortScreen and not wideHeader and activePage~=nil
+	local walletWidth=shareShortcuts and (size.X<1100 and 244 or 304) or math.min(304,math.max(230,size.X-70))
+	hud.Size = UDim2.fromOffset(walletWidth,96)
 	helpButton.Position = UDim2.new(1, -12, 0, 12)
-	journalShortcuts.Position=UDim2.new(1,size.X<600 and -12 or -62,0,size.X<600 and 118 or 12)
-	toast.Position=UDim2.new(0.5,0,0,size.X<600 and 172 or 118)
-	panel.Size = UDim2.new(0.94,0,0,math.min(660,math.max(180,size.Y-108)))
-	panelRestPosition=UDim2.new(0.5,0,0,(size.Y-76)/2)
-	panel.Position=panelRestPosition
-	for name,b in pairs(navButtons) do
-		b.Text=name=="Collection" and (size.X<500 and "Bag" or "Collection") or name
-		b.TextSize=size.X<500 and 12 or 13
+	hud.Visible=not compactPage
+	helpButton.Visible=not compactPage
+	local navTop=(wideHeader or compactPage) and 12 or 118
+	local navWidth
+	if wideHeader then
+		-- Keep one clean row on landscape phones and larger screens.
+		local left=12+walletWidth+12
+		local available=size.X-62-204-12-left
+		navWidth=math.min(480,available)
+		nav.Position=UDim2.fromOffset(left+(available-navWidth)/2,navTop)
+		journalShortcuts.Position=UDim2.new(1,-62,0,12)
+	else
+		-- Portrait phones stack navigation below the wallet, then shortcuts.
+		navWidth=math.min(720,size.X-24)
+		nav.Position=UDim2.new(0.5,-navWidth/2,0,navTop)
+		journalShortcuts.Position=shareShortcuts and UDim2.new(1,-62,0,12) or UDim2.new(1,-12,0,188)
 	end
-	if activePage=="Collection" or activePage=="Sell" or activePage=="Index" or activePage=="Garden" then renderPage() end
+	nav.Size=UDim2.fromOffset(navWidth,62)
+	local panelTop=navTop+72
+	local panelHeight=math.min(660,math.max(180,size.Y-panelTop-12))
+	panel.Size=UDim2.new(0.94,0,0,panelHeight)
+	panelRestPosition=UDim2.fromOffset(size.X/2,panelTop+panelHeight/2)
+	panel.Position=panelRestPosition
+	toast.Position=UDim2.new(0.5,0,0,wideHeader and 118 or 242)
+	for name,b in pairs(navButtons) do
+		b.Text=name=="Collection" and (size.X<900 and "Bag" or "Collection") or name
+		b.TextSize=size.X<900 and 12 or 13
+	end
+	if not skipPageRender and (activePage=="Collection" or activePage=="Sell" or activePage=="Index" or activePage=="Garden") then renderPage() end
 	capturePanel.Size = UDim2.new(0.9, 0, 0, math.min(410, size.Y - 24))
 	if size.Y < 450 then
 		capturePanel.Size = UDim2.new(0.9, 0, 0, 410)

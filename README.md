@@ -16,11 +16,11 @@ Studio is needed to actually play Roblox. This Linux cloud workspace builds the 
 
 ## What's included
 
-- **21 individually sculpted creatures** with different anatomy: sliced toast, a pasta planter, a squat frog, a segmented bee, a full shark in slippers, curled tentacles, four-legged lion/dragon/capybara, a crescent moon, and robed wizard/emperor. Each has tailored face placement, limbs, accessories, and layered construction. Three in each rarity: Common, Uncommon, Rare, Epic, Legendary, Mythic, Secret. Each has a distinct procedural silhouette and palette.
+- **28 individually sculpted creatures** with different anatomy: sliced toast, a pasta planter, a squat frog, a segmented bee, a full shark in slippers, curled tentacles, four-legged lion/dragon/capybara, a crescent moon, and robed wizard/emperor. New designs include a butter croissant, coiled snail, porcelain teapot, terrarium turtle, golden koi, pocketwatch, and astral manta. Each has tailored face placement, limbs, accessories, and layered construction. Four in each rarity: Common, Uncommon, Rare, Epic, Legendary, Mythic, Secret. Each has a distinct procedural silhouette and palette.
 - **Feeding and levels** to level 100. Food grants XP; every level increases income and the displayed companion grows as it levels. All owned creatures earn income while you are online, including creatures you are not displaying.
 - **15 foods**, from Suspicious Crumb to Secret Midnight Feast. A random six-food selection refreshes at shared five-minute boundaries. The inexpensive Crumb is always available; purchase quantities are personal to the current player session.
 - **Seven detector tiers**, progressively shorter search cooldowns and higher rarity reach. Higher power also improves the weighting of rare finds. Detectors are visible tools held by the character.
-- **Three expanded worlds**: each island is 700 × 660 studs (four times the original area), with 320 × 280 sand pits, continuous natural rock boundaries, recessed excavation basins, stone steps, rope fences, survey carts, crates, lanterns, shops, and physical world portals. Mossy chalk cliffs enclose the green valley; warm sandstone walls enclose the ochre canyon; turquoise slate and lilac crystal groves enclose the cove. The garden neighborhood has its own escarpment and an open rock-framed bridge route. The hub has a fountain plaza, gabled markets with stocked shelves, a trading scale, and a specimen gallery. Each world has its own landmarks: a windmill and bridged picnic pond, a sun-arch sanctuary and palm oasis, and a telescope observatory overlooking a sheltered crystal cove with a viewing pier:
+- **Three expanded worlds**: each island is 700 × 660 studs (four times the original area), with 320 × 280 sand pits, continuous natural rock boundaries, recessed excavation basins, stone steps, rope fences, survey carts, crates, lanterns, shops, and physical world portals. Mossy chalk cliffs enclose the green valley; warm sandstone walls enclose the ochre canyon; turquoise slate and lilac crystal groves enclose the cove. The garden neighborhood has its own escarpment and an open rock-framed bridge route. The hub has a fountain plaza, gabled markets with stocked shelves, and a trading scale. The public specimen showcase has been removed; the six personal gardens remain available for players’ own displays. Each world has its own terrain and landmarks: a terraced orchard and brook in Clover Commons, layered mesa trails and a mining camp in Sunset Sands, and raised mineral shelves and a crystal grotto in Moonbloom Cove. Walkable stairs and trails connect the different elevations while the sand pits remain clear:
 
 | World | Unlock cost | Minimum detector power to dig | Possible rarity ceiling |
 | --- | ---: | ---: | --- |
@@ -36,7 +36,7 @@ A world's rarity ceiling also requires a sufficiently strong detector. The start
 - **A sell station** with confirmation and level-based sale values. Collection capacity is 50 creatures.
 - **A 12-minute day/night cycle**, night lamps, original creature previews, and a following companion. Physical signs replace floating map pins.
 - **Keyboard, controller, and touch sprint controls** with fixed server-selected walk/sprint speeds and reset on respawn. Classic **R6** is saved in the place settings; gameplay scripts do not write protected avatar settings.
-- **A Builder Sans field-journal interface** with cream paper, sage accents, illustrated world postcards, vector navigation icons, rarity-tinted sculpture stages, food tokens, readable detector stats, larger touch targets, gentle transitions, persistent navigation, searchable/sortable collection cards, rarity filters, and 12-creature pagination. The capture sheet previews the actual creature.
+- **A Builder Sans field-journal interface** with cream paper, sage accents, illustrated world postcards, vector navigation icons, rarity-tinted sculpture stages, food tokens, readable detector stats, larger touch targets, gentle transitions, navigation across the top of the screen, Index/Garden icons to the left of their labels, searchable/sortable collection cards, rarity filters, and 12-creature pagination. The capture sheet previews the actual creature.
 - **Server-owned purchases and rewards**, profile validation, request limits, DataStore session locks, autosave, leave/shutdown saving, and explicit Studio temporary-data fallback.
 
 Income is earned online only. Boost clocks continue to expire while offline. There are no Robux purchases or external account requirements.
@@ -47,7 +47,7 @@ Each world's entrance has a glowing **World portal**, including Clover Commons. 
 
 ## Index book and personal gardens
 
-- **Index (I)** records all 21 species with rarity progress, silhouettes for undiscovered brainrots, and world/detector hints. Discoveries stay recorded after selling a creature. Existing saves seed the book from currently owned creatures; species sold before this feature existed cannot be reconstructed from the old capture total.
+- **Index (I)** records all 28 species with rarity progress, silhouettes for undiscovered brainrots, and world/detector hints. Discoveries stay recorded after selling a creature. Existing saves seed the book from currently owned creatures; species sold before this feature existed cannot be reconstructed from the old capture total.
 - **Garden (G)** opens your personal layout. Each server has **six gardens**, and each player is assigned one on arrival. The neighborhood is connected to Clover Commons by a bridge; players can walk around and visit one another.
 - Each garden has **six display pads**. New captures fill empty pads automatically until all six are occupied. Choose a slot in Garden to place, move, or clear one of your owned brainrots. Clear removes the display only; selling removes that creature from its pad. Feeding updates its displayed size.
 - Discoveries and display choices save alongside the collection. Physical plot numbers are reassigned between servers, so you always receive an available plot with your saved arrangement. Every owned brainrot still earns income; displaying it does not duplicate its income.
@@ -88,7 +88,7 @@ Cloud tasks already have an isolated checkout; use this checkout without creatin
 | --- | --- |
 | `src/shared/Config.luau` | Rarities, creatures, foods, prices, XP, income, worlds, detector tuning |
 | `src/shared/CreatureFactory.luau` | Original procedural creature models |
-| `src/server/World.luau` | Map, shops, sand pits, gallery, lighting cycle |
+| `src/server/World.luau` | Themed terrain, shops, sand pits, world portals, lighting cycle |
 | `src/server/DetectorTool.luau` | Welded detector models |
 | `src/server/GardenService.luau` | Six garden plots, ownership, display models and cleanup |
 | `src/server/Main.server.luau` | Profiles, saving, shops, income, validated capture sessions |
@@ -99,6 +99,8 @@ Cloud tasks already have an isolated checkout; use this checkout without creatin
 ## Geometry previews
 
 [Creature sculpture contact sheet](docs/creature-geometry-preview.png) · [Six gardens](docs/garden-geometry-preview.png) · [Village detail](docs/village-geometry-preview.png) · [Clover Commons](docs/meadow-geometry-preview.png) · [Sunset Sands](docs/dunes-geometry-preview.png) · [Moonbloom Cove](docs/cove-geometry-preview.png)
+
+[Meadow terrain](docs/meadow-terrain-preview.png) · [Canyon terrain](docs/canyon-terrain-preview.png) · [Crystal grotto](docs/grotto-terrain-preview.png)
 
 These previews are drawn from the generated Parts’ actual positions and rotations. They are **offline geometry renders**, not Roblox Studio screenshots: materials, transparency, fonts, lighting, and vegetation scatter may differ in the engine.
 
@@ -113,6 +115,6 @@ The scene exporter uses deterministic preview randomness for scattered vegetatio
 
 ## Verification boundary
 
-The automated suite compiles every source with the official Luau compiler, executes real economy functions, and exercises the actual server action handlers with deterministic Roblox service doubles. It checks purchases, finite quantities, capture success/failure/replays, growth, boost expiration, passive income, world progression, and save/reload behavior. The garden tests cover six concurrent owners, seventh-join refusal, saved placements/discovery history, and disconnect/save-retry cleanup. Sprint checks execute the actual server and client scripts together for fixed speeds, malformed requests, all three input methods, UI cancellation, death, and respawn. It also executes every creature factory, the actual expanded map builder with the restricted Workspace-write guard, and client UI flows at three mocked viewport sizes. UI mocks do not validate real layout or rendering. The build also executes every sculpture and the map using native Roblox datatypes and reflected Instances via Lune, validates finite transforms, confirms pit alignment and the saved R6 setting, and bakes the editor-visible scene.
+The automated suite compiles every source with the official Luau compiler, executes real economy functions, and exercises the actual server action handlers with deterministic Roblox service doubles. It checks purchases, finite quantities, capture success/failure/replays, growth, boost expiration, passive income, world progression, and save/reload behavior. The garden tests cover six concurrent owners, seventh-join refusal, saved placements/discovery history, and disconnect/save-retry cleanup. Sprint checks execute the actual server and client scripts together for fixed speeds, malformed requests, all three input methods, UI cancellation, death, and respawn. It also executes every creature factory, the actual expanded map builder with the restricted Workspace-write guard, and client UI flows at six mocked viewport sizes. UI mocks do not validate real layout or rendering. The build also executes every sculpture and the map using native Roblox datatypes and reflected Instances via Lune, validates finite transforms, confirms pit alignment and the saved R6 setting, checks the new stair rises, landing heights, and terrace surfaces, and bakes the editor-visible scene.
 
 These checks do **not** render the game or connect to Roblox DataStores. Follow [`docs/PLAYTEST.md`](docs/PLAYTEST.md) in Roblox Studio for real character controls, touch layouts, multiplayer, and live saving before publishing the game to players. The built place has not been published to Roblox.

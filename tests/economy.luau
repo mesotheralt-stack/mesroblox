@@ -18,7 +18,7 @@ for name, list in pairs({Rarities=Config.Rarities, Worlds=Config.Worlds, Detecto
 end
 
 check(#Config.Rarities == 7, "Must have exactly seven rarity tiers")
-check(#Config.Creatures == 21, "Must have 21 original brainrot species")
+check(#Config.Creatures == 28, "Must have 28 original brainrot species")
 check(#Config.Foods >= 10 and #Config.Foods <= 15, "Food catalogue must contain 10–15 foods")
 check(#Config.Worlds >= 2 and #Config.Worlds <= 3, "Must have 2–3 worlds")
 check(Config.RotationSeconds == 300, "Food rotation must last exactly five minutes")
@@ -56,7 +56,7 @@ for _, creature in ipairs(Config.Creatures) do
 	check(Config.income(creature.id, 10000) == Config.income(creature.id, Config.MaxLevel), "Income must clamp above max level")
 end
 for i, rarity in ipairs(Config.Rarities) do
-	check(#speciesByRarity[rarity.id] >= 1, "Every rarity must have obtainable species")
+	check(#speciesByRarity[rarity.id] == 4, "Every rarity must have four obtainable species")
 	if i > 1 then
 		for level = 1, Config.MaxLevel do
 			local lower = speciesByRarity[Config.Rarities[i-1].id][1]
