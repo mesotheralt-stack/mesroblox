@@ -87,11 +87,18 @@ function game:GetService(name) return ({Players=Players,ReplicatedStorage=Replic
 function game:BindToClose(callback) self.OnClose=callback end
 local script={Parent=node("Folder")}
 for _, name in {"World","DetectorTool"} do local item=node("ModuleScript",name);item.Parent=script.Parent end
+local forcedRandomNumbers = {} -- Unit draws queued by tests; production never sees this hook.
+local randomNumberDraws = 0
 local Random={new=function(seed)
 	local value=seed or 12345
 	local random={}
 	local function nextUnit() value=(value*48271)%2147483647;return value/2147483647 end
-	function random:NextNumber(a,b) a,b=a or 0,b or 1;return a+(b-a)*nextUnit() end
+	function random:NextNumber(a,b)
+		randomNumberDraws+=1
+		a,b=a or 0,b or 1
+		local unit=#forcedRandomNumbers>0 and table.remove(forcedRandomNumbers,1) or nextUnit()
+		return a+(b-a)*unit
+	end
 	function random:NextInteger(a,b) return math.min(b,a+math.floor((b-a+1)*nextUnit())) end
 	return random
 end}

@@ -32,3 +32,9 @@ For tuning, use `src/shared/Config.luau`; keep game rewards and purchases on the
 - Walk the sunken pit entrance steps and all landmark trails. Check the windmill, pond bridge stairs, oasis paths, observatory entrance, shop counters and trading post without blocked teleports or trapping collisions.
 - Verify the cream/sage journal UI contrast in daylight and at night; inspect the illustrated world cards, sculpture stages, food tokens, detector stats, and complete a capture on a phone.
 - Confirm the full creature remains in frame in portrait and landscape viewports, including broad wings and tall hats. The camera now responds to the viewport aspect ratio.
+
+## Delayed searches and empty finds
+
+- Click Dig in the pit. Confirm “Scanning…” stays visible for approximately one second. Some searches should report no signal, while successful searches open the capture challenge. The chance is 50% per scan, not alternating guaranteed results.
+- Confirm an empty scan adds no creature/discovery, opens no capture sheet, and still consumes the detector's recharge. Successful scans must give the full ten-second capture period after the search delay.
+- Try repeated clicks during a scan, switch detectors, leave the sand, teleport, reset the character, and leave/rejoin. Pending searches must not produce late captures or extra rewards after cancellation.

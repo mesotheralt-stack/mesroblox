@@ -3,7 +3,15 @@ local function check(condition,message) assertions+=1;assert(condition,message) 
 local Action=ReplicatedStorage:WaitForChild("BrainrotRemotes"):WaitForChild("Action")
 local function call(player,action,payload,delay)
 	advance(delay or 0.2)
-	return Action.OnServerInvoke(player,action,payload)
+	local result,finished
+	task.spawn(function() result=Action.OnServerInvoke(player,action,payload);finished=true end)
+	if action=="StartDig" then advance(Config.SearchSeconds+0.001) end
+	assert(finished,"Remote action did not finish in its expected time: "..action)
+	return result
+end
+local function search(player,unit)
+	table.insert(forcedRandomNumbers,unit or 0)
+	return call(player,"StartDig")
 end
 local function state(player) local result=call(player,"GetState");check(result.ok,"GetState must work");return result.state end
 local function remaining(data,id) for _,item in data.stock do if item.id==id then return item.remaining end end return nil end
@@ -35,7 +43,7 @@ local excessive=call(starter,"BuyFood",{id="crumb",quantity=100})
 check(not excessive.ok and excessive.state.coins==before,"Stock failure must not charge money")
 check(not call(starter,"StartDig").ok,"Digging outside the sand pit must fail")
 check(call(starter,"Teleport",{destination="Meadow"}).ok,"Starter world teleport must work")
-local capture=call(starter,"StartDig")
+local capture=search(starter,0)
 check(capture.ok and capture.dig and capture.dig.required>0,"A valid dig must start a timed capture")
 check(not call(starter,"TapDig",{sessionId="spoof"}).ok,"Spoofed capture IDs must fail")
 local progress
@@ -48,12 +56,12 @@ advance(2)
 local after=state(starter)
 check(after.coins>first.coins and after.income>0,"Owned brainrots must produce passive coins")
 advance(5)
-local timeout=call(starter,"StartDig")
+local timeout=search(starter,0)
 check(timeout.ok,"Detector must recharge for another search")
 advance(Config.DigDuration+0.5)
 check(not call(starter,"TapDig",{sessionId=timeout.dig.id}).ok,"Expired captures must not award creatures")
 check(#state(starter).brainrots==1,"A failed capture must leave the collection unchanged")
-local restarted=call(starter,"StartDig")
+local restarted=search(starter,0)
 check(restarted.ok,"A timed-out capture can be replaced")
 check(call(starter,"Teleport",{destination="Home"}).ok,"Home teleport must work")
 check(not call(starter,"TapDig",{sessionId=restarted.dig.id}).ok,"Teleporting must cancel the capture")
@@ -149,4 +157,91 @@ advance(61)
 Players.PlayerRemoving:Fire(temporary)
 check(records.Player_400==nil and writes.Player_400==nil,"Failed loads must never save temporary default data")
 check(#warnings==2,"Only expected Studio persistence warnings should be emitted")
+-- Searches must really wait, miss without rewards, and revalidate after yielding.
+records.Player_700={data={coins=1000000,brainrots={},ownedDetectors={"twig"},unlockedWorlds={"Meadow"}}}
+local scanner=makePlayer(700);Players.PlayerAdded:Fire(scanner)
+local function startPending(player)
+	local box={}
+	task.spawn(function() box.result=Action.OnServerInvoke(player,"StartDig",{});box.done=true end)
+	return box
+end
+local function prepare(player)
+	call(player,"Teleport",{destination="Meadow"})
+	advance(Config.SearchSeconds+Config.Detectors[1].speed+0.1)
+end
+prepare(scanner)
+local scanStartCoins=state(scanner).coins
+local scanStart=clock
+local drawsBeforeScan=randomNumberDraws
+-- Exactly 0.5 is outside the successful half of the random interval.
+table.insert(forcedRandomNumbers,0.5)
+local empty=startPending(scanner)
+check(not empty.done,"A search must not reveal its result immediately")
+advance(Config.SearchSeconds-0.01)
+check(not empty.done,"The search must remain pending for the full scan duration")
+check(randomNumberDraws==drawsBeforeScan,"Chance must be determined after the scan delay, not before it")
+check(not Action.OnServerInvoke(scanner,"StartDig",{}).ok,"Parallel searches must be rejected")
+check(not Action.OnServerInvoke(scanner,"EquipDetector",{id="twig"}).ok,"Detector equipping must be rejected during a pending search")
+check(not Action.OnServerInvoke(scanner,"BuyDetector",{id="clover"}).ok,"Detector purchases must be rejected during a pending search")
+local pendingState=Action.OnServerInvoke(scanner,"GetState",{}).state
+check(#pendingState.brainrots==0 and pendingState.discoveryCount==0,"Pending searches must not grant creatures or discovery progress")
+check(pendingState.coins==scanStartCoins and #pendingState.ownedDetectors==1,"Rejected detector requests must not charge or equip new gear")
+advance(0.011)
+check(empty.done and empty.result.ok and empty.result.found==false and empty.result.dig==nil,"An empty search must resolve successfully without a capture session")
+check(clock-scanStart>=Config.SearchSeconds,"A result must arrive only after the scan delay")
+check(#empty.result.state.brainrots==0 and empty.result.state.discoveryCount==0,"Empty searches must not award collection progress")
+check(not Action.OnServerInvoke(scanner,"TapDig",{sessionId="empty-search"}).ok,"An empty search cannot be tapped into a reward")
+check(not Action.OnServerInvoke(scanner,"StartDig",{}).ok,"An empty search must still consume detector cooldown")
+-- A unit draw just below 0.5 succeeds. Force the next rarity draw to Common
+-- so completing near the deadline tests the whole ten-second capture window.
+prepare(scanner)
+table.insert(forcedRandomNumbers,0.499999)
+table.insert(forcedRandomNumbers,0)
+local found=startPending(scanner)
+advance(Config.SearchSeconds+0.001)
+check(found.done and found.result.ok and found.result.found==true and found.result.dig,"A draw below the 50% boundary must start a capture")
+check(found.result.dig.duration==Config.DigDuration,"The scan must preserve the full capture duration")
+advance(Config.DigDuration-0.5)
+local caught
+for _=1,found.result.dig.required do
+	advance(0.06)
+	caught=Action.OnServerInvoke(scanner,"TapDig",{sessionId=found.result.dig.id})
+end
+check(caught.ok and caught.complete,"Capture deadline must begin after search resolution, not at scan start")
+check(#caught.state.brainrots==1 and caught.state.discoveryCount==1,"A delayed found result still grants exactly one completed capture")
+prepare(scanner)
+local countBeforeMiss=#state(scanner).brainrots
+table.insert(forcedRandomNumbers,0.999999)
+local miss=startPending(scanner);advance(Config.SearchSeconds+0.001)
+check(miss.result.ok and miss.result.found==false and #miss.result.state.brainrots==countBeforeMiss,"A high random draw must miss without changing an existing collection")
+-- Leaving the pit before the result must cancel rather than rolling a find.
+local drawsBeforeCanceledScans=randomNumberDraws
+prepare(scanner)
+local moved=startPending(scanner);advance(0.4)
+scanner.Character.Root.Position=vec(0,5,-100)
+advance(Config.SearchSeconds)
+check(moved.done and not moved.result.ok and moved.result.dig==nil,"Leaving the pit during a scan must cancel the pending search")
+-- Even teleporting back into the same pit invalidates the original scan token.
+prepare(scanner)
+local warped=startPending(scanner);advance(0.4)
+check(Action.OnServerInvoke(scanner,"Teleport",{destination="Meadow"}).ok,"Teleport during a scan must remain usable")
+advance(Config.SearchSeconds)
+check(warped.done and not warped.result.ok and warped.result.dig==nil,"Teleport must cancel a scan even if its final pit is unchanged")
+-- A new character positioned in the same pit must not inherit an old scan.
+prepare(scanner)
+local respawned=startPending(scanner);advance(0.4)
+scanner.Character=makePlayer(701).Character
+scanner.CharacterAdded:Fire(scanner.Character)
+scanner.Character:PivotTo(map.destinations.Meadow)
+advance(Config.SearchSeconds)
+check(respawned.done and not respawned.result.ok and respawned.result.dig==nil,"Respawning must invalidate an in-flight search")
+-- Unloading a player while InvokeServer waits must not mutate its saved profile.
+prepare(scanner)
+local departed=startPending(scanner);advance(0.4)
+Players.PlayerRemoving:Fire(scanner);scanner.Parent=nil
+advance(Config.SearchSeconds)
+check(departed.done and not departed.result.ok and departed.result.dig==nil,"A departed player cannot finish a pending search")
+check(#records.Player_700.data.brainrots==1 and records.Player_700.data.discoveryCount==1,"Pending scans must never award after the final save")
+check(#forcedRandomNumbers==0,"Scripted search random draws must all be consumed")
+check(randomNumberDraws==drawsBeforeCanceledScans,"Canceled scans must not roll a new chance or species after invalidation")
 print("PASS authoritative server actions with Roblox service mocks ("..assertions.." assertions)")

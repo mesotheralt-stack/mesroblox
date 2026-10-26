@@ -658,7 +658,7 @@ local function helpPage()
 		if result and result.ok then openPage(nil) end
 	end,{Size=UDim2.new(1,0,0,48),BackgroundColor3=C.lime,TextColor3=C.bg})
 	for _,entry in ipairs({
-		{"Find & collect","Stand on the sand and choose Dig (E). When a signal appears, tap or press Space before the timer ends."},
+		{"Find & collect","Stand on the sand and choose Dig (E). A scan takes one second, with a 50% chance to find a signal. Tap or press Space to capture it."},
 		{"Feed & grow","Open Collection, choose a brainrot, and feed it from your pantry. Every creature earns coins while you play."},
 		{"Upgrade your kit","Food, Sell, and Gear take you straight to their shops. Stronger detectors uncover higher rarities; boosts last five minutes."},
 		{"Explore further","Worlds lets you unlock and travel to larger hunting grounds. Your coins, creatures, and upgrades are saved when saving is available."},
@@ -777,6 +777,7 @@ startDig = function()
 	digButton.Text = "Scanning…"
 	digButton.BackgroundColor3 = C.honey
 	digButton.TextColor3=C.bg
+	-- The server waits for the scan and rolls the find chance; this UI stays busy until it resolves.
 	local result = request("StartDig")
 	busy = false
 	digButton.Text = UserInputService.TouchEnabled and "Dig" or "Dig  ·  E"

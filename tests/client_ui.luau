@@ -2,6 +2,7 @@
 -- not simulate rendering, Roblox input routing, or layout engine behavior.
 local viewportSize = vec(1280,720,0)
 local requests = {}
+local searchOutcomes = {false,true}
 local uiNodes = {}
 local events = {Activated=true,MouseEnter=true,MouseLeave=true,FocusLost=true,InputBegan=true,RenderStepped=true,PromptTriggered=true,OnClientEvent=true}
 local dimensionMeta = {}
@@ -75,7 +76,12 @@ local action=node("RemoteFunction","Action");action.Parent=remoteFolder
 function action:InvokeServer(kind,payload)
 	table.insert(requests,{kind=kind,payload=payload})
 	local result={ok=true,state=state}
-	if kind=="StartDig" then result.dig={id="capture-test",required=6,duration=10,specId="sprout",name="Sproutini Spaghetti",rarity="Common"} end
+	if kind=="StartDig" then
+		task.wait(Config.SearchSeconds)
+		result.found=table.remove(searchOutcomes,1)
+		if result.found then result.dig={id="capture-test",required=6,duration=10,specId="sprout",name="Sproutini Spaghetti",rarity="Common"}
+		else result.message="No signal this time. Try another spot in the sand." end
+	end
 	if kind=="TapDig" then result.taps=6;result.complete=true end
 	return result
 end
@@ -103,7 +109,7 @@ end
 local function click(text)
 	for i=#uiNodes,1,-1 do
 		local object=uiNodes[i]
-		if object.ClassName=="TextButton" and object.Text==text and visible(object) then object.Activated:Fire(); return object end
+		if object.ClassName=="TextButton" and object.Text==text and visible(object) then task.spawn(function() object.Activated:Fire() end); return object end
 	end
 	error("Visible button not found: "..text)
 end
@@ -133,9 +139,25 @@ local function checkClient()
 		click("Gear");click("Boosts");assert(textExists("2x Growth / $500"),"Gear boost section must work");click("×")
 		rendered.RenderStepped:Fire(0.3)
 	end
+	local function searches()
+		local count=0
+		for _,request in requests do if request.kind=="StartDig" then count+=1 end end
+		return count
+	end
+	local beforeSearches=searches()
 	click("Dig  ·  E")
-	assert(textExists("Tap to collect"),"Capture sheet must open")
+	assert(textExists("Scanning…"),"The button must visibly stay busy while waiting for a result")
+	click("Scanning…")
+	assert(searches()==beforeSearches+1,"Clicking again during a scan must not send another request")
+	advance(Config.SearchSeconds-0.01)
+	assert(textExists("Scanning…") and not textExists("Tap to collect"),"No capture sheet may open before the scan result")
+	advance(0.02)
+	assert(textExists("Dig  ·  E") and not textExists("Tap to collect"),"An empty scan must reset the button without showing capture controls")
+	assert(textExists("No signal this time. Try another spot in the sand."),"An empty scan needs clear feedback")
+	click("Dig  ·  E")
+	advance(Config.SearchSeconds+0.001)
+	assert(textExists("Tap to collect"),"A successful delayed search must open the capture sheet")
 	click("Tap to collect")
 	assert(not visible((function() for i=#uiNodes,1,-1 do if uiNodes[i].Text=="Tap to collect" then return uiNodes[i] end end end)()),"Completed capture must close")
-	print("PASS real client startup, pages, collection filtering/pagination and capture at three viewport sizes")
+	print("PASS real client pages at three viewport sizes, collection filtering/pagination, and delayed found/empty searches")
 end

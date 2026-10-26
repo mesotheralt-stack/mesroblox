@@ -6,6 +6,8 @@ Config.MaxBrainrots = 50
 Config.MaxLevel = 100
 Config.RotationSeconds = 300
 Config.DigDuration = 10
+Config.SearchSeconds = 1
+Config.FindChance = 0.5
 
 Config.Rarities = {
 	{id = "Common", name = "Common", color = Color3.fromRGB(177, 191, 180), weight = 5800, multiplier = 1, taps = 6},

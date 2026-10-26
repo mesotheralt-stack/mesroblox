@@ -6,7 +6,7 @@ A complete source project for a Roblox collection and growth game. All visuals a
 
 1. Download [`BrainrotBloom.rbxlx`](BrainrotBloom.rbxlx) from this repository or workspace and open it in **Roblox Studio**.
 2. The complete map is already visible in Studio’s edit view. Press **Play** to start the UI, day/night cycle, player data, and gameplay. The server refreshes the scenery on startup.
-3. Open **Worlds**, choose **Clover Commons → Travel to sand pit**, and press **E** or **Dig** while standing in the sand.
+3. Open **Worlds**, choose **Clover Commons → Travel to sand pit**, and press **E** or **Dig** while standing in the sand. Each scan takes one second and has a 50% chance to find a signal; empty searches are normal.
 4. Tap the capture button or press **Space** enough times within 10 seconds. Your new brainrot immediately starts earning coins.
 5. Open **Collection** (or **Bag** on mobile), select a creature, and feed it. You start with 150 coins, a Tin Twig detector, and three Suspicious Crumbs.
 
@@ -30,7 +30,8 @@ Studio is needed to actually play Roblox. This Linux cloud workspace builds the 
 
 A world's rarity ceiling also requires a sufficiently strong detector. The starter Tin Twig reaches Uncommon; upgrade to reach higher tiers. Unlocking a world grants access to its detectors in the Gear Shop.
 
-- **A ten-second capture minigame** requiring 6–30 taps depending on rarity. Failed captures award nothing. The server verifies the pit, world, time limit, tap rate, and unique session before awarding a creature.
+- **A server-timed one-second search** with a 50% find chance. An empty search gives feedback without starting a capture or awarding a creature. Detector recharge applies to both outcomes. Moving out of the pit, teleporting, respawning, or leaving cancels a pending search.
+- **A ten-second capture minigame** after a successful search, requiring 6–30 taps depending on rarity. Failed captures award nothing. The server verifies the pit, world, time limit, tap rate, and unique session before awarding a creature.
 - **Gear Shop sections** for detectors and boosts. Growth Juice doubles food XP for a chosen creature; Golden Hour doubles its income. Each lasts five minutes. The two kinds can coexist; buying an already active kind is refused without charging.
 - **A sell station** with confirmation and level-based sale values. Collection capacity is 50 creatures.
 - **A 12-minute day/night cycle**, night lamps, original creature previews, and a following companion. Physical signs replace floating map pins.

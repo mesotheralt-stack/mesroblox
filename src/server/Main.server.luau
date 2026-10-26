@@ -319,6 +319,7 @@ local function teleport(player, profile, destination)
 	if world and not owned(profile.data.unlockedWorlds, world.id) then return false, "Unlock this world in the Worlds menu first." end
 	local root = rootFor(player)
 	if not root then return false, "Wait for your character to spawn." end
+	profile.scan = nil
 	profile.dig = nil
 	player.Character:PivotTo(frame)
 	root.AssemblyLinearVelocity = Vector3.zero
@@ -373,6 +374,7 @@ function handlers.Teleport(player, profile, payload)
 end
 
 function handlers.EquipDetector(_player, profile, payload)
+	if profile.scan then return fail("Wait for your current search to finish.") end
 	if not lookup(Config.Detectors, payload.id) or not owned(profile.data.ownedDetectors, payload.id) then return fail("You do not own that detector.") end
 	if profile.dig and profile.dig.deadline > os.clock() then return fail("Finish your current capture first.") end
 	profile.data.detector = payload.id
@@ -381,6 +383,7 @@ function handlers.EquipDetector(_player, profile, payload)
 end
 
 function handlers.BuyDetector(_player, profile, payload)
+	if profile.scan then return fail("Wait for your current search to finish.") end
 	local spec = lookup(Config.Detectors, payload.id)
 	if not spec then return fail("Unknown detector.") end
 	if profile.dig and profile.dig.deadline > os.clock() then return fail("Finish your current capture first.") end
@@ -483,17 +486,44 @@ function handlers.StartDig(player, profile, _payload)
 	local detector = lookup(Config.Detectors, profile.data.detector)
 	if detector.power < world.minPower then return fail("This pit needs a stronger detector. Visit the gear shop.") end
 	if #profile.data.brainrots >= Config.MaxBrainrots then return fail("Your collection is full. Sell a brainrot first.") end
+	if profile.scan then return fail("Your detector is already searching. Give it a moment.") end
 	if profile.dig and os.clock() < profile.dig.deadline then return fail("A capture is already in progress.") end
 	if os.clock() < profile.nextDig then return fail(string.format("Detector recharging… %.1fs", profile.nextDig - os.clock())) end
+
+	-- Reserve the search before yielding. Neither repeated clicks nor canceling
+	-- a scan can skip the wait, run parallel rolls, or refund the cooldown.
+	local scan = {character = player.Character, root = root, world = world.id, detector = detector.id}
+	profile.scan = scan
+	profile.dig = nil
+	profile.world = world.id
+	profile.nextDig = os.clock() + Config.SearchSeconds + detector.speed
+	task.wait(Config.SearchSeconds)
+
+	-- Teleporting, respawning and leaving invalidate the original scan. Never
+	-- clear another search's token when this delayed request resumes.
+	if profile.scan ~= scan then return fail("Search canceled. Try again from the sand pit.") end
+	profile.scan = nil
+	if closing or profiles[player] ~= profile or player.Parent ~= Players then return fail("Search canceled.") end
+	local currentRoot = rootFor(player)
+	local currentWorld = currentRoot and pitForPosition(currentRoot.Position)
+	if player.Character ~= scan.character or currentRoot ~= scan.root or not currentWorld or currentWorld.id ~= scan.world then
+		return fail("Stay in the sand pit while your detector searches.")
+	end
+	if profile.data.detector ~= scan.detector or not owned(profile.data.unlockedWorlds, scan.world) then
+		return fail("Your equipment or world changed. Start a new search.")
+	end
+	if #profile.data.brainrots >= Config.MaxBrainrots then return fail("Your collection is full. Sell a brainrot first.") end
+	if rng:NextNumber(0, 1) >= Config.FindChance then
+		return {ok = true, found = false, message = "No signal this time. Try another spot in the sand."}
+	end
+
 	local spec, rarity = rollCreature(world, detector)
 	local duration = Config.DigDuration
-	profile.world = world.id
-	profile.nextDig = os.clock() + detector.speed
 	profile.dig = {
 		id = HttpService:GenerateGUID(false), specId = spec.id, required = rarity.taps,
 		count = 0, deadline = os.clock() + duration, lastTap = 0, world = world.id,
 	}
-	return { ok = true, dig = { id = profile.dig.id, required = rarity.taps, duration = duration, specId = spec.id, rarity = rarity.id, name = spec.name } }
+	return { ok = true, found = true, dig = { id = profile.dig.id, required = rarity.taps, duration = duration, specId = spec.id, rarity = rarity.id, name = spec.name } }
 end
 
 function handlers.TapDig(player, profile, payload)
@@ -557,6 +587,7 @@ local function onPlayerAdded(player)
 		if root and profiles[player] == profile then
 			character:PivotTo(map.spawnCFrame)
 			profile.world = Config.Worlds[1].id
+			profile.scan = nil
 			profile.dig = nil
 			DetectorTool.equip(player, lookup(Config.Detectors, profile.data.detector))
 			updateCompanion(profile)
@@ -579,6 +610,7 @@ Players.PlayerRemoving:Connect(function(player)
 	local profile = profiles[player]
 	profiles[player] = nil
 	if profile then
+		profile.scan = nil
 		if profile.companion then profile.companion:Destroy() end
 		for attempt = 1, 3 do
 			if save(profile, true) then break end
