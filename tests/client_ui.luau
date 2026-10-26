@@ -142,7 +142,27 @@ local function checkClient()
 		click("Feed & grow");assert(textExists("Feed to grow"),"Creature detail must open")
 		click("Feed one");assert(requests[#requests].kind=="Feed" and requests[#requests].payload.quantity==1,"Feed uses selected creature")
 		click("×")
-		for _,page in {"Food","Gear","Worlds","Sell"} do click(page);click("×") end
+		for _,page in {"Food","Gear","Sell"} do click(page);click("×") end
+		for _,object in uiNodes do
+			assert(object.Destroyed or object.ClassName~="TextButton" or object.Text~="Worlds","World travel must not retain an on-screen Worlds button")
+		end
+		for _,worldId in {"Meadow","Dunes","Cosmic"} do
+			local portal=Instance.new("ProximityPrompt")
+			portal:SetAttribute("WorldTravel",true)
+			portal:SetAttribute("WorldId",worldId)
+			prompts.PromptTriggered:Fire(portal,player)
+			assert(textExists("Choose a world"),"Every world portal must open the travel menu")
+			if worldId=="Meadow" then
+				click("Travel to sand pit")
+				assert(requests[#requests].kind=="Teleport" and requests[#requests].payload.destination=="Meadow","Portal menu must travel to an unlocked world through the server")
+				assert(not textExists("Choose a world"),"Successful portal travel must close the menu")
+			elseif worldId=="Dunes" then
+				click("Unlock · $8.0K")
+				assert(requests[#requests].kind=="UnlockWorld" and requests[#requests].payload.id=="Dunes","Portal menu must request locked world unlocks through the server")
+				assert(not textExists("Choose a world"),"Successful world unlock must close the portal menu")
+			else click("×") end
+			portal:Destroy()
+		end
 		click("Gear");click("Boosts");assert(textExists("2x Growth / $500"),"Gear boost section must work");click("×")
 		local fullCollection=state.brainrots
 		state.brainrots={fullCollection[1]}
@@ -193,5 +213,5 @@ local function checkClient()
 	assert(textExists("Tap to collect"),"A successful delayed search must open the capture sheet")
 	click("Tap to collect")
 	assert(not visible((function() for i=#uiNodes,1,-1 do if uiNodes[i].Text=="Tap to collect" then return uiNodes[i] end end end)()),"Completed capture must close")
-	print("PASS client pages, persistent index silhouettes, six-slot garden controls at three viewport sizes, and delayed searches")
+	print("PASS client pages, persistent index silhouettes, six-slot gardens, portal-only world travel at three viewport sizes, and delayed searches")
 end

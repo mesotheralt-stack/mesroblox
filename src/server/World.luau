@@ -580,14 +580,21 @@ function World.build(config)
 		local name=config.Worlds[index] and config.Worlds[index].name or id
 		plaque(island,offset+V(39,4.3,-26),name,"Choose Dig while standing in the sand",P.cream,24)
 		landscapes(island,offset,index,rng)
-		if index>1 then
-			local portal=folder(island,"ReturnPortal")
-			for _,side in {-1,1} do part(portal,"PortalPillar",V(2.4,16,3),offset+V(side*9,8,-215),P.stone,Enum.Material.Slate) end
-			part(portal,"PortalLintel",V(22,3,4),offset+V(0,16,-215),P.stone,Enum.Material.Slate)
-			local veil=detail(portal,"WorldPortal",V(15,14,0.3),offset+V(0,8,-215),sand[index],Enum.Material.Glass);veil.Transparency=0.55
-			plaque(portal,offset+V(0,19.5,-216),name,"World travel",P.cream,23)
-			prompt(veil,"World travel",name,"WorldId",id)
+		-- Every world's arrival area has a physical travel gate, including the
+		-- starter world. The world selection menu is opened here, not from HUD.
+		local portal=folder(island,"WorldTravelPortal")
+		local entrance=offset+V(-38,0,-25)
+		part(portal,"PortalLanding",V(27,0.3,13),entrance+V(0,0.48,0),P.stone,Enum.Material.Slate)
+		for _,side in {-1,1} do
+			part(portal,"PortalPillar",V(2.4,16,3),entrance+V(side*9,8,0),P.stone,Enum.Material.Slate)
+			detail(portal,"PortalRune",V(0.25,8,0.15),entrance+V(side*9,8,-1.6),sand[index]:Lerp(P.cream,0.35),Enum.Material.Neon)
 		end
+		part(portal,"PortalLintel",V(22,3,4),entrance+V(0,16,0),P.stone,Enum.Material.Slate)
+		local veil=detail(portal,"WorldPortal",V(15,14,0.3),entrance+V(0,8,0),sand[index]:Lerp(rgb(151,220,211),0.45),Enum.Material.Neon)
+		veil.Transparency=0.55
+		veil:SetAttribute("WorldId",id)
+		plaque(portal,entrance+V(0,19.5,-1),"World portal","Travel · unlock new worlds",P.cream,23)
+		prompt(veil,"Travel to worlds","World portal","WorldTravel",true)
 	end
 	centralHub(scene,result); gallery(scene,config,result)
 	result.gardens=GardenService.build(scene,config)

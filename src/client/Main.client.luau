@@ -254,10 +254,10 @@ local nav = make("Frame", {AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.n
 make("UISizeConstraint", {MaxSize = Vector2.new(720, 62)}, nav)
 corner(nav, 16)
 padding(nav, 6)
-make("UIGridLayout", {CellSize = UDim2.new(0.2, -5, 1, 0), CellPadding = UDim2.new(0, 6, 0, 0), SortOrder = Enum.SortOrder.LayoutOrder}, nav)
+make("UIGridLayout", {CellSize = UDim2.new(0.25, -5, 1, 0), CellPadding = UDim2.new(0, 6, 0, 0), SortOrder = Enum.SortOrder.LayoutOrder}, nav)
 local navButtons = {}
 local navIcons = {}
-for index, page in ipairs({"Collection", "Food", "Sell", "Gear", "Worlds"}) do
+for index, page in ipairs({"Collection", "Food", "Sell", "Gear"}) do
 	navButtons[page] = button(nav, page == "Collection" and "Collection" or page, function()
 		if page == "Food" or page == "Sell" or page == "Gear" then
 			local result = request("Teleport", {destination = page})
@@ -843,7 +843,7 @@ local function helpPage()
 		{"Find & collect","Stand on the sand and choose Dig (E). A scan takes one second, with a 50% chance to find a signal. Tap or press Space to capture it."},
 		{"Feed & grow","Open Collection, choose a brainrot, and feed it from your pantry. Every creature earns coins while you play."},
 		{"Upgrade your kit","Food, Sell, and Gear take you straight to their shops. Stronger detectors uncover higher rarities; boosts last five minutes."},
-		{"Explore further","Worlds lets you unlock larger hunting grounds. Index records every discovery; Garden lets you arrange six personal displays."},
+		{"Explore further","Use the glowing portal near each world’s entrance to travel or unlock new worlds. Index records discoveries; Garden arranges your displays."},
 		{"Make it yours","Use Index (I) to track all 21 species. Garden (G) opens your six displays and teleports you home. Display choices and discoveries save with your collection."},
 	}) do
 		local f=card(body,112)
@@ -1027,7 +1027,7 @@ ProximityPromptService.PromptTriggered:Connect(function(prompt, triggeringPlayer
 	end
 	local shop = prompt:GetAttribute("Shop")
 	if shop == "Food" or shop == "Sell" or shop == "Gear" then openPage(shop) end
-	if prompt:GetAttribute("WorldId") then openPage("Worlds") end
+	if prompt:GetAttribute("WorldTravel") then openPage("Worlds") end
 end)
 
 local animationTime = 0

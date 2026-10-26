@@ -6,7 +6,7 @@ A complete source project for a Roblox collection and growth game. All visuals a
 
 1. Download [`BrainrotBloom.rbxlx`](BrainrotBloom.rbxlx) from this repository or workspace and open it in **Roblox Studio**.
 2. The complete map is already visible in Studio’s edit view. Press **Play** to start the UI, day/night cycle, player data, personal gardens, and gameplay. The server refreshes the scenery on startup.
-3. Open **Worlds**, choose **Clover Commons → Travel to sand pit**, and press **E** or **Dig** while standing in the sand. Each scan takes one second and has a 50% chance to find a signal; empty searches are normal.
+3. Walk to the **World portal** near a world’s entrance and press **F** (or tap its prompt), then choose your destination. To begin collecting, choose **Clover Commons → Travel to sand pit**, and press **E** or **Dig** while standing in the sand. Each scan takes one second and has a 50% chance to find a signal; empty searches are normal.
 4. Tap the capture button or press **Space** enough times within 10 seconds. Your new brainrot immediately starts earning coins.
 5. Open **Collection** (or **Bag** on mobile), select a creature, and feed it. You start with 150 coins, a Tin Twig detector, and three Suspicious Crumbs.
 
@@ -20,7 +20,7 @@ Studio is needed to actually play Roblox. This Linux cloud workspace builds the 
 - **Feeding and levels** to level 100. Food grants XP; every level increases income and the displayed companion grows as it levels. All owned creatures earn income while you are online, including creatures you are not displaying.
 - **15 foods**, from Suspicious Crumb to Secret Midnight Feast. A random six-food selection refreshes at shared five-minute boundaries. The inexpensive Crumb is always available; purchase quantities are personal to the current player session.
 - **Seven detector tiers**, progressively shorter search cooldowns and higher rarity reach. Higher power also improves the weighting of rare finds. Detectors are visible tools held by the character.
-- **Three expanded worlds**: each island is 700 × 660 studs (four times the original area), with 320 × 280 sand pits, terraced rocky shores, recessed excavation basins, stone steps, rope fences, survey carts, crates, lanterns, themed woodlands, shops, and teleport controls. The hub has a fountain plaza, gabled markets with stocked shelves, a trading scale, and a specimen gallery. Each world has its own landmarks: a windmill and bridged picnic pond, a sun-arch sanctuary and palm oasis, and a telescope observatory with crystal/mushroom gardens:
+- **Three expanded worlds**: each island is 700 × 660 studs (four times the original area), with 320 × 280 sand pits, terraced rocky shores, recessed excavation basins, stone steps, rope fences, survey carts, crates, lanterns, themed woodlands, shops, and physical world portals. The hub has a fountain plaza, gabled markets with stocked shelves, a trading scale, and a specimen gallery. Each world has its own landmarks: a windmill and bridged picnic pond, a sun-arch sanctuary and palm oasis, and a telescope observatory with crystal/mushroom gardens:
 
 | World | Unlock cost | Minimum detector power to dig | Possible rarity ceiling |
 | --- | ---: | ---: | --- |
@@ -39,6 +39,10 @@ A world's rarity ceiling also requires a sufficiently strong detector. The start
 - **Server-owned purchases and rewards**, profile validation, request limits, DataStore session locks, autosave, leave/shutdown saving, and explicit Studio temporary-data fallback.
 
 Income is earned online only. Boost clocks continue to expire while offline. There are no Robux purchases or external account requirements.
+
+## World portals
+
+Each world's entrance has a glowing **World portal**, including Clover Commons. Walk up and press **F**, or tap its proximity prompt on mobile, to open the world selection menu. Existing unlock costs, detector requirements, and destination options remain the same. The permanent on-screen Worlds tab has been removed; Food, Sell, Gear, Index and Garden controls remain available.
 
 ## Index book and personal gardens
 

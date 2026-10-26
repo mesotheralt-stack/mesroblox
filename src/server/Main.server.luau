@@ -369,7 +369,7 @@ local function teleport(player, profile, destination)
 	local frame = destination == "Garden" and gardens:getSpawnCFrame(player) or type(destination) == "string" and map.destinations[destination]
 	if not frame then return false, "That destination does not exist." end
 	local world = lookup(Config.Worlds, destination)
-	if world and not owned(profile.data.unlockedWorlds, world.id) then return false, "Unlock this world in the Worlds menu first." end
+	if world and not owned(profile.data.unlockedWorlds, world.id) then return false, "Unlock this world at a World portal first." end
 	local root = rootFor(player)
 	if not root then return false, "Wait for your character to spawn." end
 	profile.scan = nil

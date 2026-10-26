@@ -3,7 +3,7 @@
 These engine checks remain to be performed in Roblox Studio. Automated CLI checks are not a substitute for this pass.
 
 1. Open the built `BrainrotBloom.rbxlx` and press Play. Confirm three islands, a green hub, trees, sand pits, shops, gallery, a held detector, and no errors in Output. If save APIs are unavailable, confirm the explicit temporary-progress warning and that the game still plays.
-2. Use WORLDS to teleport to Clover Commons. Walk onto and out of the sand: E/DETECT should only start a capture on the sand. Verify ground collision, jumping, walking, respawn, and HOME.
+2. Use the World portal near the entrance to travel to Clover Commons. Walk onto and out of the sand: E/DETECT should only start a capture on the sand. Verify ground collision, jumping, walking, respawn, and HOME.
 3. Complete a capture using Space, then another with the touch/mouse button. Let one expire and verify it awards nothing. Teleporting out must prevent capture rewards; rapid duplicated requests must not duplicate a reward.
 4. Verify BAG shows the real name, rarity, level, XP, and income. Display different creatures, feed one or all foods, and confirm level-ups increase income and model size. A second creature should keep earning while the first is displayed.
 5. Teleport to FOOD, buy different quantities, verify coins/stock/pantry counts, and wait for a five-minute rotation. Walk-up F prompts should open the same shops.
@@ -48,3 +48,8 @@ For tuning, use `src/shared/Config.luau`; keep game rewards and purchases on the
 5. Leave/rejoin the same experience. Discovery history and pad arrangement should reload even when a different physical plot is assigned. Leave a fully decorated garden and confirm its models/sign clear before another player receives it.
 6. On phone portrait and landscape, check the new Index/Garden shortcuts, rarity filters/progress, six slot selectors, species chooser, and collection's Place in garden action. The shortcuts should not cover the coin HUD.
 7. Simulate a load failure or disconnect during load: the reserved plot must be released, temporary Studio progress must not overwrite a save, and a late load must not reclaim another player's reassigned plot.
+
+## World portal travel
+
+- Verify there is no permanent Worlds HUD button. Approach the glowing gate near the entrance in all three worlds and use F / the mobile prompt to open Choose a world.
+- Check unlocked travel, locked-world costs, return travel to Clover Commons, and closing the menu without traveling. Confirm gates are easy to find from each sand-pit arrival and do not overlap the shop approaches.
