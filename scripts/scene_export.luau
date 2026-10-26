@@ -93,7 +93,20 @@ end
 local scene=environment.workspace:WaitForChild("BrainrotWorld")
 assert(not scene:FindFirstChild("RarityPreviewGrove"),"Public showcase must be removed")
 for _,id in {"Meadow","Dunes","Cosmic"} do
-	local biome=assert(scene:WaitForChild(id):FindFirstChild("LayeredBiome"),id.." needs its own layered terrain")
+	local island=scene:WaitForChild(id)
+	local gate=island:WaitForChild("WorldTravelPortal")
+	local target=gate:WaitForChild("WorldPortal")
+	assert(math.abs(target.CFrame.Position.X-built.pits[id].center.X)<0.01 and math.abs(target.CFrame.Position.Z+35)<0.01,"World portal must be centered on the main avenue")
+	local effects=0
+	for _,piece in gate:GetChildren() do
+		if piece:IsA("BasePart") and piece:GetAttribute("PortalSpin")~=nil then
+			effects+=1
+			assert(not piece.CanCollide and not piece.CanTouch and not piece.CanQuery,"Moving portal pieces must remain decorative")
+			assert(typeof(piece:GetAttribute("PortalBase"))=="CFrame" and typeof(piece:GetAttribute("PortalCenter"))=="Vector3","Portal motion metadata must survive native reflection")
+		end
+	end
+	assert(effects>=40,"World portal must have swirling ribbons and orbiting effects")
+	local biome=assert(island:FindFirstChild("LayeredBiome"),id.." needs its own layered terrain")
 	local routes={}
 	local solids={}
 	for _,piece in biome:GetDescendants() do
@@ -131,6 +144,14 @@ for _,id in {"Meadow","Dunes","Cosmic"} do
 	end
 	assert(routeCount>=3,id.." must have three connected terrain climbs")
 end
+local village=scene:WaitForChild("CloverVillage")
+for station,role in {FoodMarket="Food",GearWorkshop="Gear",TradingStation="Sell"} do
+	local keeper=village:WaitForChild(station):WaitForChild("StationKeeper")
+	assert(keeper:GetAttribute("ShopRole")==role and not keeper:FindFirstChildOfClass("Humanoid"),"Every station needs its own stationary attendant")
+	for _,piece in keeper:GetDescendants() do
+		if piece:IsA("BasePart") then assert(not piece.CanCollide and not piece.CanTouch and not piece.CanQuery,"Station attendants must not block player movement") end
+	end
+end
 -- Include rotated boulders and wedge faces when checking the garden route.
 -- Conservative world bounds must leave a twelve-stud-wide walking corridor.
 for _,boundary in {scene:WaitForChild("Meadow"):WaitForChild("NaturalBoundary"),scene:WaitForChild("GardenNeighborhood"):WaitForChild("GardenEscarpment")} do
@@ -148,7 +169,7 @@ for _,boundary in {scene:WaitForChild("Meadow"):WaitForChild("NaturalBoundary"),
 	end
 end
 local mapParts=validate(environment.workspace)
-assert(mapParts<6000,"Map exceeds its bounded geometry budget")
+assert(mapParts<7000,"Map exceeds its bounded geometry budget")
 for _,spec in config.Creatures do
 	local model=factory.create(spec,1)
 	local count=validate(model)

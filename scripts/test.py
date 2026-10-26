@@ -34,6 +34,9 @@ def main() -> int:
     tests = (ROOT / 'tests/economy.luau').read_text()
     color_shim = 'local function fakeColor(r,g,b) return {R=r,G=g,B=b,Lerp=function(self,other,t) return fakeColor(self.R+(other.R-self.R)*t,self.G+(other.G-self.G)*t,self.B+(other.B-self.B)*t) end} end\nlocal Color3 = {new=fakeColor,fromRGB = function(r,g,b) return fakeColor(r/255,g/255,b/255) end}\n'
     garden_module = '\nActualGardenService = (function()\n' + (ROOT / 'src/server/GardenService.luau').read_text() + '\nend)();\n'
+    world_modules = ''.join('\nActual' + name + ' = (function()\n'
+        + (ROOT / f'src/server/{name}.luau').read_text() + '\nend)();\n'
+        for name in ('PortalFactory', 'StationKeeper'))
     harness = (ROOT / 'tests/server_harness.luau').read_text()
     code = color_shim + 'local Config = (function()\n' + config + '\nend)()\n' + tests
     with tempfile.TemporaryDirectory(prefix='brainrot-tests-') as temporary:
@@ -51,7 +54,9 @@ def main() -> int:
             unpublished_test.write_text(color_shim + 'local Config = (function()\n' + config + '\nend)()\n' + harness + garden_module + '\ndataStoreInitFailure=true\n(function()\n' + server.read_text() + '\nend)()\n' + (ROOT / 'tests/unpublished.luau').read_text())
             subprocess.run([runtime, str(unpublished_test)], check=True, cwd=ROOT)
         world_test = Path(temporary) / 'world-run.luau'
-        world_test.write_text(color_shim + 'local Config = (function()\n' + config + '\nend)()\n' + harness + '\n' + (ROOT / 'tests/world_startup.luau').read_text() + garden_module + '\nlocal WorldUnderTest = (function()\n' + (ROOT / 'src/server/World.luau').read_text() + '\nend)()\nverifyWorld(WorldUnderTest)\n')
+        world_test.write_text(color_shim + 'local Config = (function()\n' + config + '\nend)()\n' + harness + '\n' + (ROOT / 'tests/world_startup.luau').read_text() + garden_module + world_modules
+            + (ROOT / 'tests/station_keepers.luau').read_text() + '\nverifyStationKeepers(ActualStationKeeper)\n'
+            + '\nlocal WorldUnderTest = (function()\n' + (ROOT / 'src/server/World.luau').read_text() + '\nend)()\nverifyWorld(WorldUnderTest)\n')
         subprocess.run([runtime, str(world_test)], check=True, cwd=ROOT)
         model_test = Path(temporary) / 'models-run.luau'
         scene_prefix = color_shim + 'local Config = (function()\n' + config + '\nend)()\n' + (ROOT / 'tests/server_harness.luau').read_text() + '\n' + (ROOT / 'tests/world_startup.luau').read_text() + '\n' + (ROOT / 'tests/model_details.luau').read_text() + '\nConfig = (function()\n' + config + '\nend)()\n'
@@ -67,6 +72,11 @@ def main() -> int:
             + (ROOT / 'src/client/Sprint.client.luau').read_text()
             + '\nend)()\nverifySprintClient()\n')
         subprocess.run([runtime, str(sprint_test)], check=True, cwd=ROOT)
+        portal_test = Path(temporary) / 'portal-effects-run.luau'
+        portal_test.write_text((ROOT / 'tests/portal_effects.luau').read_text()
+            + '\n;(function()\n' + (ROOT / 'src/client/PortalEffects.client.luau').read_text()
+            + '\nend)()\nverifyPortalEffects()\n')
+        subprocess.run([runtime, str(portal_test)], check=True, cwd=ROOT)
     print('Studio playtest remains required for rendering, multiplayer and live persistence.', flush=True)
     return 0
 

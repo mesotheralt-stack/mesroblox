@@ -100,7 +100,7 @@ local game={JobId="mock-server"}
 function game:GetService(name) return ({Players=Players,ReplicatedStorage=ReplicatedStorage,DataStoreService={GetDataStore=function() if dataStoreInitFailure then error("Mock unpublished experience") end; return store end},HttpService=HttpService,RunService=RunService})[name] end
 function game:BindToClose(callback) self.OnClose=callback end
 local script={Parent=node("Folder")}
-for _, name in {"World","DetectorTool","GardenService"} do local item=node("ModuleScript",name);item.Parent=script.Parent end
+for _, name in {"World","DetectorTool","GardenService","PortalFactory","StationKeeper"} do local item=node("ModuleScript",name);item.Parent=script.Parent end
 local forcedRandomNumbers = {} -- Unit draws queued by tests; production never sees this hook.
 local randomNumberDraws = 0
 local forcedRandomIntegers = {}
@@ -130,9 +130,13 @@ for i=1,6 do
 	table.insert(map.gardens,{id=i,model=model,spawnCFrame=vec(i*100,5,-620),slots=slots,ownerSign=sign,slotSigns=slotSigns,displays=displays})
 end
 local ActualGardenService
+local ActualPortalFactory
+local ActualStationKeeper
 local require=function(module)
 	if module.Name=="Config" then return Config end
 	if module.Name=="GardenService" then return assert(ActualGardenService,"Real GardenService must be loaded by test runner") end
+	if module.Name=="PortalFactory" then return assert(ActualPortalFactory,"Real PortalFactory must be loaded by test runner") end
+	if module.Name=="StationKeeper" then return assert(ActualStationKeeper,"Real StationKeeper must be loaded by test runner") end
 	if module.Name=="World" then return {build=function() return map end} end
 	if module.Name=="CreatureFactory" then return {create=function(spec,scale) local model=node("Model",spec.name);model.AppliedScale=scale;return model end} end
 	if module.Name=="DetectorTool" then return setmetatable({},{__index=function() return function() end end}) end

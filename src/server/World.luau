@@ -3,6 +3,8 @@
 local Lighting = game:GetService("Lighting")
 local Workspace = game:GetService("Workspace")
 local GardenService = require(script.Parent:WaitForChild("GardenService"))
+local PortalFactory = require(script.Parent:WaitForChild("PortalFactory"))
+local StationKeeper = require(script.Parent:WaitForChild("StationKeeper"))
 
 local World = {}
 local cycleStarted = false
@@ -315,7 +317,7 @@ local function shop(parent,position,food)
 	end
 	for _,x in {-17,17} do lamp(building,position+V(x,1.0,-12),rgb(255,227,172),true) end
 	plaque(building,position+V(0,10,-13.3),food and "Food market" or "Gear workshop",food and "Fresh snacks · five-minute rotation" or "Detectors · growth & income boosts",P.cream,27)
-	prompt(counter,"Browse",food and "Food market" or "Gear workshop","Shop",food and "Food" or "Gear")
+	StationKeeper.create(building,CFrame.new(position+V(0,1.15,-1.6)),food and "Food" or "Gear")
 	crate(building,position+V(-23,0.3,3),0.9); barrel(building,position+V(23,0.3,7))
 end
 
@@ -811,7 +813,8 @@ local function centralHub(parent,result)
 	part(sell,"ScaleBalance",V(0.4,4.0,0.4),V(-64,5.3,-124),P.brass,Enum.Material.Metal)
 	part(sell,"ScaleBeam",V(7,0.3,0.3),V(-64,7.2,-124),P.brass,Enum.Material.Metal)
 	plaque(sell,V(-64,6,-130),"Trading post","Review your creature before selling",P.cream,25)
-	crate(sell,V(-84,0.3,-118),0.85); prompt(sellPad,"Sell","Trading post","Shop","Sell")
+	crate(sell,V(-84,0.3,-118),0.85)
+	StationKeeper.create(sell,CFrame.new(-69,0.3,-128.5)*CFrame.Angles(0,math.pi,0),"Sell")
 	local home=part(hub,"HomePad",V(24,0.25,19),V(0,0.66,-106),rgb(164,194,143),Enum.Material.Slate)
 	plaque(hub,V(0,5.3,-112),"Brainrot Bloom","Find it · feed it · watch it flourish",P.cream,24)
 	result.spawnCFrame=CFrame.new(0,5,-91)*CFrame.Angles(0,math.pi,0)
@@ -830,6 +833,8 @@ local function centralHub(parent,result)
 		lamp(green,V(side*16,0.3,-260),rgb(255,229,179),false)
 		for j=1,4 do flowerCluster(green,V(side*(28+j*16),0.4,-198),rgb(233,205,158)) end
 	end
+	part(green,"PortalDirectionPost",V(0.6,5.7,0.6),V(17,3.15,-278),P.darkWood,Enum.Material.Wood)
+	plaque(green,V(17,6.6,-278.4),"WORLD PORTAL  ↑","Through the village · follow the turquoise trail",rgb(164,237,224),26)
 	local gazebo=folder(green,"CloverGazebo")
 	local center=V(-68,0.3,-237)
 	disk(gazebo,"GazeboStoneBase",center+V(0,0.3,0),19,0.6,P.stone,Enum.Material.Cobblestone)
@@ -902,21 +907,16 @@ function World.build(config)
 		plaque(island,offset+V(39,4.3,-26),name,"Choose Dig while standing in the sand",P.cream,24)
 		landscapes(island,offset,index,rng)
 		layeredBiomes(island,offset,index)
-		-- Every world's arrival area has a physical travel gate, including the
-		-- starter world. The world selection menu is opened here, not from HUD.
-		local portal=folder(island,"WorldTravelPortal")
-		local entrance=offset+V(-38,0,-25)
-		part(portal,"PortalLanding",V(27,0.3,13),entrance+V(0,0.48,0),P.stone,Enum.Material.Slate)
-		for _,side in {-1,1} do
-			part(portal,"PortalPillar",V(2.4,16,3),entrance+V(side*9,8,0),P.stone,Enum.Material.Slate)
-			detail(portal,"PortalRune",V(0.25,8,0.15),entrance+V(side*9,8,-1.6),sand[index]:Lerp(P.cream,0.35),Enum.Material.Neon)
+		-- The travel landmark sits directly on the main avenue between the
+		-- village and pit, with a trail visible from either approach.
+		PortalFactory.create(island,offset+V(0,0,-35),id,config.Worlds[index].color)
+		local trail=folder(island,"PortalWayfinding")
+		for _,z in {-103,-80,-57} do
+			for _,side in {-1,1} do
+				local marker=detail(trail,"PortalTrailChevron",V(0.45,0.035,3.5),offset+V(side*1.05,0.56,z),rgb(107,207,193),Enum.Material.Neon,nil,CFrame.Angles(0,-side*0.65,0))
+				marker.CanQuery=false
+			end
 		end
-		part(portal,"PortalLintel",V(22,3,4),entrance+V(0,16,0),P.stone,Enum.Material.Slate)
-		local veil=detail(portal,"WorldPortal",V(15,14,0.3),entrance+V(0,8,0),sand[index]:Lerp(rgb(151,220,211),0.45),Enum.Material.Neon)
-		veil.Transparency=0.55
-		veil:SetAttribute("WorldId",id)
-		plaque(portal,entrance+V(0,19.5,-1),"World portal","Travel · unlock new worlds",P.cream,23)
-		prompt(veil,"Travel to worlds","World portal","WorldTravel",true)
 	end
 	centralHub(scene,result)
 	result.gardens=GardenService.build(scene,config)

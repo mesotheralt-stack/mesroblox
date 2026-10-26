@@ -6,7 +6,7 @@ A complete source project for a Roblox collection and growth game. All visuals a
 
 1. Download [`BrainrotBloom.rbxlx`](BrainrotBloom.rbxlx) from this repository or workspace and open it in **Roblox Studio**.
 2. The complete map is already visible in Studio’s edit view. Press **Play** to start the UI, day/night cycle, player data, personal gardens, and gameplay. The server refreshes the scenery on startup.
-3. Walk to the **World portal** near a world’s entrance and press **F** (or tap its prompt), then choose your destination. To begin collecting, choose **Clover Commons → Travel to sand pit**, and press **E** or **Dig** while standing in the sand. Each scan takes one second and has a 50% chance to find a signal; empty searches are normal.
+3. Follow the turquoise ground arrows to the **World portal** on the main avenue between the village and sand pit and press **F** (or tap its prompt), then choose your destination. To begin collecting, choose **Clover Commons → Travel to sand pit**, and press **E** or **Dig** while standing in the sand. Each scan takes one second and has a 50% chance to find a signal; empty searches are normal.
 4. Tap the capture button or press **Space** enough times within 10 seconds. Your new brainrot immediately starts earning coins.
 5. Open **Collection** (or **Bag** on mobile), select a creature, and feed it. You start with 150 coins, a Tin Twig detector, and three Suspicious Crumbs.
 
@@ -43,7 +43,11 @@ Income is earned online only. Boost clocks continue to expire while offline. The
 
 ## World portals
 
-Each world's entrance has a glowing **World portal**, including Clover Commons. Walk up and press **F**, or tap its proximity prompt on mobile, to open the world selection menu. Existing unlock costs, detector requirements, and destination options remain the same. The permanent on-screen Worlds tab has been removed; Food, Sell, Gear, Index and Garden controls remain available.
+Every world has a large circular **World portal** on the main avenue between the village and sand pit. Follow the turquoise ground arrows; signs label the gate from both sides, and the garden approach points toward it. Three spiral arms rotate inside the stone ring, sparks orbit in the opposite direction, and the glow pulses gently. Press **F** or tap the prompt to choose a world. Unlocked worlds offer travel; locked worlds show their cost and detector requirement.
+
+Portal motion runs locally at up to 30 updates per second and pauses beyond 350 studs from the camera. The static gate and spiral remain visible in Studio’s edit view; press Play for animation and travel.
+
+The three shop stations now have original characters: **Chef Pip** at Food, **Milo the Mechanic** at Gear, and **Tessa the Trader** at Sell. Their F prompts open the existing station menus. They use anchored, nonblocking scenery geometry and physical name plaques.
 
 ## Index book and personal gardens
 
@@ -89,6 +93,9 @@ Cloud tasks already have an isolated checkout; use this checkout without creatin
 | `src/shared/Config.luau` | Rarities, creatures, foods, prices, XP, income, worlds, detector tuning |
 | `src/shared/CreatureFactory.luau` | Original procedural creature models |
 | `src/server/World.luau` | Themed terrain, shops, sand pits, world portals, lighting cycle |
+| `src/server/PortalFactory.luau` | Circular travel gates and animated effect metadata |
+| `src/server/StationKeeper.luau` | Chef, mechanic, and trader characters with shop prompts |
+| `src/client/PortalEffects.client.luau` | Portal swirls, orbiting sparks, pulse, and distance culling |
 | `src/server/DetectorTool.luau` | Welded detector models |
 | `src/server/GardenService.luau` | Six garden plots, ownership, display models and cleanup |
 | `src/server/Main.server.luau` | Profiles, saving, shops, income, validated capture sessions |
@@ -115,6 +122,6 @@ The scene exporter uses deterministic preview randomness for scattered vegetatio
 
 ## Verification boundary
 
-The automated suite compiles every source with the official Luau compiler, executes real economy functions, and exercises the actual server action handlers with deterministic Roblox service doubles. It checks purchases, finite quantities, capture success/failure/replays, growth, boost expiration, passive income, world progression, and save/reload behavior. The garden tests cover six concurrent owners, seventh-join refusal, saved placements/discovery history, and disconnect/save-retry cleanup. Sprint checks execute the actual server and client scripts together for fixed speeds, malformed requests, all three input methods, UI cancellation, death, and respawn. It also executes every creature factory, the actual expanded map builder with the restricted Workspace-write guard, and client UI flows at six mocked viewport sizes. UI mocks do not validate real layout or rendering. The build also executes every sculpture and the map using native Roblox datatypes and reflected Instances via Lune, validates finite transforms, confirms pit alignment and the saved R6 setting, checks the new stair rises, landing heights, and terrace surfaces, and bakes the editor-visible scene.
+The automated suite compiles every source with the official Luau compiler, executes real economy functions, and exercises the actual server action handlers with deterministic Roblox service doubles. It checks purchases, finite quantities, capture success/failure/replays, growth, boost expiration, passive income, world progression, and save/reload behavior. The garden tests cover six concurrent owners, seventh-join refusal, saved placements/discovery history, and disconnect/save-retry cleanup. Sprint checks execute the actual server and client scripts together for fixed speeds, malformed requests, all three input methods, UI cancellation, death, and respawn. It also executes every creature factory, the actual expanded map builder with the restricted Workspace-write guard, and client UI flows at six mocked viewport sizes. Portal animation checks cover rotation, pulses, rate limiting, distance culling, late replication, and scene cleanup. UI mocks do not validate real layout or rendering. The build also executes every sculpture and the map using native Roblox datatypes and reflected Instances via Lune, validates finite transforms, confirms pit alignment and the saved R6 setting, checks the new stair rises, landing heights, terrace surfaces, portal effects metadata, and station attendants, and bakes the editor-visible scene.
 
 These checks do **not** render the game or connect to Roblox DataStores. Follow [`docs/PLAYTEST.md`](docs/PLAYTEST.md) in Roblox Studio for real character controls, touch layouts, multiplayer, and live saving before publishing the game to players. The built place has not been published to Roblox.

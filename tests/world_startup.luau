@@ -20,6 +20,7 @@ end
 Color3.fromRGB = function(r,g,b) return color(r/255,g/255,b/255) end
 Color3.new = color
 CFrame.Angles = function() return vec(0,0,0) end
+CFrame.lookAt = function(position) return position end
 local Vector2 = {new=function(x,y) return {X=x,Y=y} end}
 local UDim = {new=function() return {} end}
 UDim2.new = function() return {} end
@@ -166,6 +167,20 @@ local function verifyWorld(World)
 		assert(travelPrompt and travelPrompt:GetAttribute("WorldTravel")==true,id.." portal must expose the world travel prompt")
 		local destination=built.destinations[id]
 		assert(math.abs(veil.Position.X-destination.X)<80 and math.abs(veil.Position.Z-destination.Z)<80,id.." portal must be near the world entrance")
+		assert(math.abs(veil.Position.X-destination.X)<0.1 and math.abs(veil.Position.Z-(destination.Z-42))<0.1,"Portal must sit directly on the main avenue")
+		local court=portal:FindFirstChild("PortalCourt")
+		assert(court and court.Size.X>=40 and court.Position.Y+court.Size.Y/2<=0.7,"Portal needs a broad accessible court")
+		assert(portal:GetAttribute("PortalVFX")==true and portal:FindFirstChild("PortalHeader"),"Prominent portals need a named animated landmark")
+		local moving=0
+		for _,piece in portal:GetChildren() do
+			if piece:GetAttribute("PortalSpin")~=nil then
+				moving+=1
+				assert(piece.Anchored and not piece.CanCollide and not piece.CanTouch and not piece.CanQuery,"Swirling portal effects must remain cosmetic")
+			end
+		end
+		assert(moving>=40,"Every portal needs a vortex with moving ribbons and orbiting sparks")
+		local trail=island:FindFirstChild("PortalWayfinding")
+		assert(trail and #trail:GetChildren()==6,"A visible ground trail must lead up the main avenue")
 		local landmarks=island and island:FindFirstChild("Landmarks")
 		assert(landmarks and landmarks:FindFirstChild(landmark),id.." needs its own authored landmark")
 		local excavation=island:FindFirstChild("ExcavationSite")
@@ -181,6 +196,15 @@ local function verifyWorld(World)
 	assert(crystals>=40 and cosmic:FindFirstChild("MoonbloomTidalCove",true),"Cove needs substantial crystal groves and sheltered water")
 	assert(cosmic:FindFirstChild("CoveViewingPier",true),"Cove landmark needs its walkable viewing pier")
 	assert(scene:FindFirstChild("Meadow"):FindFirstChild("UpperBrookCascade",true),"Meadow highlands need a woodland brook and cascades")
+	local village=scene:FindFirstChild("CloverVillage")
+	for station,role in {FoodMarket="Food",GearWorkshop="Gear",TradingStation="Sell"} do
+		local building=village:FindFirstChild(station)
+		local keeper=building and building:FindFirstChild("StationKeeper")
+		assert(keeper and keeper:GetAttribute("ShopRole")==role,"Every buy/sell station needs its own character")
+		local prompt=keeper:FindFirstChild("KeeperShopPrompt",true)
+		assert(prompt and prompt:GetAttribute("Shop")==role,"Attendant must open the corresponding existing shop")
+	end
+	assert(village:FindFirstChild("PortalDirectionPost",true),"The garden approach must point players toward the main portal")
 	assert(scene:FindFirstChild("Dunes"):FindFirstChild("WeatheredMesaArch",true) and scene:FindFirstChild("Dunes"):FindFirstChild("CanyonMiningCamp",true),"Canyon theme needs its own mesa arch and mining camp")
 	assert(cosmic:FindFirstChild("WalkInCrystalCave",true) and cosmic:FindFirstChild("UpperQuartzFalls",true),"Crystal coast needs a raised walk-in geode cave and waterfall")
 	local meadowGround=scene:FindFirstChild("Meadow"):FindFirstChild("NorthernLawn")

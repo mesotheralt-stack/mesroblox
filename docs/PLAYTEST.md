@@ -71,3 +71,11 @@ For tuning, use `src/shared/Config.luau`; keep game rewards and purchases on the
 - Check the terrain from ground level as well as an elevated lookout: the worlds should have different silhouettes, materials, scenery, and landmarks. Confirm doors, portals, garden bridge, shops, and world arrival locations remain accessible.
 - In portrait, landscape, tablet, and desktop sizes, confirm Collection/Food/Sell/Gear are at the top. Index and Garden must show each icon to the left of its label, with no overlap or padding shift. Open every menu and complete a capture; top controls must not cover modal titles, close buttons, or touch targets.
 - Find the seven new species across the seven rarity tiers. Check all 28 species in the index, collection previews, following companion, and personal gardens; feed a new species, sell it, and confirm discovery history remains saved.
+
+
+## Prominent portals and station characters
+
+- From the gardens, follow the direction sign through the village and then the turquoise arrows to the large circular portal. Confirm the gate sits directly on the main avenue in every world, is labeled from both sides, and leaves the route to the sand unobstructed.
+- Press Play and watch all three spiral arms rotate, sparks orbit in the opposite direction, and the light pulse gently. Travel between worlds, move far away and return, and reset the character. Effects should recover without duplicate animation or errors. Edit mode shows the static spiral.
+- Inspect Chef Pip behind the Food counter, Milo the Mechanic behind Gear, and Tessa the Trader at the trading post. Verify their face, outfit, name plaque, and F prompt. Food must open the food market, Gear the detector/boost shop, and Tessa the sale menu.
+- Confirm the characters do not collide with players, portal effects do not block walking, and both NPC and portal prompts are reachable on keyboard and touch. Buy, feed, equip, boost, sell, and travel once to check existing gameplay still works.
