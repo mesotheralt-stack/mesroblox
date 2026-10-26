@@ -46,6 +46,7 @@ Instance.new=function(class)
 	end
 	local mt=getmetatable(object)
 	mt.__index=function(self,key)
+		if key=="Parent" then return rawget(self,"_parent") end
 		if events[key] then local event=signal();rawset(self,key,event);return event end
 		if key=="AbsoluteSize" then
 			if self.ClassName=="ScreenGui" then return viewportSize end
@@ -71,11 +72,17 @@ for index=1,50 do
 	table.insert(state.brainrots,{uid="pet-"..index,specId=spec.id,name=spec.name,rarity=spec.rarity,level=index,xp=2,xpNeeded=Config.xpNeeded(index),income=Config.income(spec.id,index),growthBoostUntil=0,incomeBoostUntil=0})
 end
 state.activeBrainrot=state.brainrots[1].uid
+state.discoveredIds={"sprout"};state.uniqueDiscovered=1
+state.garden={id=1,slots={"pet-1","","","","",""},capacity=6}
 local remoteFolder=node("Folder","BrainrotRemotes");remoteFolder.Parent=ReplicatedStorage
 local action=node("RemoteFunction","Action");action.Parent=remoteFolder
 function action:InvokeServer(kind,payload)
 	table.insert(requests,{kind=kind,payload=payload})
 	local result={ok=true,state=state}
+	if kind=="GardenAssign" then
+		for slot,uid in state.garden.slots do if uid==payload.uid then state.garden.slots[slot]="" end end
+		state.garden.slots[payload.slot]=payload.uid
+	elseif kind=="GardenClear" then state.garden.slots[payload.slot]="" end
 	if kind=="StartDig" then
 		task.wait(Config.SearchSeconds)
 		result.found=table.remove(searchOutcomes,1)
@@ -87,7 +94,7 @@ function action:InvokeServer(kind,payload)
 end
 for _,name in {"State","Notify"} do local event=node("RemoteEvent",name);event.OnClientEvent=signal();event.Parent=remoteFolder end
 function workspace:GetServerTimeNow() return os.time() end
-local input={InputBegan=signal(),TouchEnabled=false}
+local input={InputBegan=signal(),TouchEnabled=false,GetFocusedTextBox=function() return nil end}
 local prompts={PromptTriggered=signal()}
 local rendered={RenderStepped=signal()}
 local bindings={}
@@ -137,6 +144,33 @@ local function checkClient()
 		click("×")
 		for _,page in {"Food","Gear","Worlds","Sell"} do click(page);click("×") end
 		click("Gear");click("Boosts");assert(textExists("2x Growth / $500"),"Gear boost section must work");click("×")
+		local fullCollection=state.brainrots
+		state.brainrots={fullCollection[1]}
+		state.garden.slots={"pet-1","","","","",""}
+		click("Index");click("All rarities")
+		assert(textExists("Brainrot index") and textExists("1 / 21 discovered"),"Index book must show unique lifetime progress")
+		local unknown=0
+		for _,object in uiNodes do if object.ClassName=="ViewportFrame" and visible(object) and object:GetAttribute("Silhouette") then unknown+=1 end end
+		assert(unknown==20 and textExists("???"),"Uncaught species must use hidden names and silhouette previews")
+		click("Common 1/3")
+		local entries=0
+		for _,object in uiNodes do if visible(object) and object:GetAttribute("IndexSpecies") then entries+=1 end end
+		assert(entries==3,"Index rarity chapters must filter to that rarity's species")
+		state.brainrots={}
+		click("Index book")
+		assert(textExists("1 / 21 discovered"),"Selling all owned creatures must not erase the client index")
+		state.brainrots={fullCollection[1]}
+		click("My garden")
+		assert(textExists("My garden") and textExists("Garden 01"),"Garden management must identify the assigned plot")
+		click("Slot 2");click("Move here")
+		assert(requests[#requests].kind=="GardenAssign" and requests[#requests].payload.uid=="pet-1" and requests[#requests].payload.slot==2,"Garden controls must move the selected owned creature to its selected slot")
+		assert(textExists("Clear slot"),"Assigned garden slots must offer clearing")
+		click("Clear slot")
+		assert(requests[#requests].kind=="GardenClear" and requests[#requests].payload.slot==2,"Clear controls must target the selected slot")
+		click("Place here")
+		click("Travel to my garden")
+		assert(requests[#requests].kind=="Teleport" and requests[#requests].payload.destination=="Garden","Garden travel must request the caller's own garden")
+		state.brainrots=fullCollection
 		rendered.RenderStepped:Fire(0.3)
 	end
 	local function searches()
@@ -159,5 +193,5 @@ local function checkClient()
 	assert(textExists("Tap to collect"),"A successful delayed search must open the capture sheet")
 	click("Tap to collect")
 	assert(not visible((function() for i=#uiNodes,1,-1 do if uiNodes[i].Text=="Tap to collect" then return uiNodes[i] end end end)()),"Completed capture must close")
-	print("PASS real client pages at three viewport sizes, collection filtering/pagination, and delayed found/empty searches")
+	print("PASS client pages, persistent index silhouettes, six-slot garden controls at three viewport sizes, and delayed searches")
 end

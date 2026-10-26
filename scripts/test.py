@@ -32,7 +32,9 @@ def main() -> int:
     print(f'PASS Luau syntax compilation ({len(sources)} source files)', flush=True)
     config = (ROOT / 'src/shared/Config.luau').read_text()
     tests = (ROOT / 'tests/economy.luau').read_text()
-    color_shim = 'local Color3 = {fromRGB = function(r,g,b) return {R=r/255,G=g/255,B=b/255} end}\n'
+    color_shim = 'local function fakeColor(r,g,b) return {R=r,G=g,B=b,Lerp=function(self,other,t) return fakeColor(self.R+(other.R-self.R)*t,self.G+(other.G-self.G)*t,self.B+(other.B-self.B)*t) end} end\nlocal Color3 = {new=fakeColor,fromRGB = function(r,g,b) return fakeColor(r/255,g/255,b/255) end}\n'
+    garden_module = '\nActualGardenService = (function()\n' + (ROOT / 'src/server/GardenService.luau').read_text() + '\nend)();\n'
+    harness = (ROOT / 'tests/server_harness.luau').read_text()
     code = color_shim + 'local Config = (function()\n' + config + '\nend)()\n' + tests
     with tempfile.TemporaryDirectory(prefix='brainrot-tests-') as temporary:
         test_file = Path(temporary) / 'economy-run.luau'
@@ -43,13 +45,13 @@ def main() -> int:
             parser.error('Required src/server/Main.server.luau is missing')
         if server.exists():
             server_test = Path(temporary) / 'server-run.luau'
-            server_test.write_text(color_shim + 'local Config = (function()\n' + config + '\nend)()\n' + (ROOT / 'tests/server_harness.luau').read_text() + '\n(function()\n' + server.read_text() + '\nend)()\n' + (ROOT / 'tests/server_actions.luau').read_text())
+            server_test.write_text(color_shim + 'local Config = (function()\n' + config + '\nend)()\n' + harness + garden_module + '\n(function()\n' + server.read_text() + '\nend)()\n' + (ROOT / 'tests/server_actions.luau').read_text())
             subprocess.run([runtime, str(server_test)], check=True, cwd=ROOT)
             unpublished_test = Path(temporary) / 'unpublished-run.luau'
-            unpublished_test.write_text(color_shim + 'local Config = (function()\n' + config + '\nend)()\n' + (ROOT / 'tests/server_harness.luau').read_text() + '\ndataStoreInitFailure=true\n(function()\n' + server.read_text() + '\nend)()\n' + (ROOT / 'tests/unpublished.luau').read_text())
+            unpublished_test.write_text(color_shim + 'local Config = (function()\n' + config + '\nend)()\n' + harness + garden_module + '\ndataStoreInitFailure=true\n(function()\n' + server.read_text() + '\nend)()\n' + (ROOT / 'tests/unpublished.luau').read_text())
             subprocess.run([runtime, str(unpublished_test)], check=True, cwd=ROOT)
         world_test = Path(temporary) / 'world-run.luau'
-        world_test.write_text(color_shim + 'local Config = (function()\n' + config + '\nend)()\n' + (ROOT / 'tests/server_harness.luau').read_text() + '\n' + (ROOT / 'tests/world_startup.luau').read_text() + '\nlocal WorldUnderTest = (function()\n' + (ROOT / 'src/server/World.luau').read_text() + '\nend)()\nverifyWorld(WorldUnderTest)\n')
+        world_test.write_text(color_shim + 'local Config = (function()\n' + config + '\nend)()\n' + harness + '\n' + (ROOT / 'tests/world_startup.luau').read_text() + garden_module + '\nlocal WorldUnderTest = (function()\n' + (ROOT / 'src/server/World.luau').read_text() + '\nend)()\nverifyWorld(WorldUnderTest)\n')
         subprocess.run([runtime, str(world_test)], check=True, cwd=ROOT)
         model_test = Path(temporary) / 'models-run.luau'
         scene_prefix = color_shim + 'local Config = (function()\n' + config + '\nend)()\n' + (ROOT / 'tests/server_harness.luau').read_text() + '\n' + (ROOT / 'tests/world_startup.luau').read_text() + '\n' + (ROOT / 'tests/model_details.luau').read_text() + '\nConfig = (function()\n' + config + '\nend)()\n'

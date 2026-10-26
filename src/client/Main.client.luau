@@ -37,6 +37,9 @@ local collectionFilter = "All"
 local collectionQuery = ""
 local collectionPageIndex = 1
 local collectionPageSize = 12
+local indexRarityFilter = "All"
+local selectedGardenSlot = 1
+local selectedGardenUid = nil
 local panelRestPosition = UDim2.fromScale(0.5, 0.49)
 local busy = false
 local capture = nil
@@ -135,6 +138,12 @@ local function icon(parent, kind, tint, position, size)
 		mark(0.2,0.32,0.62,0.6,8);mark(0.52,0.09,0.12,0.26,2,-20);mark(0.65,0.09,0.24,0.13,4,-24)
 	elseif kind=="Sell" then
 		mark(0.12,0.64,0.76,0.19,5);mark(0.2,0.39,0.6,0.18,5);mark(0.31,0.14,0.39,0.18,5)
+	elseif kind=="Index" then
+		mark(0.08,0.14,0.37,0.72,3,-3);mark(0.55,0.14,0.37,0.72,3,3)
+		mark(0.47,0.13,0.06,0.76,1)
+	elseif kind=="Garden" then
+		mark(0.25,0.52,0.53,0.36,4);mark(0.2,0.49,0.63,0.1,3)
+		mark(0.48,0.18,0.09,0.38,2);mark(0.2,0.19,0.29,0.16,5,22);mark(0.57,0.1,0.28,0.16,5,-22)
 	elseif kind=="Gear" then
 		mark(0.46,0.07,0.12,0.6,3,-28);mark(0.17,0.65,0.64,0.2,8);mark(0.54,0.1,0.25,0.12,2,-28)
 	else
@@ -229,6 +238,17 @@ button(hud, "Home", function() request("Teleport", {destination = "Home"}) end,
 local helpButton = button(screen, "?", function() openPage("Help") end,
 	{AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -12, 0, 12), Size = UDim2.new(0, 38, 0, 38), BackgroundColor3 = C.panel, TextSize = 21, ZIndex=10})
 
+-- The book and garden have their own shortcuts rather than squeezing seven
+-- buttons into the phone's bottom navigation. Both pages link to one another.
+local journalShortcuts=make("Frame",{AnchorPoint=Vector2.new(1,0),Position=UDim2.new(1,-62,0,12),Size=UDim2.fromOffset(204,44),BackgroundTransparency=1,ZIndex=4},screen)
+for index,page in ipairs({"Index","Garden"}) do
+	local shortcut=button(journalShortcuts,page,function() openPage(page) end,
+		{Position=UDim2.fromOffset((index-1)*106,0),Size=UDim2.fromOffset(98,44),BackgroundColor3=C.panel,
+			TextXAlignment=Enum.TextXAlignment.Left,TextSize=14})
+	make("UIPadding",{PaddingLeft=UDim.new(0,36),PaddingRight=UDim.new(0,5)},shortcut)
+	icon(shortcut,page,C.green,UDim2.fromOffset(10,13),UDim2.fromOffset(18,18))
+end
+
 local nav = make("Frame", {AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -12),
 	Size = UDim2.new(0.97, 0, 0, 62), BackgroundColor3 = C.panel, BorderSizePixel = 0, ZIndex=10}, screen)
 make("UISizeConstraint", {MaxSize = Vector2.new(720, 62)}, nav)
@@ -292,15 +312,27 @@ local function notify(text, kind)
 	task.delay(4, function() if version == toastVersion then toast.Visible = false end end)
 end
 
-local function viewport(parent, specId, size, pos)
+local function viewport(parent, specId, size, pos, options)
+	options=options or {}
 	local spec = find(Config.Creatures, specId)
 	if not spec then return end
 	local frame = make("ViewportFrame", {Size = size, Position = pos or UDim2.new(), BackgroundTransparency = 1,
 		Ambient = Color3.fromRGB(205, 220, 210), LightColor = Color3.fromRGB(255, 248, 219),
 		LightDirection = Vector3.new(-1, -1, -2)}, parent)
+	frame:SetAttribute("Silhouette",options.silhouette==true)
 	local world = make("WorldModel", {}, frame)
 	local ok, model = pcall(CreatureFactory.create, spec, 1)
 	if not ok or not model then return end
+	if options.silhouette then
+		for _,object in ipairs(model:GetDescendants()) do
+			if object:IsA("BasePart") then
+				object.Color=C.bg
+				object.Material=Enum.Material.SmoothPlastic
+			elseif object:IsA("PointLight") or object:IsA("ParticleEmitter") then
+				object:Destroy()
+			end
+		end
+	end
 	model.Parent = world
 	model:PivotTo(CFrame.new())
 	local cf, bounds = model:GetBoundingBox()
@@ -317,7 +349,8 @@ local function viewport(parent, specId, size, pos)
 	frame:GetPropertyChangedSignal("AbsoluteSize"):Connect(fitCamera)
 	fitCamera()
 	frame.CurrentCamera = camera
-	table.insert(viewports, {model = model, base = model:GetPivot()})
+	if not options.static then table.insert(viewports, {model = model, base = model:GetPivot()}) end
+	return frame
 end
 
 local function updateHud()
@@ -336,6 +369,11 @@ local function pageSignature()
 	local values = {tostring(state.detector), tostring(state.activeBrainrot), tostring(state.rotationEnds)}
 	for _, id in ipairs(state.ownedDetectors or {}) do table.insert(values, id) end
 	for _, id in ipairs(state.unlockedWorlds or {}) do table.insert(values, id) end
+	for _,id in ipairs(state.discoveredIds or {}) do table.insert(values,"discovered:"..id) end
+	if state.garden then
+		table.insert(values,"garden:"..tostring(state.garden.id))
+		for slot,uid in ipairs(state.garden.slots or {}) do table.insert(values,"slot:"..slot..":"..uid) end
+	end
 	for _, brainrot in ipairs(state.brainrots or {}) do
 		table.insert(values, table.concat({brainrot.uid, brainrot.level, brainrot.xp, brainrot.income,
 			brainrot.growthBoostUntil or 0, brainrot.incomeBoostUntil or 0,
@@ -481,6 +519,15 @@ local function detailPage(sellMode)
 		{Position=UDim2.new(0.5,8,0,98),Size=UDim2.new(0.5,-24,0,34),TextWrapped=true})
 	button(hero,state.activeBrainrot==brainrot.uid and "Following you" or "Set as companion",function() perform("EquipBrainrot",{uid=brainrot.uid}) end,
 		{Position=UDim2.new(0.5,8,0,145),Size=UDim2.new(0.5,-24,0,44),TextSize=13,BackgroundColor3=C.light})
+	if not sellMode then
+		button(body,"Place in garden",function()
+			selectedGardenUid=brainrot.uid
+			local slots=state.garden and state.garden.slots or {}
+			local current=table.find(slots,brainrot.uid)
+			selectedGardenSlot=current or table.find(slots,"") or 1
+			openPage("Garden")
+		end,{Size=UDim2.new(1,0,0,44),BackgroundColor3=C.light})
+	end
 	if sellMode then
 		label(body, "Sold creatures and their levels cannot be recovered.", 12, C.muted, {Size = UDim2.new(1, 0, 0, 42), TextWrapped = true})
 		local sale = brainrot.sellValue or brainrot.value or Config.sellValue(brainrot.specId, brainrot.level)
@@ -650,6 +697,141 @@ local function worldsPage()
 	end
 end
 
+local function journalLinks(active)
+	local links=row(body,44)
+	for index,page in ipairs({"Index","Garden"}) do
+		button(links,page=="Index" and "Index book" or "My garden",function() openPage(page) end,
+			{Position=UDim2.new((index-1)*0.5,0,0,0),Size=UDim2.new(0.5,-5,1,0),
+				BackgroundColor3=active==page and C.bg or C.light,TextColor3=active==page and C.paper or C.text})
+	end
+end
+
+local function discoverySet()
+	local discovered={}
+	for _,id in ipairs(state.discoveredIds or {}) do discovered[id]=true end
+	-- Compatibility while an older saved collection is first migrated.
+	for _,brainrot in ipairs(state.brainrots or {}) do discovered[brainrot.specId]=true end
+	return discovered
+end
+
+local function discoveryHint(spec)
+	local rank=table.find(Config.Rarities,find(Config.Rarities,spec.rarity)) or 1
+	local world
+	for _,entry in ipairs(Config.Worlds) do
+		if entry.maxRarity>=rank then world=entry;break end
+	end
+	return (world and world.name or "Explore the worlds").." · Power "..math.max(rank,world and world.minPower or rank).."+"
+end
+
+local function indexPage()
+	title.Text="Brainrot index"
+	subtitle.Text="Every discovery is remembered, even after a creature is sold."
+	journalLinks("Index")
+	local discovered=discoverySet()
+	local total=0
+	local rarityCounts={}
+	local ownedCounts={}
+	for _,brainrot in ipairs(state.brainrots or {}) do ownedCounts[brainrot.specId]=(ownedCounts[brainrot.specId] or 0)+1 end
+	for _,spec in ipairs(Config.Creatures) do
+		if discovered[spec.id] then total+=1;rarityCounts[spec.rarity]=(rarityCounts[spec.rarity] or 0)+1 end
+	end
+	local progress=card(body,82)
+	label(progress,total.." / "..#Config.Creatures.." discovered",20,C.text,{Position=UDim2.fromOffset(16,10),Size=UDim2.new(1,-32,0,28),Font=Enum.Font.BuilderSansBold})
+	local track=make("Frame",{Position=UDim2.fromOffset(16,52),Size=UDim2.new(1,-32,0,8),BackgroundColor3=C.light,BorderSizePixel=0},progress)
+	corner(track,4)
+	local fill=make("Frame",{Size=UDim2.new(total/#Config.Creatures,0,1,0),BackgroundColor3=C.green,BorderSizePixel=0},track);corner(fill,4)
+	local chapters=make("ScrollingFrame",{Size=UDim2.new(1,0,0,48),BackgroundTransparency=1,BorderSizePixel=0,
+		AutomaticCanvasSize=Enum.AutomaticSize.X,CanvasSize=UDim2.new(),ScrollBarThickness=0,ScrollingDirection=Enum.ScrollingDirection.X},body)
+	make("UIListLayout",{FillDirection=Enum.FillDirection.Horizontal,Padding=UDim.new(0,6),SortOrder=Enum.SortOrder.LayoutOrder},chapters)
+	button(chapters,"All rarities",function() indexRarityFilter="All";renderPage() end,
+		{Size=UDim2.fromOffset(114,44),LayoutOrder=0,BackgroundColor3=indexRarityFilter=="All" and C.lime or C.light})
+	for index,r in ipairs(Config.Rarities) do
+		local count=0
+		for _,spec in ipairs(Config.Creatures) do if spec.rarity==r.id then count+=1 end end
+		button(chapters,r.name.." "..(rarityCounts[r.id] or 0).."/"..count,function() indexRarityFilter=r.id;renderPage() end,
+			{Size=UDim2.fromOffset(140,44),LayoutOrder=index,BackgroundColor3=indexRarityFilter==r.id and C.lime or C.light,TextColor3=readable(r.color),TextSize=13})
+	end
+	local entries={}
+	for _,spec in ipairs(Config.Creatures) do if indexRarityFilter=="All" or spec.rarity==indexRarityFilter then table.insert(entries,spec) end end
+	local columns=body.AbsoluteSize.X>=660 and 3 or 2
+	local gap=12
+	local grid=row(body,math.ceil(#entries/columns)*276-gap)
+	make("UIGridLayout",{CellSize=UDim2.new(1/columns,-gap*(columns-1)/columns,0,264),CellPadding=UDim2.fromOffset(gap,gap),SortOrder=Enum.SortOrder.LayoutOrder},grid)
+	for order,spec in ipairs(entries) do
+		local known=discovered[spec.id]==true
+		local r=rarity(spec.rarity)
+		local tile=card(grid,264);tile.LayoutOrder=order
+		tile:SetAttribute("IndexSpecies",spec.id)
+		tile:SetAttribute("Discovered",known)
+		previewStage(tile,known and r.color or C.line,UDim2.fromOffset(10,10),UDim2.new(1,-20,0,112))
+		viewport(tile,spec.id,UDim2.new(1,-12,0,112),UDim2.fromOffset(6,8),{silhouette=not known,static=true})
+		label(tile,known and spec.name or "???",15,known and C.text or C.muted,{Position=UDim2.fromOffset(12,129),Size=UDim2.new(1,-24,0,38),TextWrapped=true,TextTruncate=Enum.TextTruncate.AtEnd,Font=Enum.Font.BuilderSansBold})
+		label(tile,known and r.name or (r.name.." · Undiscovered"),12,readable(r.color),{Position=UDim2.fromOffset(12,169),Size=UDim2.new(1,-24,0,20),TextTruncate=Enum.TextTruncate.AtEnd})
+		label(tile,discoveryHint(spec),12,C.muted,{Position=UDim2.fromOffset(12,192),Size=UDim2.new(1,-24,0,36),TextWrapped=true})
+		label(tile,known and ("$"..money(Config.income(spec.id,1)).." / sec base · Own "..(ownedCounts[spec.id] or 0)) or "Catch to reveal",12,known and C.gold or C.muted,
+			{Position=UDim2.fromOffset(12,234),Size=UDim2.new(1,-24,0,20),TextTruncate=Enum.TextTruncate.AtEnd})
+	end
+end
+
+local function gardenPage()
+	title.Text="My garden"
+	subtitle.Text="Arrange six displays. Your whole collection keeps earning income."
+	journalLinks("Garden")
+	local garden=state.garden
+	if not garden or not garden.id then empty("Your personal garden is being prepared. Try again in a moment.");return end
+	local slots=garden.slots or {}
+	local capacity=garden.capacity or Config.GardenSlots or 6
+	selectedGardenSlot=math.clamp(selectedGardenSlot,1,capacity)
+	local byUid={}
+	for _,brainrot in ipairs(state.brainrots or {}) do byUid[brainrot.uid]=brainrot end
+	local occupied=0
+	for _,uid in ipairs(slots) do if byUid[uid] then occupied+=1 end end
+	local summary=card(body,85)
+	label(summary,string.format("Garden %02d",garden.id),21,C.text,{Position=UDim2.fromOffset(16,10),Size=UDim2.new(1,-32,0,29),Font=Enum.Font.BuilderSansBold})
+	label(summary,occupied.." / "..capacity.." displays · A home for your discoveries",13,C.muted,{Position=UDim2.fromOffset(16,46),Size=UDim2.new(1,-32,0,24),TextTruncate=Enum.TextTruncate.AtEnd})
+	button(body,"Travel to my garden",function()
+		local result=perform("Teleport",{destination="Garden"})
+		if result and result.ok then openPage(nil) end
+	end,{Size=UDim2.new(1,0,0,46),BackgroundColor3=C.lime,TextColor3=C.bg})
+	label(body,"Choose a display slot",14,C.green,{Font=Enum.Font.BuilderSansMedium})
+	local selectors=row(body,98)
+	make("UIGridLayout",{CellSize=UDim2.new(1/3,-6,0,44),CellPadding=UDim2.fromOffset(9,8),SortOrder=Enum.SortOrder.LayoutOrder},selectors)
+	for slot=1,capacity do
+		local current=byUid[slots[slot]]
+		local selected=selectedGardenSlot==slot
+		local b=button(selectors,"Slot "..slot,function() selectedGardenSlot=slot;selectedGardenUid=nil;renderPage() end,
+			{LayoutOrder=slot,BackgroundColor3=selected and C.bg or C.light,TextColor3=selected and C.paper or C.text,TextSize=13})
+		b:SetAttribute("Occupied",current~=nil)
+	end
+	local displayed=byUid[slots[selectedGardenSlot]]
+	local hero=card(body,170)
+	if displayed then
+		previewStage(hero,rarity(displayed.rarity).color,UDim2.fromOffset(12,12),UDim2.new(0.48,-12,1,-24))
+		viewport(hero,displayed.specId,UDim2.new(0.48,-8,1,-16),UDim2.fromOffset(8,8))
+		label(hero,displayed.name,16,C.text,{Position=UDim2.new(0.5,8,0,15),Size=UDim2.new(0.5,-24,0,48),TextWrapped=true,Font=Enum.Font.BuilderSansMedium})
+		label(hero,"Level "..displayed.level.." · $"..money(displayed.income).." / sec",13,C.gold,{Position=UDim2.new(0.5,8,0,66),Size=UDim2.new(0.5,-24,0,42),TextWrapped=true})
+		button(hero,"Clear slot",function() perform("GardenClear",{slot=selectedGardenSlot}) end,
+			{Position=UDim2.new(0.5,8,1,-56),Size=UDim2.new(0.5,-24,0,44),TextSize=13})
+	else
+		label(hero,"Slot "..selectedGardenSlot.." is empty",19,C.text,{Position=UDim2.fromOffset(16,20),Size=UDim2.new(1,-32,0,32),Font=Enum.Font.BuilderSansMedium})
+		label(hero,"Choose one of your brainrots below to make this display its home.",14,C.muted,{Position=UDim2.fromOffset(16,65),Size=UDim2.new(1,-32,0,72),TextWrapped=true,TextYAlignment=Enum.TextYAlignment.Top})
+	end
+	label(body,"Choose a brainrot for slot "..selectedGardenSlot,14,C.green,{Font=Enum.Font.BuilderSansMedium})
+	if #(state.brainrots or {})==0 then empty("Capture your first brainrot to start filling your garden.");return end
+	for _,brainrot in ipairs(state.brainrots) do
+		local currentSlot=table.find(slots,brainrot.uid)
+		local f=card(body,112)
+		if selectedGardenUid==brainrot.uid then stroke(f,C.green,0.1) end
+		label(f,brainrot.name,15,C.text,{Position=UDim2.fromOffset(14,10),Size=UDim2.new(1,-154,0,42),TextWrapped=true,TextTruncate=Enum.TextTruncate.AtEnd,Font=Enum.Font.BuilderSansMedium})
+		label(f,"Lv "..brainrot.level.." · $"..money(brainrot.income).." / sec",13,C.gold,{Position=UDim2.fromOffset(14,57),Size=UDim2.new(1,-154,0,20),TextTruncate=Enum.TextTruncate.AtEnd})
+		label(f,currentSlot and ("Displayed in slot "..currentSlot) or "Ready for your garden",12,C.muted,{Position=UDim2.fromOffset(14,82),Size=UDim2.new(1,-154,0,18),TextTruncate=Enum.TextTruncate.AtEnd})
+		local here=currentSlot==selectedGardenSlot
+		button(f,here and "Already here" or (currentSlot and "Move here" or "Place here"),function()
+			if not here then selectedGardenUid=brainrot.uid;perform("GardenAssign",{uid=brainrot.uid,slot=selectedGardenSlot}) end
+		end,{Position=UDim2.new(1,-132,0,34),Size=UDim2.fromOffset(118,44),BackgroundColor3=here and C.light or C.lime,TextColor3=here and C.muted or C.bg,TextSize=13})
+	end
+end
+
 local function helpPage()
 	title.Text="A little guide"
 	subtitle.Text="Find something weird. Feed it. Watch your garden grow."
@@ -661,7 +843,8 @@ local function helpPage()
 		{"Find & collect","Stand on the sand and choose Dig (E). A scan takes one second, with a 50% chance to find a signal. Tap or press Space to capture it."},
 		{"Feed & grow","Open Collection, choose a brainrot, and feed it from your pantry. Every creature earns coins while you play."},
 		{"Upgrade your kit","Food, Sell, and Gear take you straight to their shops. Stronger detectors uncover higher rarities; boosts last five minutes."},
-		{"Explore further","Worlds lets you unlock and travel to larger hunting grounds. Your coins, creatures, and upgrades are saved when saving is available."},
+		{"Explore further","Worlds lets you unlock larger hunting grounds. Index records every discovery; Garden lets you arrange six personal displays."},
+		{"Make it yours","Use Index (I) to track all 21 species. Garden (G) opens your six displays and teleports you home. Display choices and discoveries save with your collection."},
 	}) do
 		local f=card(body,112)
 		label(f,entry[1],16,C.text,{Position=UDim2.fromOffset(16,10),Size=UDim2.new(1,-32,0,24),Font=Enum.Font.BuilderSansMedium})
@@ -680,6 +863,8 @@ renderPage = function()
 	elseif activePage == "Food" then foodPage()
 	elseif activePage == "Gear" then gearPage()
 	elseif activePage == "Worlds" then worldsPage()
+	elseif activePage == "Index" then indexPage()
+	elseif activePage == "Garden" then gardenPage()
 	else helpPage() end
 	body.CanvasPosition = scrollPosition
 end
@@ -688,6 +873,7 @@ openPage = function(page)
 	local previousPage = activePage
 	activePage = page
 	shade.Visible = page ~= nil
+	journalShortcuts.Visible = page == nil
 	digButton.Visible = page == nil
 	detectorLabel.Visible = page == nil
 	for key, b in pairs(navButtons) do
@@ -820,14 +1006,25 @@ Notify.OnClientEvent:Connect(function(message, kind)
 	notify(message, kind)
 end)
 UserInputService.InputBegan:Connect(function(input, processed)
-	if processed then return end
+	if processed or UserInputService:GetFocusedTextBox() then return end
 	if input.KeyCode == Enum.KeyCode.E then task.spawn(startDig)
+	elseif input.KeyCode == Enum.KeyCode.I and not capture then openPage("Index")
+	elseif input.KeyCode == Enum.KeyCode.G and not capture then openPage("Garden")
 	elseif input.KeyCode == Enum.KeyCode.B and not capture then
 		if activePage then openPage(nil) else openPage("Collection") end
 	elseif input.KeyCode == Enum.KeyCode.Escape and activePage then openPage(nil) end
 end)
 ProximityPromptService.PromptTriggered:Connect(function(prompt, triggeringPlayer)
 	if triggeringPlayer and triggeringPlayer ~= player then return end
+	if prompt:GetAttribute("Garden") or prompt:GetAttribute("GardenSlot") then
+		if state and state.garden and prompt:GetAttribute("GardenId")==state.garden.id then
+			local slot=prompt:GetAttribute("GardenSlot")
+			if type(slot)=="number" then selectedGardenSlot=math.clamp(slot,1,state.garden.capacity or 6) end
+			selectedGardenUid=nil
+			openPage("Garden")
+		else notify("This is another player's garden. Open Garden to arrange your own displays.") end
+		return
+	end
 	local shop = prompt:GetAttribute("Shop")
 	if shop == "Food" or shop == "Sell" or shop == "Gear" then openPage(shop) end
 	if prompt:GetAttribute("WorldId") then openPage("Worlds") end
@@ -879,6 +1076,8 @@ local function resize()
 	if size.X<1 or size.Y<1 then return end
 	hud.Size = UDim2.new(0, math.min(290, math.max(230, size.X - 70)), 0, 86)
 	helpButton.Position = UDim2.new(1, -12, 0, 12)
+	journalShortcuts.Position=UDim2.new(1,size.X<600 and -12 or -62,0,size.X<600 and 108 or 12)
+	toast.Position=UDim2.new(0.5,0,0,size.X<600 and 162 or 102)
 	panel.Size = UDim2.new(0.94,0,0,math.min(660,math.max(180,size.Y-108)))
 	panelRestPosition=UDim2.new(0.5,0,0,(size.Y-76)/2)
 	panel.Position=panelRestPosition
@@ -886,7 +1085,7 @@ local function resize()
 		b.Text=name=="Collection" and (size.X<500 and "Bag" or "Collection") or name
 		b.TextSize=size.X<500 and 12 or 13
 	end
-	if activePage=="Collection" or activePage=="Sell" then renderPage() end
+	if activePage=="Collection" or activePage=="Sell" or activePage=="Index" or activePage=="Garden" then renderPage() end
 	capturePanel.Size = UDim2.new(0.9, 0, 0, math.min(410, size.Y - 24))
 	if size.Y < 450 then
 		capturePanel.Size = UDim2.new(0.9, 0, 0, 410)

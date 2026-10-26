@@ -50,6 +50,8 @@ local progress
 for _=1,capture.dig.required do progress=call(starter,"TapDig",{sessionId=capture.dig.id},0.1) end
 check(progress.ok and progress.complete,"Enough timely taps must capture exactly one creature")
 check(#progress.state.brainrots==1 and progress.state.discoveryCount==1,"Successful capture must add collection and discovery count")
+check(table.find(progress.state.discoveredIds,progress.state.brainrots[1].specId)~=nil and progress.state.uniqueDiscovered==1,"Captured species must unlock its persistent index entry")
+check(progress.state.garden.slots[1]==progress.state.brainrots[1].uid,"First captured creature must populate the first garden slot")
 check(not call(starter,"TapDig",{sessionId=capture.dig.id}).ok,"Replaying a completed capture cannot duplicate rewards")
 local first=state(starter)
 advance(2)
@@ -72,6 +74,8 @@ local rich=makePlayer(200)
 Players.PlayerAdded:Fire(rich)
 local loaded=state(rich)
 check(#loaded.brainrots==2 and loaded.activeBrainrot=="pet-a","Saved collection must load")
+check(loaded.uniqueDiscovered==2 and table.find(loaded.discoveredIds,"sprout") and table.find(loaded.discoveredIds,"toast"),"Legacy owned species must migrate into index history")
+check(loaded.garden.slots[1]=="pet-a" and loaded.garden.slots[2]=="pet-b","Legacy saves must receive inviting owned-creature garden placements")
 local baseA=loaded.brainrots[1].income
 local baseB=loaded.brainrots[2].income
 local growth=call(rich,"BuyBoost",{uid="pet-a",kind="Growth"})
@@ -106,6 +110,13 @@ local beforeSale=#maxDetector.brainrots
 local sold=call(rich,"Sell",{uid="pet-a"})
 check(sold.ok and #sold.state.brainrots==beforeSale-1 and sold.state.activeBrainrot=="pet-b","Selling active creature must award coins and select remaining companion")
 check(not call(rich,"Sell",{uid="pet-a"}).ok,"A sold creature cannot be sold twice")
+check(sold.state.uniqueDiscovered==2 and table.find(sold.state.discoveredIds,"sprout"),"Selling a creature must retain its index discovery")
+check(sold.state.garden.slots[1]=="" and sold.state.garden.slots[2]=="pet-b","Selling must remove the sold creature from its garden only")
+local movedGarden=call(rich,"GardenAssign",{uid="pet-b",slot=6})
+check(movedGarden.ok and movedGarden.state.garden.slots[2]=="" and movedGarden.state.garden.slots[6]=="pet-b","Assigning an existing display moves its unique UID")
+check(movedGarden.state.income==sold.state.income,"Moving garden displays must not duplicate passive income")
+check(call(rich,"GardenClear",{slot=6}).ok,"Owner must be able to clear an occupied slot")
+check(call(rich,"GardenAssign",{uid="pet-b",slot=6}).ok,"Cleared slots can be assigned again")
 advance(301)
 local expired=state(rich)
 check(expired.brainrots[1].income==Config.income("toast",1),"Income boost must expire after five minutes")
@@ -119,6 +130,8 @@ local restored=state(rejoined)
 check(#restored.brainrots==#saved.brainrots and restored.brainrots[1].uid=="pet-b","Collection must survive save and reload")
 check(restored.detector=="moon" and table.find(restored.unlockedWorlds,"Cosmic")~=nil,"Gear and world progress must survive save and reload")
 check(restored.foods.crumb==saved.foods.crumb,"Food counts must survive save and reload")
+check(restored.uniqueDiscovered==2 and table.find(restored.discoveredIds,"sprout"),"Sold-species discovery history must survive rejoining")
+check(restored.garden.slots[6]=="pet-b" and restored.garden.slots[2]=="","Garden UID placements must survive rejoining")
 check(#warnings==0,"Unexpected server warnings: "..table.concat(warnings,"; "))
 -- Physical movement into a locked pit must not bypass the world gate.
 starter.Character.Root.Position=map.pits.Cosmic.center
@@ -134,7 +147,7 @@ check(not call(full,"StartDig").ok and #state(full).brainrots==Config.MaxBrainro
 records.Player_260={data={coins=0/0,foods={crumb=-999},detector="void",ownedDetectors={"made-up"},brainrots={{uid="same",specId="sprout",level=math.huge,xp=math.huge},{uid="same",specId="toast",level=1},{uid="invalid",specId="missing"}},activeBrainrot="missing"}}
 local corrupt=makePlayer(260);Players.PlayerAdded:Fire(corrupt)
 local clean=state(corrupt)
-check(clean.coins==Config.StartCoins and clean.foods.crumb==0,"Invalid saved numbers must be sanitized")
+check(records.Player_260.data.coins==Config.StartCoins and clean.coins>=Config.StartCoins and clean.foods.crumb==0,"Invalid saved numbers must be sanitized")
 check(#clean.brainrots==1 and clean.brainrots[1].level==1 and clean.brainrots[1].xp==0,"Invalid/duplicate species and malformed saved levels must be sanitized")
 check(clean.detector==Config.Detectors[1].id and #clean.ownedDetectors==1,"Saved unknown/unowned gear must be discarded")
 check(clean.activeBrainrot=="same","Missing saved companion must fall back to an owned brainrot")
@@ -244,4 +257,123 @@ check(departed.done and not departed.result.ok and departed.result.dig==nil,"A d
 check(#records.Player_700.data.brainrots==1 and records.Player_700.data.discoveryCount==1,"Pending scans must never award after the final save")
 check(#forcedRandomNumbers==0,"Scripted search random draws must all be consumed")
 check(randomNumberDraws==drawsBeforeCanceledScans,"Canceled scans must not roll a new chance or species after invalidation")
+-- Garden ownership stays tied to server profiles, never a client-supplied plot.
+local own=state(rejoined)
+local other=state(starter)
+check(own.garden.id~=other.garden.id,"Concurrent players must receive distinct gardens")
+for _,slot in {0,7,-1,1.5,0/0,math.huge,"1",false} do
+	check(not call(rejoined,"GardenAssign",{uid="pet-b",slot=slot}).ok,"Garden assignments require a finite integer slot")
+	check(not call(rejoined,"GardenClear",{slot=slot}).ok,"Garden clearing requires a finite integer slot")
+end
+check(not call(rejoined,"GardenAssign",{uid=other.brainrots[1].uid,slot=1}).ok,"Foreign inventory UIDs cannot be displayed")
+check(call(rejoined,"GardenAssign",{uid="pet-b",slot=3,gardenId=other.garden.id}).ok,"Client plot IDs must not redirect an owned assignment")
+check(state(starter).garden.slots[1]==other.brainrots[1].uid and state(rejoined).garden.slots[3]=="pet-b","A forged garden ID must never edit another player's garden")
+check(call(rejoined,"Teleport",{destination="Garden",gardenId=other.garden.id}).ok,"Own-garden teleport should work")
+local homeFrame=map.gardens[own.garden.id].spawnCFrame
+check(rejoined.Character.Root.Position==homeFrame,"Garden teleport must resolve the caller's plot, ignoring supplied IDs")
+-- Invalid saved discoveries and repeated/foreign saved slot IDs are discarded.
+records.Player_810={data={coins=1000,brainrots={{uid="one",specId="sprout",level=1},{uid="two",specId="toast",level=1}},discovered={void=true,missing=true,dragon="true"},gardenSlots={"one","one","foreign","two"}}}
+local migration=makePlayer(810);Players.PlayerAdded:Fire(migration)
+local migrated=state(migration)
+check(migrated.uniqueDiscovered==3 and table.find(migrated.discoveredIds,"void") and not table.find(migrated.discoveredIds,"missing"),"Index migration accepts only known true discovery flags and owned species")
+check(migrated.garden.slots[1]=="one" and migrated.garden.slots[2]=="" and migrated.garden.slots[3]=="" and migrated.garden.slots[4]=="two","Saved duplicate and foreign garden IDs must be sanitized")
+check(call(migration,"Teleport",{destination="Meadow"}).ok,"Book test needs a valid digging position")
+table.insert(forcedRandomNumbers,0);table.insert(forcedRandomNumbers,0);table.insert(forcedRandomIntegers,1)
+local repeatSpecies=call(migration,"StartDig")
+check(repeatSpecies.dig and repeatSpecies.dig.specId=="sprout","Scripted duplicate capture must target an already discovered species")
+local duplicateCaught
+for _=1,repeatSpecies.dig.required do duplicateCaught=call(migration,"TapDig",{sessionId=repeatSpecies.dig.id},0.1) end
+check(duplicateCaught.complete and duplicateCaught.state.uniqueDiscovered==3,"Repeated species captures must not increase unique index progress")
+Players.PlayerRemoving:Fire(migration);migration.Parent=nil
+-- Exercise six real GardenService claims, then deny a seventh before any save
+-- acquisition. Releasing a plot must clear render models and allow re-use.
+for _,player in {starter,rejoined,full,corrupt} do Players.PlayerRemoving:Fire(player);player.Parent=nil end
+local occupants={}
+local plotIds={}
+for index=1,Config.MaxPlayers do
+	local id=900+index
+	records["Player_"..id]={data={coins=1000,brainrots={{uid="garden-"..index,specId="sprout",level=1}},gardenSlots={"garden-"..index}}}
+	local person=makePlayer(id);Players.PlayerAdded:Fire(person);occupants[index]=person
+	local data=state(person)
+	check(data.garden.id and not plotIds[data.garden.id],"Six admitted players must hold unique garden plots")
+	plotIds[data.garden.id]=true
+end
+local seventh=makePlayer(9999);Players.PlayerAdded:Fire(seventh)
+check(type(seventh.KickMessage)=="string" and not call(seventh,"GetState").ok,"A seventh player must not receive a playable profile")
+check(writes.Player_9999==nil and records.Player_9999==nil,"Full-server admission must not open a seventh DataStore session")
+local releasedId=state(occupants[1]).garden.id
+local displayFolder=map.gardens[releasedId].displays
+check(#displayFolder:GetChildren()>0,"An occupied garden must have a physical creature display")
+Players.PlayerRemoving:Fire(occupants[1]);occupants[1].Parent=nil
+check(#displayFolder:GetChildren()==0,"Leaving must clear all garden display models")
+local replacement=makePlayer(10000);Players.PlayerAdded:Fire(replacement)
+check(state(replacement).garden.id==releasedId,"A newly joining player must reuse the released plot")
+check(#displayFolder:GetChildren()==0,"A reused empty garden must not inherit another player's creatures")
+Players.PlayerRemoving:Fire(replacement);replacement.Parent=nil
+-- Studio fallback load can yield. Leaving during it releases its reserved plot
+-- immediately, and late acquisition cannot claim a replacement's garden.
+failures.Player_10001=true
+local pending=makePlayer(10001)
+task.spawn(function() Players.PlayerAdded:Fire(pending) end)
+advance(0.2)
+local blocked=makePlayer(10002);Players.PlayerAdded:Fire(blocked)
+check(type(blocked.KickMessage)=="string" and writes.Player_10002==nil,"A loading profile must reserve the final garden")
+Players.PlayerRemoving:Fire(pending);pending.Parent=nil
+local nextPlayer=makePlayer(10003);Players.PlayerAdded:Fire(nextPlayer)
+local nextPlot=state(nextPlayer).garden.id
+advance(4)
+check(state(nextPlayer).garden.id==nextPlot,"A canceled late load must not release another player's claim")
+check(records.Player_10001==nil and writes.Player_10001==nil,"A departed failed load must not save temporary data")
+Players.PlayerRemoving:Fire(nextPlayer);nextPlayer.Parent=nil
+updateDelays.Player_10004=1
+local late=makePlayer(10004)
+task.spawn(function() Players.PlayerAdded:Fire(late) end)
+advance(0.2)
+Players.PlayerRemoving:Fire(late);late.Parent=nil
+local afterLate=makePlayer(10005);Players.PlayerAdded:Fire(afterLate)
+local afterLatePlot=state(afterLate).garden.id
+advance(1.1)
+check(records.Player_10004 and records.Player_10004.session==nil,"A canceled successful late load must release its acquired save session")
+check(state(afterLate).garden.id==afterLatePlot,"Late save release must not clear a replacement's garden")
+check(not call(late,"GetState").ok,"A departed late load must not become a playable profile")
+
+-- A departing save may yield between failed retries. Reserve that user ID
+-- for the entire retry lifecycle: this server's global lease ID alone cannot
+-- distinguish an old departure from a new player object with the same user ID.
+Players.PlayerRemoving:Fire(afterLate);afterLate.Parent=nil
+records.Player_10006={data={coins=8765,brainrots={{uid="retry-pet",specId="sprout",level=8}},discovered={void=true},gardenSlots={"retry-pet"}}}
+local retrying=makePlayer(10006);Players.PlayerAdded:Fire(retrying)
+check(call(retrying,"GardenAssign",{uid="retry-pet",slot=6}).ok,"Departure regression requires unsaved garden changes")
+local retrySnapshot=state(retrying)
+local writesBeforeDeparture=writes.Player_10006
+failures.Player_10006=true
+local departureDone=false
+task.spawn(function() Players.PlayerRemoving:Fire(retrying);departureDone=true end)
+retrying.Parent=nil
+check(not departureDone,"A failed final save must enter its retry backoff")
+-- Storage recovers while the old departure is asleep. A new Player object
+-- could acquire its predecessor's global-session lease without this guard.
+failures.Player_10006=nil
+local tooSoon=makePlayer(10006);Players.PlayerAdded:Fire(tooSoon)
+check(type(tooSoon.KickMessage)=="string" and not call(tooSoon,"GetState").ok,"Same-user rejoins must be denied during the first save backoff")
+check(writes.Player_10006==writesBeforeDeparture,"Rejected rejoin must not acquire or overwrite a departing save")
+Players.PlayerRemoving:Fire(tooSoon);tooSoon.Parent=nil
+failures.Player_10006=true
+advance(1.01)
+check(not departureDone,"A second failed departure save must remain guarded through its longer backoff")
+failures.Player_10006=nil
+local stillTooSoon=makePlayer(10006);Players.PlayerAdded:Fire(stillTooSoon)
+check(type(stillTooSoon.KickMessage)=="string" and not call(stillTooSoon,"GetState").ok,"Same-user rejoins must also be denied during the second save backoff")
+check(writes.Player_10006==writesBeforeDeparture,"Backoff retries must never open a replacement profile session")
+advance(2.1)
+check(departureDone and records.Player_10006.session==nil,"Successful final retry must finish and release the departure's lease")
+check(records.Player_10006.data.gardenSlots[6]=="retry-pet" and records.Player_10006.data.gardenSlots[1]=="","Final retry must preserve latest garden changes")
+local afterRetry=makePlayer(10006);Players.PlayerAdded:Fire(afterRetry)
+local resumed=state(afterRetry)
+check(afterRetry.KickMessage==nil and resumed.garden.slots[6]=="retry-pet","Rejoining must become available after the old save lifecycle completes")
+check(resumed.uniqueDiscovered==retrySnapshot.uniqueDiscovered and table.find(resumed.discoveredIds,"void"),"Completed retries must preserve index history")
+check(records.Player_10006.session~=nil,"The replacement profile must hold its own active save lease")
+advance(2.1)
+check(records.Player_10006.session~=nil and state(afterRetry).garden.slots[6]=="retry-pet","No stale departure retry may release or overwrite the replacement profile")
+
 print("PASS authoritative server actions with Roblox service mocks ("..assertions.." assertions)")

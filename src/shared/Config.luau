@@ -3,6 +3,8 @@
 local Config = {}
 Config.StartCoins = 150
 Config.MaxBrainrots = 50
+Config.MaxPlayers = 6
+Config.GardenSlots = 6
 Config.MaxLevel = 100
 Config.RotationSeconds = 300
 Config.DigDuration = 10

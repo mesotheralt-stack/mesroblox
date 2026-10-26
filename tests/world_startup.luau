@@ -73,6 +73,36 @@ local function verifyWorld(World)
 		assert(excavation:FindFirstChild("DigZone").Position.Y+1.5<island:FindFirstChild("NorthernLawn").Position.Y+3,"Sand basin must sit below the lawn")
 	end
 	assert(scene:FindFirstChild("CloverVillage"),"Detailed village must exist")
+	assert(#built.gardens==Config.MaxPlayers and #built.gardens==6,"Map must build exactly six personal gardens")
+	for id,plot in ipairs(built.gardens) do
+		assert(plot.id==id and #plot.slots==Config.GardenSlots and #plot.slotSigns==6,"Every garden needs six display locations and labels")
+		assert(plot.model and plot.ownerSign and plot.displays and plot.spawnCFrame,"Garden build result must be usable by the owner service")
+	end
+	-- Real GardenService manager: no mocked ownership/cache implementation.
+	local created=0
+	local factory={create=function(spec,scale) created+=1;local model=node("Model",spec.name);model.AppliedScale=scale;return model end}
+	local manager=ActualGardenService.new(built.gardens,Config,factory)
+	local owners={}
+	for id=1,6 do owners[id]=makePlayer(20000+id);assert(manager:claim(owners[id])==id,"Garden allocator must issue unique plots") end
+	assert(manager:claim(owners[1])==1,"Claiming twice must be idempotent")
+	assert(manager:claim(makePlayer(20007))==nil,"Seventh plot claim must fail")
+	local collection={{uid="alpha",specId="sprout",level=1}}
+	assert(manager:sync(owners[1],collection,{"alpha","alpha","foreign"}),"Owner must be able to render its garden")
+	local plot=manager:getPlot(owners[1])
+	assert(created==1 and #plot.displays:GetChildren()==1,"Duplicate/foreign placement IDs must not render duplicate creatures")
+	local first=plot.displays:GetChildren()[1]
+	assert(first:GetAttribute("OwnerUserId")==owners[1].UserId and first:GetAttribute("BrainrotUID")=="alpha","Display models must be tied to their real owner and creature")
+	manager:sync(owners[1],collection,{"alpha"})
+	assert(created==1 and plot.displays:GetChildren()[1]==first,"Unchanged snapshots must retain cached models")
+	collection[1].level=20
+	manager:sync(owners[1],collection,{"alpha"})
+	local grown=plot.displays:GetChildren()[1]
+	assert(created==2 and first.Destroyed and grown.AppliedScale>first.AppliedScale,"Feeding must replace the cached model at a larger scale")
+	assert(string.find(plot.slotSigns[1].Text,"20",1,true),"Garden plaques must reflect the updated level")
+	manager:release(owners[1])
+	assert(manager:getPlotId(owners[1])==nil and manager:getSpawnCFrame(owners[1])==nil,"Released owners must lose plot and teleport access")
+	assert(#plot.displays:GetChildren()==0 and plot.model:GetAttribute("OwnerUserId")==0,"Released gardens must clear models and ownership")
+	assert(manager:claim(owners[1])==1 and #plot.displays:GetChildren()==0,"A reused plot must start empty")
 	assert(lighting.ClockTime == 9, "Lighting cycle must start")
-	print("PASS actual map startup with restricted Workspace writes, expanded geometry and no floating pins")
+	print("PASS actual map startup with restricted Workspace writes, expanded geometry, six gardens and real display lifecycle")
 end

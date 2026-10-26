@@ -4,6 +4,7 @@ local Lighting = game:GetService("Lighting")
 local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local CreatureFactory = require(ReplicatedStorage:WaitForChild("BrainrotShared"):WaitForChild("CreatureFactory"))
+local GardenService = require(script.Parent:WaitForChild("GardenService"))
 
 local World = {}
 local cycleStarted = false
@@ -589,6 +590,7 @@ function World.build(config)
 		end
 	end
 	centralHub(scene,result); gallery(scene,config,result)
+	result.gardens=GardenService.build(scene,config)
 	World.startDayNight()
 	return result
 end

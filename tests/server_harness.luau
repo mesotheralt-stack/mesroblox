@@ -43,22 +43,34 @@ local UDim2={fromOffset=function() return {} end,fromScale=function() return {} 
 local Enum=setmetatable({},{__index=function() return setmetatable({},{__index=function(_,key) return key end}) end})
 local function node(class,name)
 	local result={ClassName=class,Name=name or class,_children={},_events={}}
-	function result:FindFirstChild(childName) for _,child in self._children do if child.Name==childName then return child end end return nil end
-	function result:WaitForChild(childName) local found=self:FindFirstChild(childName); assert(found,"Missing mocked child "..childName); return found end
+	function result:FindFirstChild(childName,recursive)
+		for _,child in self._children do if child.Name==childName then return child end end
+		if recursive then for _,child in self._children do local found=child:FindFirstChild(childName,true);if found then return found end end end
+		return nil
+	end
+	function result:WaitForChild(childName) local found=self:FindFirstChild(childName);assert(found,"Missing mocked child "..childName);return found end
 	function result:FindFirstChildOfClass(wanted) for _,child in self._children do if child.ClassName==wanted then return child end end end
-	function result:FindFirstChildWhichIsA(wanted) return self:FindFirstChildOfClass(wanted) end
-	function result:IsA(wanted) return self.ClassName==wanted end
-	function result:GetDescendants() return {} end
-	function result:GetChildren() return self._children end
+	function result:FindFirstChildWhichIsA(wanted) for _,child in self._children do if child:IsA(wanted) then return child end end end
+	function result:IsA(wanted) return self.ClassName==wanted or wanted=="BasePart" and (self.ClassName=="Part" or self.ClassName=="WedgePart" or self.ClassName=="SpawnLocation") end
+	function result:GetDescendants() local all={};for _,child in self._children do table.insert(all,child);for _,nested in child:GetDescendants() do table.insert(all,nested) end end;return all end
+	function result:GetChildren() return table.clone(self._children) end
 	function result:GetAttribute(key) return self._attributes and self._attributes[key] end
-	function result:SetAttribute(key,value) self._attributes=self._attributes or {}; self._attributes[key]=value end
-	function result:Destroy() self.Destroyed=true end
-	function result:PivotTo(frame) self.Frame=frame; if self.Root then self.Root.Position=frame;self.Root.CFrame=frame end end
+	function result:SetAttribute(key,value) self._attributes=self._attributes or {};self._attributes[key]=value end
+	function result:Destroy() for _,child in self:GetChildren() do child:Destroy() end;self.Parent=nil;self.Destroyed=true end
+	function result:PivotTo(frame) self.Frame=frame;if self.Root then self.Root.Position=frame;self.Root.CFrame=frame end end
+	function result:ScaleTo(scale) self.AppliedScale=scale end
 	function result:FireClient(player,...) self._events[player]=table.pack(...) end
-	return setmetatable(result,{__newindex=function(self,key,value)
-		if key=="Parent" and value then table.insert(value._children,self) end
-		rawset(self,key,value)
-	end})
+	return setmetatable(result,{
+		__index=function(self,key) if key=="Parent" then return rawget(self,"_parent") end end,
+		__newindex=function(self,key,value)
+			if key=="Parent" then
+				local old=rawget(self,"_parent")
+				if old then local at=table.find(old._children,self);if at then table.remove(old._children,at) end end
+				rawset(self,"_parent",value)
+				if value then table.insert(value._children,self) end
+			else rawset(self,key,value) end
+		end,
+	})
 end
 local Instance={new=function(class) return node(class) end}
 local Players=node("Players")
@@ -72,9 +84,11 @@ local RunService={Heartbeat=signal(), IsStudio=function() return true end}
 local records={}
 local failures={}
 local writes={}
+local updateDelays={}
 local dataStoreInitFailure=false
 local store={}
 function store:UpdateAsync(key,callback)
+	if updateDelays[key] then local delay=updateDelays[key];updateDelays[key]=nil;task.wait(delay) end
 	if failures[key] then error("Mock DataStore outage") end
 	local nextValue=callback(records[key])
 	if nextValue~=nil then records[key]=nextValue; writes[key]=(writes[key] or 0)+1 end
@@ -86,9 +100,10 @@ local game={JobId="mock-server"}
 function game:GetService(name) return ({Players=Players,ReplicatedStorage=ReplicatedStorage,DataStoreService={GetDataStore=function() if dataStoreInitFailure then error("Mock unpublished experience") end; return store end},HttpService=HttpService,RunService=RunService})[name] end
 function game:BindToClose(callback) self.OnClose=callback end
 local script={Parent=node("Folder")}
-for _, name in {"World","DetectorTool"} do local item=node("ModuleScript",name);item.Parent=script.Parent end
+for _, name in {"World","DetectorTool","GardenService"} do local item=node("ModuleScript",name);item.Parent=script.Parent end
 local forcedRandomNumbers = {} -- Unit draws queued by tests; production never sees this hook.
 local randomNumberDraws = 0
+local forcedRandomIntegers = {}
 local Random={new=function(seed)
 	local value=seed or 12345
 	local random={}
@@ -99,14 +114,27 @@ local Random={new=function(seed)
 		local unit=#forcedRandomNumbers>0 and table.remove(forcedRandomNumbers,1) or nextUnit()
 		return a+(b-a)*unit
 	end
-	function random:NextInteger(a,b) return math.min(b,a+math.floor((b-a+1)*nextUnit())) end
+	function random:NextInteger(a,b) if #forcedRandomIntegers>0 then return table.remove(forcedRandomIntegers,1) end;return math.min(b,a+math.floor((b-a+1)*nextUnit())) end
 	return random
 end}
 local map={spawnCFrame=vec(0,5,-80),destinations={Home=vec(0,5,-80),Food=vec(-30,5,-30),Sell=vec(30,5,-30),Gear=vec(60,5,-30),Meadow=vec(0,5,0),Dunes=vec(520,5,0),Cosmic=vec(1040,5,0)},pits={Meadow={center=vec(0,0,0),size=vec(100,3,100)},Dunes={center=vec(520,0,0),size=vec(100,3,100)},Cosmic={center=vec(1040,0,0),size=vec(100,3,100)}}}
+map.gardens={}
+for i=1,6 do
+	local slots={}
+	for slot=1,6 do slots[slot]=vec(i*100+slot*8,1,-620) end
+	local model=node("Model","Garden"..i)
+	local displays=node("Folder","Displays");displays.Parent=model
+	local slotSigns={}
+	for slot=1,6 do local label=node("TextLabel","Slot"..slot);label.Parent=model;slotSigns[slot]=label end
+	local sign=node("TextLabel","Owner");sign.Parent=model
+	table.insert(map.gardens,{id=i,model=model,spawnCFrame=vec(i*100,5,-620),slots=slots,ownerSign=sign,slotSigns=slotSigns,displays=displays})
+end
+local ActualGardenService
 local require=function(module)
 	if module.Name=="Config" then return Config end
+	if module.Name=="GardenService" then return assert(ActualGardenService,"Real GardenService must be loaded by test runner") end
 	if module.Name=="World" then return {build=function() return map end} end
-	if module.Name=="CreatureFactory" then return {create=function() return node("Model") end} end
+	if module.Name=="CreatureFactory" then return {create=function(spec,scale) local model=node("Model",spec.name);model.AppliedScale=scale;return model end} end
 	if module.Name=="DetectorTool" then return setmetatable({},{__index=function() return function() end end}) end
 	error("Unknown mocked module: "..module.Name)
 end

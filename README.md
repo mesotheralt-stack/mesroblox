@@ -5,12 +5,12 @@ A complete source project for a Roblox collection and growth game. All visuals a
 ## Open and play
 
 1. Download [`BrainrotBloom.rbxlx`](BrainrotBloom.rbxlx) from this repository or workspace and open it in **Roblox Studio**.
-2. The complete map is already visible in Studio’s edit view. Press **Play** to start the UI, day/night cycle, player data, and gameplay. The server refreshes the scenery on startup.
+2. The complete map is already visible in Studio’s edit view. Press **Play** to start the UI, day/night cycle, player data, personal gardens, and gameplay. The server refreshes the scenery on startup.
 3. Open **Worlds**, choose **Clover Commons → Travel to sand pit**, and press **E** or **Dig** while standing in the sand. Each scan takes one second and has a 50% chance to find a signal; empty searches are normal.
 4. Tap the capture button or press **Space** enough times within 10 seconds. Your new brainrot immediately starts earning coins.
 5. Open **Collection** (or **Bag** on mobile), select a creature, and feed it. You start with 150 coins, a Tin Twig detector, and three Suspicious Crumbs.
 
-Use **FOOD**, **SELL**, and **GEAR** to teleport directly to each shop. **HOME** returns to the garden. Walk-up shop prompts use **F**, so they do not conflict with the detector's E key. Touch players use the on-screen buttons.
+Use **Index** and **Garden** for the discovery book and personal displays. Use **FOOD**, **SELL**, and **GEAR** to teleport directly to each shop. **HOME** returns to the garden. Walk-up shop prompts use **F**, so they do not conflict with the detector's E key. Touch players use the on-screen buttons.
 
 Studio is needed to actually play Roblox. This Linux cloud workspace builds the place and runs automated checks, but it cannot run the Roblox engine.
 
@@ -39,6 +39,15 @@ A world's rarity ceiling also requires a sufficiently strong detector. The start
 - **Server-owned purchases and rewards**, profile validation, request limits, DataStore session locks, autosave, leave/shutdown saving, and explicit Studio temporary-data fallback.
 
 Income is earned online only. Boost clocks continue to expire while offline. There are no Robux purchases or external account requirements.
+
+## Index book and personal gardens
+
+- **Index (I)** records all 21 species with rarity progress, silhouettes for undiscovered brainrots, and world/detector hints. Discoveries stay recorded after selling a creature. Existing saves seed the book from currently owned creatures; species sold before this feature existed cannot be reconstructed from the old capture total.
+- **Garden (G)** opens your personal layout. Each server has **six gardens**, and each player is assigned one on arrival. The neighborhood is connected to Clover Commons by a bridge; players can walk around and visit one another.
+- Each garden has **six display pads**. New captures fill empty pads automatically until all six are occupied. Choose a slot in Garden to place, move, or clear one of your owned brainrots. Clear removes the display only; selling removes that creature from its pad. Feeding updates its displayed size.
+- Discoveries and display choices save alongside the collection. Physical plot numbers are reassigned between servers, so you always receive an available plot with your saved arrangement. Every owned brainrot still earns income; displaying it does not duplicate its income.
+
+The place file is configured with a **six-player maximum**, and the server reserves a garden before loading a profile, refusing extra joins if all six are occupied. When publishing/updating an existing Roblox experience, also set the place's **Maximum Players to 6** in Roblox's place settings so matchmaking uses six-player servers. This repository update does not change the live Creator Dashboard settings or publish the experience.
 
 ## Persistent saves
 
@@ -76,12 +85,13 @@ Cloud tasks already have an isolated checkout; use this checkout without creatin
 | `src/shared/CreatureFactory.luau` | Original procedural creature models |
 | `src/server/World.luau` | Map, shops, sand pits, gallery, lighting cycle |
 | `src/server/DetectorTool.luau` | Welded detector models |
+| `src/server/GardenService.luau` | Six garden plots, ownership, display models and cleanup |
 | `src/server/Main.server.luau` | Profiles, saving, shops, income, validated capture sessions |
 | `src/client/Main.client.luau` | HUD, shop and collection UI, teleport controls, capture presentation |
 
 ## Geometry previews
 
-[Creature sculpture contact sheet](docs/creature-geometry-preview.png) · [Village detail](docs/village-geometry-preview.png) · [Clover Commons](docs/meadow-geometry-preview.png)
+[Creature sculpture contact sheet](docs/creature-geometry-preview.png) · [Six gardens](docs/garden-geometry-preview.png) · [Village detail](docs/village-geometry-preview.png) · [Clover Commons](docs/meadow-geometry-preview.png)
 
 These previews are drawn from the generated Parts’ actual positions and rotations. They are **offline geometry renders**, not Roblox Studio screenshots: materials, transparency, fonts, lighting, and vegetation scatter may differ in the engine.
 
@@ -96,6 +106,6 @@ The scene exporter uses deterministic preview randomness for scattered vegetatio
 
 ## Verification boundary
 
-The automated suite compiles every source with the official Luau compiler, executes real economy functions, and exercises the actual server action handlers with deterministic Roblox service doubles. It checks purchases, finite quantities, capture success/failure/replays, growth, boost expiration, passive income, world progression, and save/reload behavior. It also executes every creature factory, the actual expanded map builder with the restricted Workspace-write guard, and client UI flows at three mocked viewport sizes. UI mocks do not validate real layout or rendering. The build also executes every sculpture and the map using native Roblox datatypes and reflected Instances via Lune, validates finite transforms, confirms pit alignment, and bakes the editor-visible scene.
+The automated suite compiles every source with the official Luau compiler, executes real economy functions, and exercises the actual server action handlers with deterministic Roblox service doubles. It checks purchases, finite quantities, capture success/failure/replays, growth, boost expiration, passive income, world progression, and save/reload behavior. The garden tests cover six concurrent owners, seventh-join refusal, saved placements/discovery history, and disconnect/save-retry cleanup. It also executes every creature factory, the actual expanded map builder with the restricted Workspace-write guard, and client UI flows at three mocked viewport sizes. UI mocks do not validate real layout or rendering. The build also executes every sculpture and the map using native Roblox datatypes and reflected Instances via Lune, validates finite transforms, confirms pit alignment, and bakes the editor-visible scene.
 
 These checks do **not** render the game or connect to Roblox DataStores. Follow [`docs/PLAYTEST.md`](docs/PLAYTEST.md) in Roblox Studio for real character controls, touch layouts, multiplayer, and live saving before publishing the game to players. The built place has not been published to Roblox.

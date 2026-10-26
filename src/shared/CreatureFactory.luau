@@ -75,6 +75,10 @@ function CreatureFactory.create(spec, scale)
 		orb(name.."Iris",V(size*0.55,size*0.69,size*0.17),position+V(0.035,-0.01,-size*0.25),color or ink)
 		orb(name.."Pupil",V(size*0.28,size*0.49,size*0.11),position+V(0.035,-0.01,-size*0.33),ink)
 		dot(name.."Catchlight",position+V(-size*0.08,size*0.17,-size*0.4),size*0.17,ivory)
+		-- A soft upper rim and second reflection add depth without changing
+		-- the species' face placement or adding expensive effects.
+		orb(name.."UpperLid",V(size*1.08,size*0.16,size*0.27),position+V(0,size*0.49,size*0.06),dark)
+		dot(name.."SoftReflection",position+V(size*0.15,-size*0.17,-size*0.4),size*0.075,ivory)
 	end
 	local function face(position, separation, size, happy)
 		for _,side in {-1,1} do
@@ -167,6 +171,9 @@ function CreatureFactory.create(spec, scale)
 				foot(V(side*1.24+(toe-2)*0.27,0.19,-1.24),V(0.37,0.22,0.82),trim,false)
 			end
 			for i=1,3 do dot("BackSpot",V(side*(0.7+i*0.16),1.92,0.55+i*0.2),0.21,dark) end
+			for web=1,2 do
+				orb("ToeWebbing",V(0.36,0.11,0.38),V(side*1.24+(web-1.5)*0.27,0.16,-1.06),trim:Lerp(base,0.28))
+			end
 		end
 		orb("WideSmile",V(1.55,0.12,0.13),V(0,1.93,-1.35),ink)
 		for _,side in {-1,1} do dot("Nostril",V(side*0.28,2.35,-1.3),0.11,dark) end
@@ -203,6 +210,7 @@ function CreatureFactory.create(spec, scale)
 			dot("AntennaBulb",V(side*0.98,4.3,-1.55),0.25,base)
 			for j=1,2 do rod("BeeLeg",V(side*0.63,1.4,0.35+(j-1)*0.8),V(side*0.95,0.6,0.35+(j-1)*0.8),0.16,trim) end
 			foot(V(side*0.95,0.43,0.35),V(0.55,0.3,0.76),trim,false)
+			dot("PollenBasket",V(side*0.95,0.8,1.15),0.32,base:Lerp(ivory,0.12))
 		end
 		piece("Stinger",V(0.45,0.6,0.85),V(0,1.9,2.13),trim,"Wedge",A(math.pi/2,0,0))
 	elseif shape=="shark" then
@@ -305,6 +313,7 @@ function CreatureFactory.create(spec, scale)
 		for i=1,4 do orb("TaperedHatTier",V(2.1-i*0.33,0.56,1.8-i*0.26),V(i*0.07,3.92+i*0.39,-0.05),base) end
 		tube("BentHatTip",{V(0.27,5.4,-0.05),V(0.6,5.69,-0.05),V(0.96,5.5,-0.08)},0.23,base)
 		piece("HatRibbon",V(1.86,0.24,1.66),V(0,4.04,-0.05),trim)
+		piece("HatBrooch",V(0.31,0.31,0.13),V(0,4.08,-0.92),ivory,nil,A(0,0,math.pi/4))
 		for _,side in {-1,1} do orb("WideSleeve",V(0.82,1.3,0.86),V(side*1.18,2.0,0),base,A(0,0,side*0.38)) end
 		rod("Wand",V(1.66,0.75,-0.1),V(1.91,3.5,-0.1),0.15,dark)
 		dot("WandCrystal",V(1.91,3.7,-0.1),0.48,trim)
@@ -333,6 +342,8 @@ function CreatureFactory.create(spec, scale)
 			orb("SatellitePlanet",V(0.75,0.75,0.75),V(-0.55,3.73,0.7),trim)
 			ring("PlanetRing",V(-0.55,3.73,0.7),0.63,0.09,ivory,"horizontal",10)
 			piece("ExplorerSatchel",V(0.65,0.89,0.98),V(1.27,1.65,0.66),trim)
+			piece("SatchelFlap",V(0.68,0.22,1.02),V(1.27,1.96,0.66),trim:Lerp(ivory,0.22))
+			piece("SatchelBuckle",V(0.1,0.22,0.23),V(1.63,1.72,0.64),ivory)
 			rod("SatchelStrap",V(0.35,2.5,-0.2),V(1.26,1.8,0.18),0.11,trim)
 		elseif dragon then
 			orb("DragonNeck",V(1.45,1.7,1.3),V(0,2.4,-0.65),base)

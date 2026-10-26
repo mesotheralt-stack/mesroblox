@@ -154,6 +154,10 @@ def main():
     image=render(village,(1600,1100),camera=(.65,.75,-1.2),background=(222,236,230))
     ImageDraw.Draw(image).text((32,24),'Clover Village • geometry preview',font=font(28,True),fill=(30,50,42))
     image.save(output/'village-detail.png')
+    if content.get('gardens'):
+        image=render(content['gardens']['parts'],(1600,1200),camera=(1,1.1,1.5),background=(222,236,230))
+        ImageDraw.Draw(image).text((32,24),'Six Personal Gardens • geometry preview',font=font(28,True),fill=(30,50,42))
+        image.save(output/'personal-gardens.png')
     print('Rendered original creature contact sheet and three map geometry previews in build/previews/')
 
 if __name__=='__main__':main()

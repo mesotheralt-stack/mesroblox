@@ -38,3 +38,13 @@ For tuning, use `src/shared/Config.luau`; keep game rewards and purchases on the
 - Click Dig in the pit. Confirm “Scanning…” stays visible for approximately one second. Some searches should report no signal, while successful searches open the capture challenge. The chance is 50% per scan, not alternating guaranteed results.
 - Confirm an empty scan adds no creature/discovery, opens no capture sheet, and still consumes the detector's recharge. Successful scans must give the full ten-second capture period after the search delay.
 - Try repeated clicks during a scan, switch detectors, leave the sand, teleport, reset the character, and leave/rejoin. Pending searches must not produce late captures or extra rewards after cancellation.
+
+## Index and six-player gardens
+
+1. Start a Studio server with six players. Each must spawn facing inward in a different claimed garden. Inspect all six ownership signs. Verify a seventh connection is refused without stealing a plot, and that the published place setting is Maximum Players 6.
+2. Open Index (I): undiscovered species show silhouettes and ???. Capture a species, confirm it unlocks the entry, then sell it and confirm it remains discovered. Capturing a duplicate must not increase the unique count.
+3. Open Garden (G), place/move/clear your own creatures across six pads, then feed a displayed creature and inspect the new size. Clearing a pad must keep the creature in the collection. Selling a displayed creature must remove only its display. Total passive income must not double.
+4. Walk to another player's garden, inspect their models, and try their F prompts. Your UI should identify it as another garden; forged assignment payloads must not change its slots. Garden teleport must always take you to your own plot.
+5. Leave/rejoin the same experience. Discovery history and pad arrangement should reload even when a different physical plot is assigned. Leave a fully decorated garden and confirm its models/sign clear before another player receives it.
+6. On phone portrait and landscape, check the new Index/Garden shortcuts, rarity filters/progress, six slot selectors, species chooser, and collection's Place in garden action. The shortcuts should not cover the coin HUD.
+7. Simulate a load failure or disconnect during load: the reserved plot must be released, temporary Studio progress must not overwrite a save, and a late load must not reclaim another player's reassigned plot.

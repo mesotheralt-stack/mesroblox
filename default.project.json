@@ -2,6 +2,7 @@
   "name": "Brainrot Bloom",
   "tree": {
     "$className": "DataModel",
+    "Players": { "$properties": { "MaxPlayersInternal": 6 } },
     "ReplicatedStorage": {
       "BrainrotShared": { "$path": "src/shared" }
     },

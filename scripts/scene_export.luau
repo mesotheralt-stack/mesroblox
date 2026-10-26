@@ -56,6 +56,11 @@ local factory=environment.require(shared:WaitForChild("CreatureFactory"))
 local world=environment.require(game:GetService("ServerScriptService"):WaitForChild("BrainrotServer"):WaitForChild("World"))
 local built=world.build(config)
 assert(built.pits.Meadow and built.pits.Dunes and built.pits.Cosmic,"Scene is incomplete")
+assert(config.MaxPlayers==6 and game:GetService("Players").MaxPlayers==6,"Place must be configured for six players")
+assert(built.gardens and #built.gardens==6,"Scene must include exactly six personal gardens")
+for id,plot in ipairs(built.gardens) do
+	assert(plot.id==id and #plot.slots==config.GardenSlots and plot.spawnCFrame,"Every garden needs six displays and a safe spawn")
+end
 local function validate(model)
 	local count=0
 	for _,p in model:GetDescendants() do
@@ -144,12 +149,14 @@ for index,id in {"Meadow","Dunes","Cosmic"} do
 	if index==1 then
 		-- The shops and garden gallery are directly under the world folder.
 		for _,child in root:GetChildren() do
-			if child.Name~="Meadow" and child.Name~="Dunes" and child.Name~="Cosmic" and child.Name~="Ocean" then
+			if child.Name~="Meadow" and child.Name~="Dunes" and child.Name~="Cosmic" and child.Name~="Ocean" and child.Name~="GardenNeighborhood" then
 				for _,p in parts(child) do table.insert(content,p) end
 			end
 		end
 	end
 	table.insert(geometry.worlds,{id=id,name=config.Worlds[index].name,parts=content})
 end
+local neighborhood=environment.workspace:WaitForChild("BrainrotWorld"):FindFirstChild("GardenNeighborhood")
+if neighborhood then geometry.gardens={name="Personal Gardens",parts=parts(neighborhood)} end
 fs.writeFile("build/scene-geometry.json",serde.encode("json",geometry))
 print("Exported real transformed geometry for 21 creatures and three worlds")

@@ -10,7 +10,9 @@ local Config = require(Shared:WaitForChild("Config"))
 local CreatureFactory = require(Shared:WaitForChild("CreatureFactory"))
 local World = require(script.Parent:WaitForChild("World"))
 local DetectorTool = require(script.Parent:WaitForChild("DetectorTool"))
+local GardenService = require(script.Parent:WaitForChild("GardenService"))
 local map = World.build(Config)
+local gardens = GardenService.new(map.gardens, Config, CreatureFactory)
 
 local remoteFolder = Instance.new("Folder")
 remoteFolder.Name = "BrainrotRemotes"
@@ -34,6 +36,9 @@ if not storeOk then
 end
 local sessionId = game.JobId .. ":" .. HttpService:GenerateGUID(false)
 local profiles = {}
+local joining = {}
+local joiningUsers = {}
+local releasingUsers = {}
 local savesInFlight = {}
 local closing = false
 local rng = Random.new()
@@ -58,6 +63,12 @@ local function owned(list, id)
 	return table.find(list, id) ~= nil
 end
 
+local function emptyGardenSlots()
+	local slots = {}
+	for slot = 1, Config.GardenSlots do slots[slot] = "" end
+	return slots
+end
+
 local function newData()
 	return {
 		coins = Config.StartCoins,
@@ -68,6 +79,8 @@ local function newData()
 		unlockedWorlds = { Config.Worlds[1].id },
 		activeBrainrot = nil,
 		discoveryCount = 0,
+		discovered = {},
+		gardenSlots = emptyGardenSlots(),
 	}
 end
 
@@ -96,7 +109,7 @@ local function sanitize(raw)
 		for _, saved in raw.brainrots do
 			if #data.brainrots >= Config.MaxBrainrots then break end
 			if type(saved) == "table" and lookup(Config.Creatures, saved.specId) then
-				local uid = type(saved.uid) == "string" and #saved.uid <= 64 and saved.uid or HttpService:GenerateGUID(false)
+				local uid = type(saved.uid) == "string" and #saved.uid > 0 and #saved.uid <= 64 and saved.uid or HttpService:GenerateGUID(false)
 				if not seen[uid] then
 					seen[uid] = true
 					local level = integer(saved.level, 1, Config.MaxLevel, 1)
@@ -109,6 +122,25 @@ local function sanitize(raw)
 				end
 			end
 		end
+	end
+	-- Discovery history is independent of the currently owned collection. Old
+	-- saves seed the new book from owned species; past sales cannot be inferred.
+	for _, spec in Config.Creatures do
+		if type(raw.discovered) == "table" and raw.discovered[spec.id] == true then data.discovered[spec.id] = true end
+	end
+	for _, brainrot in data.brainrots do data.discovered[brainrot.specId] = true end
+	if type(raw.gardenSlots) == "table" then
+		local placed = {}
+		for slot = 1, Config.GardenSlots do
+			local uid = raw.gardenSlots[slot]
+			if type(uid) == "string" and seen[uid] and not placed[uid] then
+				data.gardenSlots[slot] = uid
+				placed[uid] = true
+			end
+		end
+	else
+		-- A first visit after this update starts with an inviting display.
+		for slot = 1, math.min(Config.GardenSlots, #data.brainrots) do data.gardenSlots[slot] = data.brainrots[slot].uid end
 	end
 	if seen[raw.activeBrainrot] then data.activeBrainrot = raw.activeBrainrot end
 	if not data.activeBrainrot and data.brainrots[1] then data.activeBrainrot = data.brainrots[1].uid end
@@ -172,6 +204,10 @@ local function publicState(profile)
 			incomeBoostUntil = brainrot.incomeBoostUntil,
 		})
 	end
+	local discoveredIds = {}
+	for _, spec in Config.Creatures do
+		if profile.data.discovered[spec.id] then table.insert(discoveredIds, spec.id) end
+	end
 	local stock = {}
 	for _, food in rotation do
 		table.insert(stock, { id = food.id, remaining = math.max(0, food.stock - (profile.purchased[food.id] or 0)) })
@@ -183,6 +219,8 @@ local function publicState(profile)
 		brainrots = brainrots, foods = table.clone(profile.data.foods), stock = stock,
 		rotationEnds = (cachedEpoch + 1) * Config.RotationSeconds, discoveryCount = profile.data.discoveryCount,
 		serverTime = os.time(), persistenceEnabled = profile.persistent,
+		discoveredIds = discoveredIds, uniqueDiscovered = #discoveredIds,
+		garden = {id = gardens:getPlotId(profile.player), slots = table.clone(profile.data.gardenSlots), capacity = Config.GardenSlots},
 	}
 end
 
@@ -227,6 +265,7 @@ local function snapshot(profile)
 		foods = table.clone(profile.data.foods), detector = profile.data.detector,
 		ownedDetectors = table.clone(profile.data.ownedDetectors), unlockedWorlds = table.clone(profile.data.unlockedWorlds),
 		activeBrainrot = profile.data.activeBrainrot, brainrots = {},
+		discovered = table.clone(profile.data.discovered), gardenSlots = table.clone(profile.data.gardenSlots),
 	}
 	for _, brainrot in profile.data.brainrots do table.insert(copy.brainrots, table.clone(brainrot)) end
 	return copy
@@ -263,6 +302,20 @@ local function save(profile, release)
 		return false
 	end
 	return true
+end
+
+
+-- The guard covers the entire final-save sequence, including retry backoff.
+-- savesInFlight alone only protects an individual DataStore request.
+local function saveOnDeparture(profile, releaseTicket)
+	local userId = profile.player.UserId
+	local ticket = releaseTicket or {}
+	releasingUsers[userId] = ticket
+	for attempt = 1, 3 do
+		if save(profile, true) then break end
+		if attempt < 3 then task.wait(attempt) end
+	end
+	if releasingUsers[userId] == ticket then releasingUsers[userId] = nil end
 end
 
 local function acquire(player)
@@ -313,7 +366,7 @@ local function pitForPosition(position)
 end
 
 local function teleport(player, profile, destination)
-	local frame = type(destination) == "string" and map.destinations[destination]
+	local frame = destination == "Garden" and gardens:getSpawnCFrame(player) or type(destination) == "string" and map.destinations[destination]
 	if not frame then return false, "That destination does not exist." end
 	local world = lookup(Config.Worlds, destination)
 	if world and not owned(profile.data.unlockedWorlds, world.id) then return false, "Unlock this world in the Worlds menu first." end
@@ -427,6 +480,7 @@ function handlers.Feed(_player, profile, payload)
 	end
 	if brainrot.level == Config.MaxLevel then brainrot.xp = 0 end
 	if profile.data.activeBrainrot == brainrot.uid then updateCompanion(profile) end
+	gardens:sync(profile.player, profile.data.brainrots, profile.data.gardenSlots)
 	local gained = brainrot.level - previousLevel
 	return { ok = true, message = gained > 0 and ("Grew " .. gained .. " level" .. (gained == 1 and "!" or "s!")) or "Yum! Growth XP added." }
 end
@@ -444,11 +498,42 @@ function handlers.Sell(_player, profile, payload)
 	local value = Config.sellValue(brainrot.specId, brainrot.level)
 	table.remove(profile.data.brainrots, index)
 	profile.data.coins = math.min(MAX_COINS, profile.data.coins + value)
+	for slot = 1, Config.GardenSlots do
+		if profile.data.gardenSlots[slot] == brainrot.uid then profile.data.gardenSlots[slot] = "" end
+	end
+	gardens:sync(profile.player, profile.data.brainrots, profile.data.gardenSlots)
 	if profile.data.activeBrainrot == brainrot.uid then
 		profile.data.activeBrainrot = profile.data.brainrots[1] and profile.data.brainrots[1].uid or nil
 		updateCompanion(profile)
 	end
 	return { ok = true, message = "Brainrot sold for $" .. tostring(value) .. "." }
+end
+
+-- Garden actions refer only to the caller's reserved plot. Clients cannot
+-- choose an owner/garden id or move creatures they do not own.
+local function gardenSlot(value)
+	if type(value) ~= "number" or value ~= value or value % 1 ~= 0 or value < 1 or value > Config.GardenSlots then return nil end
+	return value
+end
+
+function handlers.GardenAssign(player, profile, payload)
+	local slot = gardenSlot(payload.slot)
+	if not slot then return fail("Choose a garden slot from 1 to " .. Config.GardenSlots .. ".") end
+	if not findBrainrot(profile, payload.uid) then return fail("Choose a brainrot you own to display in your garden.") end
+	for previous = 1, Config.GardenSlots do
+		if profile.data.gardenSlots[previous] == payload.uid then profile.data.gardenSlots[previous] = "" end
+	end
+	profile.data.gardenSlots[slot] = payload.uid
+	gardens:sync(player, profile.data.brainrots, profile.data.gardenSlots)
+	return {ok = true, message = "Brainrot placed in garden slot " .. slot .. "."}
+end
+
+function handlers.GardenClear(player, profile, payload)
+	local slot = gardenSlot(payload.slot)
+	if not slot then return fail("Choose a valid garden slot.") end
+	profile.data.gardenSlots[slot] = ""
+	gardens:sync(player, profile.data.brainrots, profile.data.gardenSlots)
+	return {ok = true, message = "Garden display cleared. Your brainrot stays in your collection."}
 end
 
 function handlers.BuyBoost(_player, profile, payload)
@@ -542,6 +627,11 @@ function handlers.TapDig(player, profile, payload)
 	local brainrot = { uid = HttpService:GenerateGUID(false), specId = dig.specId, level = 1, xp = 0, growthBoostUntil = 0, incomeBoostUntil = 0 }
 	table.insert(profile.data.brainrots, brainrot)
 	profile.data.discoveryCount += 1
+	profile.data.discovered[brainrot.specId] = true
+	for slot = 1, Config.GardenSlots do
+		if profile.data.gardenSlots[slot] == "" then profile.data.gardenSlots[slot] = brainrot.uid; break end
+	end
+	gardens:sync(player, profile.data.brainrots, profile.data.gardenSlots)
 	if not profile.data.activeBrainrot then profile.data.activeBrainrot = brainrot.uid; updateCompanion(profile) end
 	local spec = lookup(Config.Creatures, brainrot.specId)
 	return { ok = true, complete = true, message = "Captured " .. spec.name .. "! It now earns coins every second." }
@@ -574,18 +664,46 @@ Action.OnServerInvoke = function(player, action, payload)
 end
 
 local function onPlayerAdded(player)
+	if profiles[player] or joining[player] then return end
+	if player.Parent ~= Players or closing then return end
+	if joiningUsers[player.UserId] or releasingUsers[player.UserId] or savesInFlight[player.UserId] then
+		player:Kick("Your collection is still loading or saving. Please rejoin in a moment.")
+		return
+	end
+	-- Reserve a real plot before the potentially yielding DataStore load. A
+	-- seventh player never starts a profile session or displaces another garden.
+	local gardenId = gardens:claim(player)
+	if not gardenId then
+		player:Kick("This server's six gardens are occupied. Please join another server.")
+		return
+	end
+	local ticket = {}
+	joining[player] = ticket
+	joiningUsers[player.UserId] = ticket
 	local data, persistent, message = acquire(player)
-	if not data then player:Kick(message); return end
-	local profile = {
+	local profile = data and {
 		player = player, data = data, persistent = persistent, world = Config.Worlds[1].id,
-		nextDig = 0, tokens = 45, tokenAt = os.clock(), stockEpoch = -1, purchased = {},
-	}
-	if player.Parent ~= Players or closing then save(profile, true); return end
+		gardenId = gardenId, nextDig = 0, tokens = 45, tokenAt = os.clock(), stockEpoch = -1, purchased = {},
+	} or nil
+	if joining[player] ~= ticket or player.Parent ~= Players or closing then
+		if joining[player] == ticket then joining[player] = nil; gardens:release(player) end
+		if profile then saveOnDeparture(profile) end
+		if joiningUsers[player.UserId] == ticket then joiningUsers[player.UserId] = nil end
+		return
+	end
+	joining[player] = nil
+	joiningUsers[player.UserId] = nil
+	if not profile then
+		gardens:release(player)
+		player:Kick(message)
+		return
+	end
 	profiles[player] = profile
+	gardens:sync(player, data.brainrots, data.gardenSlots)
 	local function spawnCharacter(character)
 		local root = character:WaitForChild("HumanoidRootPart", 10)
-		if root and profiles[player] == profile then
-			character:PivotTo(map.spawnCFrame)
+		if root and profiles[player] == profile and player.Character == character then
+			character:PivotTo(gardens:getSpawnCFrame(player) or map.spawnCFrame)
 			profile.world = Config.Worlds[1].id
 			profile.scan = nil
 			profile.dig = nil
@@ -608,14 +726,17 @@ Players.PlayerAdded:Connect(onPlayerAdded)
 for _, player in Players:GetPlayers() do task.spawn(onPlayerAdded, player) end
 Players.PlayerRemoving:Connect(function(player)
 	local profile = profiles[player]
+	local releaseTicket = profile and {} or nil
+	-- Set this before cleanup or any possible yield. Rejected rejoin attempts
+	-- have no profile, so their removal cannot clear the original player's guard.
+	if releaseTicket then releasingUsers[player.UserId] = releaseTicket end
+	joining[player] = nil
+	gardens:release(player)
 	profiles[player] = nil
 	if profile then
 		profile.scan = nil
 		if profile.companion then profile.companion:Destroy() end
-		for attempt = 1, 3 do
-			if save(profile, true) then break end
-			if attempt < 3 then task.wait(attempt) end
-		end
+		saveOnDeparture(profile, releaseTicket)
 	end
 end)
 
