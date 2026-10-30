@@ -262,47 +262,104 @@ button(hud, "Home", function() request("Teleport", {destination = "Home"}) end,
 local helpButton = button(screen, "?", function() openPage("Help") end,
 	{AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -12, 0, 12), Size = UDim2.fromOffset(44,44), BackgroundColor3 = C.panel, TextSize = 20, ZIndex=10})
 
--- Journal shortcuts use separate icon and label bounds so padding cannot
--- shift the icons over the words. Both pages also link to one another.
-local journalShortcuts=make("Frame",{Name="JournalShortcuts",AnchorPoint=Vector2.new(1,0),Position=UDim2.new(1,-62,0,12),Size=UDim2.fromOffset(204,44),BackgroundTransparency=1,ZIndex=4},screen)
-for index,page in ipairs({"Index","Garden"}) do
-	local shortcut=button(journalShortcuts,"",function() openPage(page) end,
-		{Name=page.."Shortcut",Position=UDim2.fromOffset((index-1)*106,0),Size=UDim2.fromOffset(98,44),BackgroundColor3=C.panel})
-	shortcut:SetAttribute("ShortcutPage",page)
-	local symbol=icon(shortcut,page,C.green,UDim2.new(0,12,0.5,-9),UDim2.fromOffset(18,18))
-	symbol.Name="ShortcutIcon"
-	label(shortcut,page,14,C.text,{Name="ShortcutLabel",Position=UDim2.new(0,38,0,0),Size=UDim2.new(1,-46,1,0),Font=Enum.Font.BuilderSansMedium})
-end
-
-local nav = make("Frame", {Name="NavigationDock", AnchorPoint = Vector2.new(0, 0), Position = UDim2.fromOffset(328,12),
-	Size = UDim2.new(0.97, 0, 0, 62), BackgroundColor3 = C.panel, BorderSizePixel = 0, ZIndex=10}, screen)
-make("UISizeConstraint", {MaxSize = Vector2.new(720, 62)}, nav)
+-- Navigation sits together on the left. Separate icon and label bounds keep
+-- every symbol beside its word, without inherited text padding shifting it.
+local nav = make("Frame", {Name="NavigationDock", AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0,12,0.5,0),
+	Size = UDim2.fromOffset(132,306), BackgroundColor3 = C.panel, BorderSizePixel = 0, ZIndex=4}, screen)
 corner(nav, 18)
 stroke(nav,C.line,0.2)
-padding(nav, 6)
-make("UIGridLayout", {CellSize = UDim2.new(0.25, -5, 1, 0), CellPadding = UDim2.new(0, 6, 0, 0), SortOrder = Enum.SortOrder.LayoutOrder}, nav)
 local navButtons = {}
 local navIcons = {}
+local navLabels = {}
 for index, page in ipairs({"Collection", "Food", "Sell", "Gear"}) do
-	navButtons[page] = button(nav, page == "Collection" and "Collection" or page, function()
+	navButtons[page] = button(nav, "", function()
 		if page == "Food" or page == "Sell" or page == "Gear" then
 			local result = request("Teleport", {destination = page})
 			if not result or not result.ok then return end
 		end
 		openPage(page)
-	end, {LayoutOrder = index, TextSize = 13, TextYAlignment=Enum.TextYAlignment.Bottom, BackgroundColor3=C.panel})
-	make("UIPadding",{PaddingBottom=UDim.new(0,5)},navButtons[page])
-	navIcons[page]=icon(navButtons[page],page,C.muted,UDim2.new(0.5,-9,0,3),UDim2.fromOffset(18,18))
+	end, {Name=page.."Navigation",Position=UDim2.fromOffset(6,6+(index-1)*50),Size=UDim2.new(1,-12,0,44),BackgroundColor3=C.panel})
+	navButtons[page]:SetAttribute("NavigationPage",page)
+	navIcons[page]=icon(navButtons[page],page,C.muted,UDim2.new(0,12,0.5,-9),UDim2.fromOffset(18,18))
+	navIcons[page].Name="NavigationIcon"
+	navLabels[page]=label(navButtons[page],page,13,C.muted,{Name="NavigationLabel",Position=UDim2.new(0,38,0,0),Size=UDim2.new(1,-46,1,0),Font=Enum.Font.BuilderSansMedium})
+end
+local journalShortcuts=make("Frame",{Name="JournalShortcuts",Position=UDim2.fromOffset(6,206),Size=UDim2.new(1,-12,0,94),BackgroundTransparency=1},nav)
+local journalButtons={}
+for index,page in ipairs({"Index","Garden"}) do
+	local shortcut=button(journalShortcuts,"",function() openPage(page) end,
+		{Name=page.."Shortcut",Position=UDim2.fromOffset(0,(index-1)*50),Size=UDim2.new(1,0,0,44),BackgroundColor3=C.panel})
+	journalButtons[page]=shortcut
+	shortcut:SetAttribute("ShortcutPage",page)
+	local symbol=icon(shortcut,page,C.green,UDim2.new(0,12,0.5,-9),UDim2.fromOffset(18,18))
+	symbol.Name="ShortcutIcon"
+	label(shortcut,page,14,C.text,{Name="ShortcutLabel",Position=UDim2.new(0,38,0,0),Size=UDim2.new(1,-46,1,0),Font=Enum.Font.BuilderSansMedium})
 end
 local digButton = button(screen, "Dig  ·  E", function() startDig() end,
-	{AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -24), Size = UDim2.new(0, 176, 0, 48),
+	{Name="DetectorDig",Visible=false,AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -24), Size = UDim2.new(0, 176, 0, 48),
 		BackgroundColor3 = C.bg, TextColor3 = C.paper, TextSize = 17})
 local detectorLabel = label(screen, "Walk into a sand pit to search", 13, C.paper,
-	{Name="ExpeditionStatus", AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -80), Size = UDim2.new(0.9, 0, 0, 30),
+	{Name="ExpeditionStatus",Visible=false, AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -80), Size = UDim2.new(0.9, 0, 0, 30),
 		BackgroundColor3=C.bg, BackgroundTransparency=0.12, TextXAlignment = Enum.TextXAlignment.Center, TextTruncate=Enum.TextTruncate.AtEnd})
 make("UISizeConstraint",{MaxSize=Vector2.new(470,30)},detectorLabel)
 corner(detectorLabel,15)
 make("UIPadding",{PaddingLeft=UDim.new(0,14),PaddingRight=UDim.new(0,14)},detectorLabel)
+
+-- Owning a detector does not mean it is in the character's hand. Follow the
+-- actual Tool parent and its replicated marker, including resets and swaps.
+local detectorCharacter=nil
+local detectorConnections={}
+local detectorChildConnections={}
+local function detectorEquipped()
+	local character=player.Character
+	if not character or character~=detectorCharacter then return false end
+	local humanoid=character:FindFirstChildOfClass("Humanoid")
+	if not humanoid or humanoid.Health<=0 then return false end
+	for _,child in character:GetChildren() do
+		if child:IsA("Tool") and child:GetAttribute("BrainrotDetector")==true then return true end
+	end
+	return false
+end
+local function syncDetectorUI()
+	local equipped=detectorEquipped()
+	screen:SetAttribute("DetectorEquipped",equipped)
+	local show=equipped and activePage==nil and capture==nil
+	digButton.Visible=show
+	detectorLabel.Visible=show
+end
+local function stopWatchingDetector()
+	for _,connection in detectorConnections do connection:Disconnect() end
+	for _,connection in detectorChildConnections do connection:Disconnect() end
+	table.clear(detectorConnections)
+	table.clear(detectorChildConnections)
+	detectorCharacter=nil
+end
+local function watchDetectorCharacter(character)
+	stopWatchingDetector()
+	detectorCharacter=character
+	local function observeChild(child)
+		if detectorCharacter~=character then return end
+		if child:IsA("Tool") then
+			detectorChildConnections[child]=child:GetAttributeChangedSignal("BrainrotDetector"):Connect(syncDetectorUI)
+		elseif child:IsA("Humanoid") then
+			detectorChildConnections[child]=child.Died:Connect(syncDetectorUI)
+		end
+		syncDetectorUI()
+	end
+	table.insert(detectorConnections,character.ChildAdded:Connect(observeChild))
+	table.insert(detectorConnections,character.ChildRemoved:Connect(function(child)
+		local connection=detectorChildConnections[child]
+		if connection then connection:Disconnect();detectorChildConnections[child]=nil end
+		syncDetectorUI()
+	end))
+	for _,child in character:GetChildren() do observeChild(child) end
+	syncDetectorUI()
+end
+player.CharacterAdded:Connect(watchDetectorCharacter)
+player.CharacterRemoving:Connect(function(character)
+	if detectorCharacter==character then stopWatchingDetector();syncDetectorUI() end
+end)
+if player.Character then watchDetectorCharacter(player.Character) else syncDetectorUI() end
 
 local shade = make("Frame", {Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.new(), BackgroundTransparency = 0.42,
 	Visible = false, BorderSizePixel = 0, Active = true, ZIndex=5}, screen)
@@ -904,13 +961,13 @@ openPage = function(page)
 	screen:SetAttribute("MenuOpen", page ~= nil)
 	shade.Visible = page ~= nil
 	journalShortcuts.Visible = page == nil
-	digButton.Visible = page == nil
-	detectorLabel.Visible = page == nil
+	syncDetectorUI()
 	if resize then resize(true) end
 	for key, b in pairs(navButtons) do
 		local on = key == page or (key == "Collection" and page == "Detail") or (key == "Sell" and (page == "SellDetail" or page == "SellConfirm"))
 		b.BackgroundColor3 = on and C.bg or C.panel
 		b.TextColor3 = on and C.paper or C.muted
+		navLabels[key].TextColor3 = on and C.paper or C.muted
 		for _,piece in ipairs(navIcons[key]:GetDescendants()) do
 			if piece:GetAttribute("TintIcon") then piece.BackgroundColor3=on and C.paper or C.muted end
 		end
@@ -954,6 +1011,7 @@ local function endCapture(message, kind)
 	captureShade.Visible = false
 	for _,child in capturePreview:GetChildren() do child:Destroy() end
 	ContextActionService:UnbindAction("BrainrotCaptureTap")
+	syncDetectorUI()
 	if message then notify(message, kind) end
 end
 local function celebrate(color)
@@ -990,7 +1048,7 @@ tapDig = function()
 	end
 end
 startDig = function()
-	if busy or capture or activePage then return end
+	if busy or capture or activePage or not detectorEquipped() then return end
 	busy = true
 	screen:SetAttribute("Scanning", true)
 	digButton.Text = "Scanning…"
@@ -1006,6 +1064,7 @@ startDig = function()
 	if not result or not result.ok or not result.dig then return end
 	local dig = result.dig
 	capture = {id = dig.id, required = dig.required, duration = dig.duration, deadline = os.clock() + dig.duration, taps = 0, name = dig.name or "brainrot", rarity = dig.rarity}
+	syncDetectorUI()
 	screen:SetAttribute("Capturing", true)
 	captureName.Text = capture.name
 	local r = rarity(dig.rarity)
@@ -1109,40 +1168,47 @@ end)
 resize = function(skipPageRender)
 	local size = screen.AbsoluteSize
 	if size.X<1 or size.Y<1 then return end
-	local wideHeader=size.X>=760
-	local shortScreen=size.Y<450
-	local shareShortcuts=wideHeader or (shortScreen and size.X>=520)
-	local compactPage=shortScreen and not wideHeader and activePage~=nil
-	local walletWidth=shareShortcuts and (size.X<1100 and 244 or 304) or math.min(304,math.max(230,size.X-70))
+	local compactDock=size.Y<600 and size.X>=520
+	local dockWidth=compactDock and 218 or (size.X<600 and 112 or 132)
+	local dockHeight=compactDock and 156 or 306
+	local dockCenter=compactDock and math.min(size.Y/2,size.Y-120-dockHeight/2) or size.Y/2
+	nav.Size=UDim2.fromOffset(dockWidth,dockHeight)
+	nav.Position=UDim2.fromOffset(12,dockCenter)
+	nav:SetAttribute("LayoutColumns",compactDock and 2 or 1)
+	local walletLeft=compactDock and dockWidth+24 or 12
+	local walletWidth=math.min(304,math.max(180,size.X-walletLeft-70))
+	hud.Position=UDim2.fromOffset(walletLeft,12)
 	hud.Size = UDim2.fromOffset(walletWidth,96)
+	coinsLabel.TextSize=walletWidth<230 and 20 or 27
 	helpButton.Position = UDim2.new(1, -12, 0, 12)
-	hud.Visible=not compactPage
-	helpButton.Visible=not compactPage
-	local navTop=(wideHeader or compactPage) and 12 or 118
-	local navWidth
-	if wideHeader then
-		-- Keep one clean row on landscape phones and larger screens.
-		local left=12+walletWidth+12
-		local available=size.X-62-204-12-left
-		navWidth=math.min(480,available)
-		nav.Position=UDim2.fromOffset(left+(available-navWidth)/2,navTop)
-		journalShortcuts.Position=UDim2.new(1,-62,0,12)
-	else
-		-- Portrait phones stack navigation below the wallet, then shortcuts.
-		navWidth=math.min(720,size.X-24)
-		nav.Position=UDim2.new(0.5,-navWidth/2,0,navTop)
-		journalShortcuts.Position=shareShortcuts and UDim2.new(1,-62,0,12) or UDim2.new(1,-12,0,188)
+	hud.Visible=activePage==nil
+	helpButton.Visible=activePage==nil
+	for index,name in ipairs({"Collection","Food","Sell","Gear"}) do
+		local column=compactDock and (index-1)%2 or 0
+		local rowIndex=compactDock and math.floor((index-1)/2) or index-1
+		navButtons[name].Position=UDim2.fromOffset(6+column*106,6+rowIndex*50)
+		navButtons[name].Size=UDim2.fromOffset(compactDock and 100 or dockWidth-12,44)
+		navLabels[name].Text=name=="Collection" and (size.X<900 and "Bag" or "Collection") or name
 	end
-	nav.Size=UDim2.fromOffset(navWidth,62)
-	local panelTop=navTop+72
-	local panelHeight=math.min(660,math.max(180,size.Y-panelTop-12))
+	journalShortcuts.Position=UDim2.fromOffset(6,compactDock and 106 or 206)
+	journalShortcuts.Size=UDim2.fromOffset(dockWidth-12,compactDock and 44 or 94)
+	for index,name in ipairs({"Index","Garden"}) do
+		journalButtons[name].Position=UDim2.fromOffset(compactDock and (index-1)*106 or 0,compactDock and 0 or (index-1)*50)
+		journalButtons[name].Size=UDim2.fromOffset(compactDock and 100 or dockWidth-12,44)
+	end
+	-- The modal shade sits above the dock, so pages can use the full screen
+	-- without leaving navigation buttons over their headings or close control.
+	local panelHeight=math.min(660,math.max(180,size.Y-24))
 	panel.Size=UDim2.new(0.94,0,0,panelHeight)
-	panelRestPosition=UDim2.fromOffset(size.X/2,panelTop+panelHeight/2)
+	panelRestPosition=UDim2.fromOffset(size.X/2,size.Y/2)
 	panel.Position=panelRestPosition
-	toast.Position=UDim2.new(0.5,0,0,wideHeader and 118 or 242)
-	for name,b in pairs(navButtons) do
-		b.Text=name=="Collection" and (size.X<900 and "Bag" or "Collection") or name
-		b.TextSize=size.X<900 and 12 or 13
+	if compactDock then
+		local toastWidth=math.min(540,size.X-dockWidth-36)
+		toast.Size=UDim2.fromOffset(toastWidth,52)
+		toast.Position=UDim2.fromOffset(walletLeft+toastWidth/2,118)
+	else
+		toast.Size=UDim2.new(0.88,0,0,52)
+		toast.Position=UDim2.new(0.5,0,0,118)
 	end
 	if not skipPageRender and (activePage=="Collection" or activePage=="Sell" or activePage=="Index" or activePage=="Garden") then renderPage() end
 	capturePanel.Size = UDim2.new(0.9, 0, 0, math.min(410, size.Y - 24))

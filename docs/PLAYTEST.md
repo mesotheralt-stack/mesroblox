@@ -23,7 +23,7 @@ For tuning, use `src/shared/Config.luau`; keep game rewards and purchases on the
 - Check the physical shop/world signs are readable nearby and no floating destination panels cover the scenery.
 - Inspect all 28 creatures in the collection and as companions. Check fine details remain attached when models grow, and each preview frames the whole creature.
 - Search/filter/sort a full collection; move through the 12-creature pages and open/feed/sell the selected creature. Confirm the scroll position stays comfortable after feeding.
-- Verify the Builder Sans text and muted colors are readable at phone sizes. Switch directly between pages using the top navigation, including phone landscape. Complete a capture using the new creature preview sheet.
+- Verify the Builder Sans text and muted colors are readable at phone sizes. Switch directly between pages using the left-side dock, including phone landscape. Complete a capture using the new creature preview sheet.
 
 ## Sculpture and scenery pass
 
@@ -64,12 +64,12 @@ For tuning, use `src/shared/Config.luau`; keep game rewards and purchases on the
 - Check the refined HUD on phone portrait, landscape, tablet, and desktop. Keep coin/income values, navigation, garden/index shortcuts, and the touch Sprint button clear of Roblox’s movement/jump controls.
 
 
-## Terrain depth and top navigation
+## Terrain depth and side navigation
 
 - Confirm the public rarity showcase, specimen plinths, and showcase sign are gone. The six personal gardens and their display pads must remain intact.
 - Explore every new elevated route: meadow orchard/brook trails, canyon mesa/mining trails, and cove mineral shelves/grotto. Walk up and down each route with a normal R6 character and without sprint or jumping. Check stair lips, platform joins, headroom, and that scenery does not block the digging sand.
 - Check the terrain from ground level as well as an elevated lookout: the worlds should have different silhouettes, materials, scenery, and landmarks. Confirm doors, portals, garden bridge, shops, and world arrival locations remain accessible.
-- In portrait, landscape, tablet, and desktop sizes, confirm Collection/Food/Sell/Gear are at the top. Index and Garden must show each icon to the left of its label, with no overlap or padding shift. Open every menu and complete a capture; top controls must not cover modal titles, close buttons, or touch targets.
+- In portrait, landscape, tablet, and desktop sizes, confirm Collection/Food/Sell/Gear/Index/Garden sit together along the left side, around the vertical middle. Index and Garden must show each icon to the left of its label, with no overlap or padding shift. Open every menu and complete a capture; dock controls must not cover modal titles, close buttons, or touch targets.
 - Find the seven new species across the seven rarity tiers. Check all 28 species in the index, collection previews, following companion, and personal gardens; feed a new species, sell it, and confirm discovery history remains saved.
 
 
@@ -79,3 +79,12 @@ For tuning, use `src/shared/Config.luau`; keep game rewards and purchases on the
 - Press Play and watch all three spiral arms rotate, sparks orbit in the opposite direction, and the light pulse gently. Travel between worlds, move far away and return, and reset the character. Effects should recover without duplicate animation or errors. Edit mode shows the static spiral.
 - Inspect Chef Pip behind the Food counter, Milo the Mechanic behind Gear, and Tessa the Trader at the trading post. Verify their face, outfit, name plaque, and F prompt. Food must open the food market, Gear the detector/boost shop, and Tessa the sale menu.
 - Confirm the characters do not collide with players, portal effects do not block walking, and both NPC and portal prompts are reachable on keyboard and touch. Buy, feed, equip, boost, sell, and travel once to check existing gameplay still works.
+
+
+## Equipped detector HUD and left-side dock
+
+- Equip a detector from the Roblox hotbar: Dig and the detector/world status must appear. Put it away, switch to another tool, or remove it: both must immediately disappear. Owning a detector in the Backpack alone must not show its HUD or allow E to start a search.
+- With the detector held, open and close every menu. Detector controls must stay hidden while a page or capture challenge is open, then return only if the tool remains equipped. Complete a capture after putting the detector away; the challenge may finish, but detector controls must remain hidden afterward.
+- Die/reset while holding a detector, then respawn and equip again. Check the old character cannot leave stale controls visible or prevent the new detector from working.
+- Check the centered left navigation dock in desktop, portrait, tablet, and narrow landscape views. All six controls need readable labels and icons on their left. Keep the coin display, Roblox thumbstick, touch Sprint, and Dig controls clear; short screens use a compact two-column dock.
+- Open a menu on each screen size and verify the dock cannot cover or intercept its title, close button, content, or scrolling.

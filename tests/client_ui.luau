@@ -39,12 +39,29 @@ Instance.new=function(class)
 	function object:Destroy()
 		self.Destroyed=true
 		for _,child in table.clone(self._children) do child:Destroy() end
-		if self.Parent then
-			local at=table.find(self.Parent._children,self)
-			if at then table.remove(self.Parent._children,at) end
-		end
+		self.Parent=nil
 	end
 	local mt=getmetatable(object)
+	local baseWrite=mt.__newindex
+	mt.__newindex=function(self,key,value)
+		local previous=key=="Parent" and self.Parent or nil
+		baseWrite(self,key,value)
+		if key=="Parent" and previous~=value then
+			if previous and rawget(previous,"ChildRemoved") then previous.ChildRemoved:Fire(self) end
+			if value and rawget(value,"ChildAdded") then value.ChildAdded:Fire(self) end
+		end
+	end
+	local baseSetAttribute=object.SetAttribute
+	function object:SetAttribute(key,value)
+		local previous=self:GetAttribute(key)
+		baseSetAttribute(self,key,value)
+		if previous~=value and self._attributeSignals and self._attributeSignals[key] then self._attributeSignals[key]:Fire() end
+	end
+	function object:GetAttributeChangedSignal(key)
+		self._attributeSignals=self._attributeSignals or {}
+		self._attributeSignals[key]=self._attributeSignals[key] or signal()
+		return self._attributeSignals[key]
+	end
 	mt.__index=function(self,key)
 		if key=="Parent" then return rawget(self,"_parent") end
 		if events[key] then local event=signal();rawset(self,key,event);return event end
@@ -65,6 +82,14 @@ local require=function(module)
 end
 local player=makePlayer(999)
 Players.LocalPlayer=player
+player.CharacterRemoving=signal()
+local function prepareCharacter(character)
+	character.ChildAdded=signal();character.ChildRemoved=signal()
+	character:FindFirstChildOfClass("Humanoid").Died=signal()
+end
+prepareCharacter(player.Character)
+local backpack=Instance.new("Backpack");backpack.Parent=player
+local detector=Instance.new("Tool");detector.Name="Tin Twig";detector:SetAttribute("BrainrotDetector",true);detector.Parent=backpack
 local gui=node("PlayerGui");gui.Parent=player
 local state={coins=10000,income=500,world="Meadow",detector="twig",ownedDetectors={"twig"},unlockedWorlds={"Meadow"},brainrots={},foods={crumb=3},stock={{id="crumb",remaining=24}},rotationEnds=1700000300,discoveryCount=50}
 for index=1,50 do
@@ -116,7 +141,8 @@ end
 local function click(text)
 	for i=#uiNodes,1,-1 do
 		local object=uiNodes[i]
-		if object.ClassName=="TextButton" and (object.Text==text or object:GetAttribute("ShortcutPage")==text) and visible(object) then task.spawn(function() object.Activated:Fire() end); return object end
+		local navigation=object:FindFirstChild("NavigationLabel")
+		if object.ClassName=="TextButton" and (object.Text==text or object:GetAttribute("ShortcutPage")==text or navigation and navigation.Text==text) and visible(object) then task.spawn(function() object.Activated:Fire() end); return object end
 	end
 	error("Visible button not found: "..text)
 end
@@ -126,7 +152,27 @@ local function textExists(text)
 end
 local function checkClient()
 	assert(textExists("Brainrot Bloom"),"HUD must initialize")
-	for _,size in {vec(1280,720,0),vec(375,812,0),vec(844,390,0),vec(568,320,0),vec(760,390,0),vec(768,1024,0)} do
+	local gameScreen=gui:FindFirstChild("BrainrotBloom")
+	local detectorButton=gameScreen:FindFirstChild("DetectorDig")
+	local detectorStatus=gameScreen:FindFirstChild("ExpeditionStatus")
+	local function controlsShown() return visible(detectorButton) and visible(detectorStatus) end
+	local function controlsHidden() return not visible(detectorButton) and not visible(detectorStatus) end
+	assert(controlsHidden() and gameScreen:GetAttribute("DetectorEquipped")==false,"Owning a detector in the backpack must not show its HUD")
+	local beforeUnequipped=#requests
+	input.InputBegan:Fire({KeyCode=Enum.KeyCode.E},false)
+	assert(#requests==beforeUnequipped,"E must not request a search without an equipped detector")
+	click("Collection");click("×")
+	assert(controlsHidden(),"Closing a page while unequipped must keep detector controls hidden")
+	local unrelated=Instance.new("Tool");unrelated.Name="Lantern";unrelated.Parent=player.Character
+	assert(controlsHidden(),"An unrelated equipped tool must not enable detector controls")
+	unrelated:SetAttribute("BrainrotDetector",true)
+	assert(controlsShown(),"A detector marker arriving after the tool must enable the HUD")
+	unrelated:SetAttribute("BrainrotDetector",false)
+	assert(controlsHidden(),"Removing a detector marker must immediately hide its HUD")
+	unrelated.Parent=backpack
+	detector.Parent=player.Character
+	assert(controlsShown() and gameScreen:GetAttribute("DetectorEquipped")==true,"Moving a real detector into the character must show its controls")
+	for _,size in {vec(1280,720,0),vec(375,812,0),vec(844,390,0),vec(568,320,0),vec(520,360,0),vec(760,390,0),vec(768,1024,0)} do
 		viewportSize=size
 		local screen
 		for _,object in uiNodes do if object.ClassName=="ScreenGui" then screen=object;break end end
@@ -150,38 +196,49 @@ local function checkClient()
 			return a.right<=b.left or b.right<=a.left or a.bottom<=b.top or b.bottom<=a.top
 		end
 		local nav=screen:FindFirstChild("NavigationDock")
-		local shortcuts=screen:FindFirstChild("JournalShortcuts")
+		local shortcuts=nav:FindFirstChild("JournalShortcuts")
 		local navBounds=bounds(nav,size.X,size.Y)
 		local walletBounds=bounds(wallet,size.X,size.Y)
 		local helpBounds=bounds(help,size.X,size.Y)
-		local shortcutBounds=bounds(shortcuts,size.X,size.Y)
-		assert(nav.AnchorPoint.Y==0 and nav.Position.Y.Scale==0 and navBounds.top<=118,"Navigation must be at the top of the screen")
-		assert(navBounds.left>=12 and navBounds.right<=size.X-12,"Top navigation must fit within the screen")
-		assert(separated(navBounds,walletBounds) and separated(navBounds,helpBounds) and separated(navBounds,shortcutBounds),"Header controls must not overlap")
-		assert(separated(shortcutBounds,walletBounds) and separated(shortcutBounds,helpBounds),"Journal shortcuts must leave wallet/help clear")
-		assert((navBounds.width-30)/4>=44,"Every top navigation button must retain a comfortable touch target")
-		for _,name in {"Index","Garden"} do
-			local shortcut=shortcuts:FindFirstChild(name.."Shortcut")
-			local symbol=shortcut:FindFirstChild("ShortcutIcon")
-			local word=shortcut:FindFirstChild("ShortcutLabel")
-			assert(shortcut.Text=="" and not shortcut:FindFirstChildOfClass("UIPadding"),"Shortcut children must not inherit text padding")
-			local iconBounds=bounds(symbol,98,44)
-			local labelBounds=bounds(word,98,44)
-			assert(iconBounds.right+6<=labelBounds.left,"Journal icon must sit to the left of its word with a clear gap")
-			assert((iconBounds.top+iconBounds.bottom)/2==(labelBounds.top+labelBounds.bottom)/2,"Journal icon and word must share a vertical center")
+		local shortcutBounds=bounds(shortcuts,navBounds.width,navBounds.height)
+		assert(nav.AnchorPoint.Y==0.5 and navBounds.left==12,"Navigation must anchor to the left edge around its vertical center")
+		assert(navBounds.top>=12 and navBounds.bottom<=size.Y-12 and math.abs((navBounds.top+navBounds.bottom)/2-size.Y/2)<=60,"Left navigation must remain near the middle and fit within the screen")
+		assert(separated(navBounds,walletBounds) and separated(navBounds,helpBounds),"The left dock must not overlap wallet or help controls")
+		assert(shortcutBounds.left>=6 and shortcutBounds.right<=navBounds.width-6 and shortcutBounds.bottom<=navBounds.height-6,"Index and Garden must belong to the same left dock")
+		local compact=size.Y<600 and size.X>=520
+		assert(nav:GetAttribute("LayoutColumns")== (compact and 2 or 1),"Short landscapes need a compact dock above the movement controls")
+		if compact then assert(navBounds.bottom<=size.Y-120,"Compact navigation must leave the lower-left movement area clear") end
+		local targets={}
+		for _,name in {"Collection","Food","Sell","Gear","Index","Garden"} do
+			local journal=name=="Index" or name=="Garden"
+			local target=journal and shortcuts:FindFirstChild(name.."Shortcut") or nav:FindFirstChild(name.."Navigation")
+			local targetBounds=bounds(target,journal and shortcutBounds.width or navBounds.width,journal and shortcutBounds.height or navBounds.height)
+			assert(targetBounds.width>=44 and targetBounds.height>=44,"Every dock button needs a comfortable touch target")
+			local symbol=target:FindFirstChild(journal and "ShortcutIcon" or "NavigationIcon")
+			local word=target:FindFirstChild(journal and "ShortcutLabel" or "NavigationLabel")
+			assert(target.Text=="" and not target:FindFirstChildOfClass("UIPadding"),"Dock icons and words must not inherit text padding")
+			local iconBounds=bounds(symbol,targetBounds.width,targetBounds.height)
+			local labelBounds=bounds(word,targetBounds.width,targetBounds.height)
+			assert(iconBounds.right+6<=labelBounds.left,"Dock icons must sit to the left of their words with a clear gap")
+			assert((iconBounds.top+iconBounds.bottom)/2==(labelBounds.top+labelBounds.bottom)/2,"Dock icons and words must share a vertical center")
+			if journal then
+				targetBounds.left+=shortcutBounds.left;targetBounds.right+=shortcutBounds.left
+				targetBounds.top+=shortcutBounds.top;targetBounds.bottom+=shortcutBounds.top
+			end
+			assert(targetBounds.left>=6 and targetBounds.right<=navBounds.width-6 and targetBounds.top>=6 and targetBounds.bottom<=navBounds.height-6,"Every dock target must remain inside the dock")
+			for _,other in targets do assert(separated(targetBounds,other),"Dock touch targets must not overlap") end
+			table.insert(targets,targetBounds)
 		end
 		local status=screen:FindFirstChild("ExpeditionStatus")
 		assert(status.TextStrokeTransparency~=0.45 and status.BackgroundTransparency<0.3,"World and detector text must have a readable status surface")
 		click(size.X<900 and "Bag" or "Collection")
 		assert(screen:GetAttribute("MenuOpen")==true,"Open pages must suspend sprint")
+		assert(controlsHidden(),"Journal pages must hide detector controls even when equipped")
 		assert(textExists("Your collection"),"Collection must open")
 		local modal=screen:FindFirstChild("JournalPanel",true)
 		local modalBounds=bounds(modal,size.X,size.Y)
-		navBounds=bounds(nav,size.X,size.Y)
-		if size.X<760 and size.Y<450 then
-			assert(not wallet.Visible and not help.Visible and navBounds.top==12,"Short landscape pages must reclaim the header for reachable controls")
-		end
-		assert(modalBounds.top>=navBounds.bottom+8 and modalBounds.bottom<=size.Y-12,"Top navigation must not cover the page header or clip the modal")
+		assert(not wallet.Visible and not help.Visible and nav.ZIndex<modal.Parent.ZIndex,"Pages must take precedence over exploration controls")
+		assert(modalBounds.top>=12 and modalBounds.bottom<=size.Y-12,"Pages must use the available height without clipping their close control")
 		local previews=0
 		for _,object in uiNodes do if object.ClassName=="ViewportFrame" and visible(object) then previews+=1 end end
 		assert(previews==12,"Pagination must limit visible models to twelve, got "..previews)
@@ -192,6 +249,7 @@ local function checkClient()
 		click("Feed one");assert(requests[#requests].kind=="Feed" and requests[#requests].payload.quantity==1,"Feed uses selected creature")
 		click("×")
 		assert(screen:GetAttribute("MenuOpen")==false,"Closing a page must restore exploration input")
+		assert(controlsShown(),"Closing a page must restore controls for the detector still in hand")
 		for _,page in {"Food","Gear","Sell"} do click(page);click("×") end
 		for _,object in uiNodes do
 			assert(object.Destroyed or object.ClassName~="TextButton" or object.Text~="Worlds","World travel must not retain an on-screen Worlds button")
@@ -250,7 +308,6 @@ local function checkClient()
 		return count
 	end
 	local beforeSearches=searches()
-	local gameScreen=gui:FindFirstChild("BrainrotBloom")
 	click("Dig  ·  E")
 	assert(gameScreen:GetAttribute("Scanning")==true and gameScreen:GetAttribute("Capturing")==false,"A pending scan must suspend sprint without claiming a capture")
 	assert(textExists("Scanning…"),"The button must visibly stay busy while waiting for a result")
@@ -266,8 +323,32 @@ local function checkClient()
 	advance(Config.SearchSeconds+0.001)
 	assert(textExists("Tap to collect"),"A successful delayed search must open the capture sheet")
 	assert(gameScreen:GetAttribute("Capturing")==true and gameScreen:GetAttribute("Scanning")==false,"A capture must suspend sprint until finished")
+	assert(controlsHidden(),"The capture challenge must hide the detector HUD")
+	detector.Parent=backpack
+	assert(controlsHidden() and textExists("Tap to collect"),"Unequipping must hide detector controls while allowing an accepted capture to finish")
 	click("Tap to collect")
 	assert(gameScreen:GetAttribute("Capturing")==false,"Finishing a capture must restore exploration input")
+	assert(controlsHidden(),"Ending a capture while unequipped must not re-show the detector HUD")
 	assert(not visible((function() for i=#uiNodes,1,-1 do if uiNodes[i].Text=="Tap to collect" then return uiNodes[i] end end end)()),"Completed capture must close")
-	print("PASS client pages, top navigation bounds, left-aligned journal icons, modal clearance, sprint input states, persistent index, gardens, portal travel and delayed searches")
+	detector.Parent=player.Character
+	assert(controlsShown(),"Re-equipping after a capture must restore detector controls")
+	local oldCharacter=player.Character
+	local oldHumanoid=oldCharacter:FindFirstChildOfClass("Humanoid")
+	oldHumanoid.Health=0;oldHumanoid.Died:Fire()
+	assert(controlsHidden(),"Death must hide detector controls immediately")
+	player.CharacterRemoving:Fire(oldCharacter)
+	player.Character=nil
+	assert(controlsHidden(),"Removing a character must leave the detector HUD hidden")
+	local replacement=Instance.new("Model")
+	local newHumanoid=Instance.new("Humanoid");newHumanoid.Health=100;newHumanoid.Parent=replacement
+	prepareCharacter(replacement)
+	player.Character=replacement;player.CharacterAdded:Fire(replacement)
+	assert(controlsHidden(),"Respawning without a held tool must not inherit the old detector HUD")
+	detector.Parent=replacement
+	assert(controlsShown(),"A detector equipped after respawn must work with the new character")
+	oldHumanoid.Died:Fire()
+	assert(controlsShown(),"An old character event must not hide the new character's detector HUD")
+	detector:Destroy()
+	assert(controlsHidden(),"Destroying an equipped detector must hide its controls")
+	print("PASS client pages, centered left dock bounds, aligned navigation icons, modal clearance, equipped detector visibility, sprint input states, persistent index, gardens, portal travel and delayed searches")
 end
