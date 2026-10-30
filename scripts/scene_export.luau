@@ -176,13 +176,23 @@ for _,boundary in {scene:WaitForChild("Meadow"):WaitForChild("NaturalBoundary"),
 end
 local mapParts=validate(environment.workspace)
 assert(mapParts<7000,"Map exceeds its bounded geometry budget")
+local sculptureCount=0
 for _,spec in config.Creatures do
-	local model=factory.create(spec,1)
-	local count=validate(model)
-	assert(count>=25 and count<=150,"Creature geometry budget invalid: "..spec.id.." / "..count)
-	model:Destroy()
+	for _,variant in config.Variants do
+		local model=factory.create(spec,1,variant.id)
+		local count=validate(model)
+		assert(count>=25 and count<=150,"Creature geometry budget invalid: "..spec.id.." / "..variant.id.." / "..count)
+		assert(model:GetAttribute("Variant")==variant.id,"Creature finish must survive native reflection")
+		for _,piece in model:GetDescendants() do
+			if piece:IsA("BasePart") then
+				assert(piece.Anchored and not piece.CanCollide and not piece.CanTouch and not piece.CanQuery,"Variant geometry must remain decorative")
+			end
+		end
+		sculptureCount+=1
+		model:Destroy()
+	end
 end
-print("Validated all "..#config.Creatures.." sculptures and "..mapParts.." map pieces using native Roblox datatypes")
+print("Validated all "..sculptureCount.." species/finish sculptures and "..mapParts.." map pieces using native Roblox datatypes")
 for _,spec in config.Detectors do
 	local tool=detectorFactory.equip(previewPlayer,spec)
 	assert(validate(tool)<=45,"Held detector exceeds its geometry budget")
@@ -240,11 +250,21 @@ local function parts(model)
 	end
 	return result
 end
-local geometry={creatures={},worlds={},details={},detectors={}}
+local geometry={creatures={},variants={},worlds={},details={},detectors={}}
 for _,spec in config.Creatures do
 	local model=factory.create(spec,1)
 	table.insert(geometry.creatures,{id=spec.id,name=spec.name,rarity=spec.rarity,parts=parts(model)})
 	model:Destroy()
+end
+-- One silhouette per rarity shows all five finishes side by side. The native
+-- validation above still executes every finish for every species.
+for _,id in {"toast","frog","shark","wizard","lion","clock","manta"} do
+	local spec=assert(config.get(config.Creatures,id))
+	for _,variant in config.Variants do
+		local model=factory.create(spec,1,variant.id)
+		table.insert(geometry.variants,{id=spec.id,name=spec.name,variant=variant.id,multiplier=variant.multiplier,weight=variant.weight,parts=parts(model)})
+		model:Destroy()
+	end
 end
 for _,spec in config.Detectors do
 	local tool=detectorFactory.equip(previewPlayer,spec)

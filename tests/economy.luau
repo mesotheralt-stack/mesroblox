@@ -13,7 +13,7 @@ local function uniqueIds(list, label)
 		seen[item.id] = true
 	end
 end
-for name, list in pairs({Rarities=Config.Rarities, Worlds=Config.Worlds, Detectors=Config.Detectors, Foods=Config.Foods, Creatures=Config.Creatures}) do
+for name, list in pairs({Rarities=Config.Rarities, Variants=Config.Variants, Worlds=Config.Worlds, Detectors=Config.Detectors, Foods=Config.Foods, Creatures=Config.Creatures}) do
 	uniqueIds(list, name)
 end
 
@@ -25,6 +25,49 @@ check(Config.RotationSeconds == 300, "Food rotation must last exactly five minut
 check(Config.Boosts.Growth.duration == 300 and Config.Boosts.Income.duration == 300, "Both boosts must last five minutes")
 check(Config.StartCoins >= Config.Foods[1].price, "New players must afford at least one food")
 check(Config.Detectors[1].price == 0 and Config.Detectors[1].world == Config.Worlds[1].id, "Starter detector must be free and reachable")
+
+-- A finish is an independent roll layered onto all seven rarity tiers.
+local expectedVariants = {
+	{id="Normal", weight=8000, multiplier=1},
+	{id="Bronze", weight=1200, multiplier=1.5},
+	{id="Silver", weight=500, multiplier=2},
+	{id="Gold", weight=250, multiplier=3},
+	{id="Diamond", weight=50, multiplier=5},
+}
+check(#Config.Variants == #expectedVariants, "Every species must have Normal plus four special finishes")
+local variantWeight = 0
+for index, variant in ipairs(Config.Variants) do
+	local expectedVariant = expectedVariants[index]
+	check(variant.id == expectedVariant.id and variant.name == expectedVariant.id, "Finish order and names must stay consistent")
+	check(variant.weight == expectedVariant.weight and variant.multiplier == expectedVariant.multiplier, "Finish odds and income bonuses must match their tuning")
+	check(variant.color ~= nil and variant.accent ~= nil, "Every finish needs a model and UI palette")
+	variantWeight += variant.weight
+	if index > 1 then
+		check(variant.weight < Config.Variants[index-1].weight and variant.multiplier > Config.Variants[index-1].multiplier,
+			"More valuable finishes must be progressively rarer")
+	end
+end
+check(variantWeight == 10000, "Finish weights must total one complete probability distribution")
+check(Config.variant(nil).id == "Normal" and Config.variant("unknown").id == "Normal", "Missing and invalid saved finishes must fall back to Normal")
+for _, variant in ipairs(Config.Variants) do check(Config.variant(variant.id) == variant, "Known finish IDs must resolve their configured bonus") end
+
+for _, boundary in ipairs({
+	{0, "Normal"}, {0.799999999, "Normal"},
+	{0.8, "Bronze"}, {0.919999999, "Bronze"},
+	{0.92, "Silver"}, {0.969999999, "Silver"},
+	{0.97, "Gold"}, {0.994999999, "Gold"},
+	{0.995, "Diamond"}, {0.999999999, "Diamond"}, {1, "Diamond"},
+}) do
+	check(Config.rollVariant(boundary[1]).id == boundary[2], "A finish boundary must select exactly one expected interval: " .. boundary[1])
+end
+local sampledVariants = {}
+for step = 0, 9999 do
+	local id = Config.rollVariant((step + 0.5) / 10000).id
+	sampledVariants[id] = (sampledVariants[id] or 0) + 1
+end
+for _, variant in ipairs(Config.Variants) do
+	check(sampledVariants[variant.id] == variant.weight, "Uniform roll coverage must reproduce each finish's exact configured odds")
+end
 
 local expected = {"Common", "Uncommon", "Rare", "Epic", "Legendary", "Mythic", "Secret"}
 local speciesByRarity = {}
@@ -54,6 +97,21 @@ for _, creature in ipairs(Config.Creatures) do
 	end
 	check(Config.income(creature.id, -100) == Config.income(creature.id, 1), "Income must clamp below level one")
 	check(Config.income(creature.id, 10000) == Config.income(creature.id, Config.MaxLevel), "Income must clamp above max level")
+	for _, level in ipairs({1, 10, Config.MaxLevel}) do
+		local normalIncome = Config.income(creature.id, level)
+		local previousFinishIncome = 0
+		for _, variant in ipairs(Config.Variants) do
+			local income = Config.income(creature.id, level, variant.id)
+			local sale = Config.sellValue(creature.id, level, variant.id)
+			check(income == math.floor(normalIncome * variant.multiplier), "Finish bonus must multiply this species' income at its current level")
+			check(income > previousFinishIncome, "Every successive finish must earn more at the same species and level")
+			check(sale == income * 45 and sale % 1 == 0, "Sale quotes must include the permanent finish bonus in whole coins")
+			previousFinishIncome = income
+		end
+		check(Config.income(creature.id, level, "Normal") == normalIncome and Config.income(creature.id, level, "invalid") == normalIncome,
+			"Two-argument income and legacy or invalid finishes must keep the original economy")
+		check(Config.sellValue(creature.id, level) == Config.sellValue(creature.id, level, "Normal"), "Existing two-argument sale callers must retain Normal value")
+	end
 end
 for i, rarity in ipairs(Config.Rarities) do
 	check(#speciesByRarity[rarity.id] == 4, "Every rarity must have four obtainable species")
@@ -66,6 +124,8 @@ for i, rarity in ipairs(Config.Rarities) do
 	end
 end
 check(Config.income("missing-species", 1) == 0, "Unknown species must not generate income")
+check(Config.income("missing-species", 1, "Diamond") == 0 and Config.sellValue("missing-species", 1, "Gold") == 0,
+	"A finish must never give an unknown species an economic value")
 check(Config.get(Config.Foods, "missing-food") == nil, "Unknown IDs must not resolve")
 
 local previousXP = 0

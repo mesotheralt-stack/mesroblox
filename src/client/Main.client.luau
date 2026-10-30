@@ -38,6 +38,7 @@ local collectionQuery = ""
 local collectionPageIndex = 1
 local collectionPageSize = 12
 local indexRarityFilter = "All"
+local indexVariant = "Normal"
 local selectedGardenSlot = 1
 local selectedGardenUid = nil
 local panelRestPosition = UDim2.fromScale(0.5, 0.49)
@@ -415,6 +416,25 @@ local function notify(text, kind)
 	task.delay(4, function() if version == toastVersion then toast.Visible = false end end)
 end
 
+local function variantCaption(id)
+	local finish=Config.variant(id)
+	return finish.name.." · "..tostring(finish.multiplier).."x income"
+end
+local function brainrotName(brainrot)
+	local finish=Config.variant(brainrot.variant)
+	return (finish.id~="Normal" and finish.name.." " or "")..brainrot.name
+end
+local function variantTint(id, rarityId)
+	local finish=Config.variant(id)
+	return finish.id=="Normal" and rarity(rarityId).color or finish.color
+end
+local function finishBadge(parent,id,position,size)
+	local finish=Config.variant(id)
+	local field=badge(parent,variantCaption(id),finish.color,position,size)
+	field.Name="VariantBadge";field:SetAttribute("Variant",finish.id)
+	field.TextTruncate=Enum.TextTruncate.AtEnd
+	return field
+end
 local function viewport(parent, specId, size, pos, options)
 	options=options or {}
 	local spec = find(Config.Creatures, specId)
@@ -423,8 +443,9 @@ local function viewport(parent, specId, size, pos, options)
 		Ambient = Color3.fromRGB(205, 220, 210), LightColor = Color3.fromRGB(255, 248, 219),
 		LightDirection = Vector3.new(-1, -1, -2)}, parent)
 	frame:SetAttribute("Silhouette",options.silhouette==true)
+	frame:SetAttribute("Variant",Config.variant(options.variant).id)
 	local world = make("WorldModel", {}, frame)
-	local ok, model = pcall(CreatureFactory.create, spec, 1)
+	local ok, model = pcall(CreatureFactory.create, spec, 1, Config.variant(options.variant).id)
 	if not ok or not model then return end
 	if options.silhouette then
 		for _,object in ipairs(model:GetDescendants()) do
@@ -473,12 +494,18 @@ local function pageSignature()
 	for _, id in ipairs(state.ownedDetectors or {}) do table.insert(values, id) end
 	for _, id in ipairs(state.unlockedWorlds or {}) do table.insert(values, id) end
 	for _,id in ipairs(state.discoveredIds or {}) do table.insert(values,"discovered:"..id) end
+	for _,spec in ipairs(Config.Creatures) do
+		local finishes=(state.discoveredVariants or {})[spec.id] or {}
+		for _,finish in ipairs(Config.Variants) do
+			if finishes[finish.id]==true then table.insert(values,"finish:"..spec.id..":"..finish.id) end
+		end
+	end
 	if state.garden then
 		table.insert(values,"garden:"..tostring(state.garden.id))
 		for slot,uid in ipairs(state.garden.slots or {}) do table.insert(values,"slot:"..slot..":"..uid) end
 	end
 	for _, brainrot in ipairs(state.brainrots or {}) do
-		table.insert(values, table.concat({brainrot.uid, brainrot.level, brainrot.xp, brainrot.income,
+		table.insert(values, table.concat({brainrot.uid, brainrot.variant or "Normal", brainrot.level, brainrot.xp, brainrot.income,
 			brainrot.growthBoostUntil or 0, brainrot.incomeBoostUntil or 0,
 			tostring((brainrot.growthBoostUntil or 0) > now()), tostring((brainrot.incomeBoostUntil or 0) > now())}, ":"))
 	end
@@ -526,7 +553,7 @@ local function collectionPage(sellMode)
 	end
 	local controls=row(body,44)
 	local search=make("TextBox",{Size=UDim2.new(0.56,-6,1,0),BackgroundColor3=C.card,TextColor3=C.text,
-		PlaceholderText="Search your collection…",PlaceholderColor3=C.muted,Text=collectionQuery,ClearTextOnFocus=false,
+		PlaceholderText="Search name or finish…",PlaceholderColor3=C.muted,Text=collectionQuery,ClearTextOnFocus=false,
 		Font=Enum.Font.BuilderSans,TextSize=14,TextXAlignment=Enum.TextXAlignment.Left,BorderSizePixel=0},controls)
 	corner(search,10); padding(search,10)
 	search.FocusLost:Connect(function()
@@ -556,7 +583,7 @@ local function collectionPage(sellMode)
 	local ranks={}
 	for index,r in ipairs(Config.Rarities) do ranks[r.id]=index end
 	for _,b in ipairs(state.brainrots) do
-		if (collectionFilter=="All" or b.rarity==collectionFilter) and string.find(string.lower(b.name),string.lower(collectionQuery),1,true) then table.insert(list,b) end
+		if (collectionFilter=="All" or b.rarity==collectionFilter) and string.find(string.lower(Config.variant(b.variant).name.." "..b.name),string.lower(collectionQuery),1,true) then table.insert(list,b) end
 	end
 	table.sort(list,function(a,b)
 		local av=collectionSort=="Rarity" and ranks[a.rarity] or collectionSort=="Level" and a.level or a.income
@@ -584,8 +611,9 @@ local function collectionPage(sellMode)
 		local tile=card(grid,tileHeight)
 		tile.LayoutOrder=index
 		tile:SetAttribute("CollectionUID",b.uid)
-		previewStage(tile,r.color,UDim2.fromOffset(10,10),UDim2.new(1,-20,0,stageHeight))
-		viewport(tile,b.specId,UDim2.new(1,-12,0,stageHeight),UDim2.fromOffset(6,8))
+		previewStage(tile,variantTint(b.variant,b.rarity),UDim2.fromOffset(10,10),UDim2.new(1,-20,0,stageHeight))
+		viewport(tile,b.specId,UDim2.new(1,-12,0,stageHeight),UDim2.fromOffset(6,8),{variant=b.variant})
+		finishBadge(tile,b.variant,UDim2.fromOffset(16,stageHeight-18),UDim2.new(1,-32,0,22))
 		label(tile,b.name,15,C.text,{Position=UDim2.fromOffset(12,143+shift),Size=UDim2.new(1,-24,0,38),TextWrapped=true,TextTruncate=Enum.TextTruncate.AtEnd,Font=Enum.Font.BuilderSansBold})
 		label(tile,r.name.." · Lv "..b.level,12,readable(r.color),{Position=UDim2.fromOffset(12,183+shift),Size=UDim2.new(1,-24,0,18),TextTruncate=Enum.TextTruncate.AtEnd})
 		label(tile,"+$"..money(b.income).." / sec",15,C.gold,{Name="IncomeStat",Position=UDim2.fromOffset(12,207+shift),Size=UDim2.new(1,-24,0,20),Font=Enum.Font.BuilderSansMedium,TextTruncate=Enum.TextTruncate.AtEnd})
@@ -610,14 +638,15 @@ local function detailPage(sellMode)
 	local brainrot = selected()
 	if not brainrot then selectedUid = nil; activePage = sellMode and "Sell" or "Collection"; collectionPage(sellMode); return end
 	local r = rarity(brainrot.rarity)
-	title.Text = brainrot.name
+	title.Text = brainrotName(brainrot)
 	subtitle.Text = r.name .. "  ·  Level " .. brainrot.level .. "  /  +$" .. money(brainrot.income) .. " per second"
 	button(body, "‹ Back to collection", function() openPage(sellMode and "Sell" or "Collection") end, {Size = UDim2.new(1, 0, 0, 32), TextSize = 13})
+	finishBadge(body,brainrot.variant,UDim2.new(),UDim2.new(1,0,0,30))
 	local stacked=body.AbsoluteSize.X<440
 	local hero = card(body, stacked and 360 or 204)
 	hero.Name="CreatureHero";hero:SetAttribute("Stacked",stacked)
-	previewStage(hero,r.color,UDim2.fromOffset(12,12),stacked and UDim2.new(1,-24,0,150) or UDim2.new(0.48,-12,1,-24))
-	viewport(hero,brainrot.specId,stacked and UDim2.new(1,-16,0,150) or UDim2.new(0.48,-8,1,-16),UDim2.fromOffset(8,8))
+	previewStage(hero,variantTint(brainrot.variant,brainrot.rarity),UDim2.fromOffset(12,12),stacked and UDim2.new(1,-24,0,150) or UDim2.new(0.48,-12,1,-24))
+	viewport(hero,brainrot.specId,stacked and UDim2.new(1,-16,0,150) or UDim2.new(0.48,-8,1,-16),UDim2.fromOffset(8,8),{variant=brainrot.variant})
 	local sx,ox,sw,ow,top=stacked and 0 or 0.5,stacked and 16 or 8,stacked and 1 or 0.5,stacked and -32 or -24,stacked and 176 or 17
 	label(hero,"Level "..brainrot.level.." / "..Config.MaxLevel,18,C.text,{Name="HeroLevel",Position=UDim2.new(sx,ox,0,top),Size=UDim2.new(sw,ow,0,28),Font=Enum.Font.BuilderSansBold})
 	local maxed=brainrot.level>=Config.MaxLevel
@@ -628,7 +657,7 @@ local function detailPage(sellMode)
 	local fill=make("Frame",{Size=UDim2.new(maxed and 1 or math.clamp((brainrot.xp or 0)/math.max(1,brainrot.xpNeeded or Config.xpNeeded(brainrot.level)),0,1),0,1,0),BackgroundColor3=readable(r.color),BorderSizePixel=0},track)
 	corner(fill,4)
 	local incomeFactor=(brainrot.incomeBoostUntil or 0)>now() and 2 or 1
-	local nextIncome=Config.income(brainrot.specId,math.min(Config.MaxLevel,brainrot.level+1))*incomeFactor
+	local nextIncome=Config.income(brainrot.specId,math.min(Config.MaxLevel,brainrot.level+1),brainrot.variant)*incomeFactor
 	label(hero,maxed and "A perfect little earner." or ("Next level: $"..money(nextIncome).." / sec"),13,C.gold,
 		{Position=UDim2.new(sx,ox,0,top+81),Size=UDim2.new(sw,ow,0,34),TextWrapped=true})
 	button(hero,state.activeBrainrot==brainrot.uid and "Following you" or "Set as companion",function() perform("EquipBrainrot",{uid=brainrot.uid}) end,
@@ -644,7 +673,7 @@ local function detailPage(sellMode)
 	end
 	if sellMode then
 		label(body, "Sold creatures and their levels cannot be recovered.", 12, C.muted, {Size = UDim2.new(1, 0, 0, 42), TextWrapped = true})
-		local sale = brainrot.sellValue or brainrot.value or Config.sellValue(brainrot.specId, brainrot.level)
+		local sale = brainrot.sellValue or brainrot.value or Config.sellValue(brainrot.specId, brainrot.level, brainrot.variant)
 		button(body, sale and ("Sell for $" .. money(sale)) or "Sell this brainrot", function()
 			if activePage == "SellConfirm" then
 				local result = perform("Sell", {uid = brainrot.uid})
@@ -837,23 +866,61 @@ local function discoveryHint(spec)
 	return (world and world.name or "Explore the worlds").." · Power "..math.max(rank,world and world.minPower or rank).."+"
 end
 
+local function variantDiscoverySet()
+	local history={}
+	for _,spec in ipairs(Config.Creatures) do
+		local saved=(state.discoveredVariants or {})[spec.id] or {}
+		local finishes={}
+		for _,finish in ipairs(Config.Variants) do if saved[finish.id]==true then finishes[finish.id]=true end end
+		history[spec.id]=finishes
+	end
+	-- Older servers only reported species discoveries; their finds were Normal.
+	if state.discoveredVariants==nil then
+		for _,id in ipairs(state.discoveredIds or {}) do if history[id] then history[id].Normal=true end end
+	end
+	for _,brainrot in ipairs(state.brainrots or {}) do
+		if history[brainrot.specId] then history[brainrot.specId][Config.variant(brainrot.variant).id]=true end
+	end
+	return history
+end
+
 local function indexPage()
 	title.Text="Brainrot index"
-	subtitle.Text="Every discovery is remembered, even after a creature is sold."
+	subtitle.Text="Species and their finishes are remembered, even after selling."
 	journalLinks("Index")
 	local discovered=discoverySet()
-	local total=0
+	local history=variantDiscoverySet()
+	local finish=Config.variant(indexVariant)
+	local total,finishCount,allFinishes,totalWeight=0,0,0,0
 	local rarityCounts={}
 	local ownedCounts={}
-	for _,brainrot in ipairs(state.brainrots or {}) do ownedCounts[brainrot.specId]=(ownedCounts[brainrot.specId] or 0)+1 end
+	for _,brainrot in ipairs(state.brainrots or {}) do
+		if Config.variant(brainrot.variant).id==finish.id then ownedCounts[brainrot.specId]=(ownedCounts[brainrot.specId] or 0)+1 end
+	end
+	for _,entry in ipairs(Config.Variants) do totalWeight+=entry.weight end
 	for _,spec in ipairs(Config.Creatures) do
 		if discovered[spec.id] then total+=1;rarityCounts[spec.rarity]=(rarityCounts[spec.rarity] or 0)+1 end
+		if history[spec.id][finish.id] then finishCount+=1 end
+		for _,entry in ipairs(Config.Variants) do if history[spec.id][entry.id] then allFinishes+=1 end end
 	end
-	local progress=card(body,82)
+	local progress=card(body,105)
 	label(progress,total.." / "..#Config.Creatures.." discovered",20,C.text,{Position=UDim2.fromOffset(16,10),Size=UDim2.new(1,-32,0,28),Font=Enum.Font.BuilderSansBold})
-	local track=make("Frame",{Position=UDim2.fromOffset(16,52),Size=UDim2.new(1,-32,0,8),BackgroundColor3=C.light,BorderSizePixel=0},progress)
+	label(progress,allFinishes.." / "..(#Config.Creatures*#Config.Variants).." species finishes found",13,C.muted,{Name="VariantDiscoveryProgress",Position=UDim2.fromOffset(16,42),Size=UDim2.new(1,-32,0,22)})
+	local track=make("Frame",{Position=UDim2.fromOffset(16,77),Size=UDim2.new(1,-32,0,8),BackgroundColor3=C.light,BorderSizePixel=0},progress)
 	corner(track,4)
 	local fill=make("Frame",{Size=UDim2.new(total/#Config.Creatures,0,1,0),BackgroundColor3=C.green,BorderSizePixel=0},track);corner(fill,4)
+	local finishes=make("ScrollingFrame",{Name="IndexFinishSelector",Size=UDim2.new(1,0,0,48),BackgroundTransparency=1,BorderSizePixel=0,
+		AutomaticCanvasSize=Enum.AutomaticSize.X,CanvasSize=UDim2.new(),ScrollBarThickness=0,ScrollingDirection=Enum.ScrollingDirection.X},body)
+	make("UIListLayout",{FillDirection=Enum.FillDirection.Horizontal,Padding=UDim.new(0,6),SortOrder=Enum.SortOrder.LayoutOrder},finishes)
+	for order,entry in ipairs(Config.Variants) do
+		local target=button(finishes,entry.name.." "..entry.multiplier.."x",function() indexVariant=entry.id;renderPage() end,
+			{Name="IndexFinish"..entry.id,Size=UDim2.fromOffset(118,44),LayoutOrder=order,BackgroundColor3=finish.id==entry.id and entry.color:Lerp(C.paper,0.55) or C.light,TextColor3=readable(entry.color)})
+		target:SetAttribute("Variant",entry.id)
+	end
+	local odds=card(body,88)
+	label(odds,variantCaption(finish.id),16,readable(finish.color),{Position=UDim2.fromOffset(16,10),Size=UDim2.new(1,-32,0,24),Font=Enum.Font.BuilderSansBold})
+	label(odds,string.format("%g%% of found signals · %d / %d discovered",finish.weight/totalWeight*100,finishCount,#Config.Creatures),13,C.muted,
+		{Name="VariantOdds",Position=UDim2.fromOffset(16,38),Size=UDim2.new(1,-32,0,40),TextWrapped=true})
 	local chapters=make("ScrollingFrame",{Size=UDim2.new(1,0,0,48),BackgroundTransparency=1,BorderSizePixel=0,
 		AutomaticCanvasSize=Enum.AutomaticSize.X,CanvasSize=UDim2.new(),ScrollBarThickness=0,ScrollingDirection=Enum.ScrollingDirection.X},body)
 	make("UIListLayout",{FillDirection=Enum.FillDirection.Horizontal,Padding=UDim.new(0,6),SortOrder=Enum.SortOrder.LayoutOrder},chapters)
@@ -876,17 +943,17 @@ local function indexPage()
 	grid.Name="IndexGrid";grid:SetAttribute("CardColumns",columns)
 	make("UIGridLayout",{CellSize=UDim2.new(1/columns,-gap*(columns-1)/columns,0,tileHeight),CellPadding=UDim2.fromOffset(gap,gap),SortOrder=Enum.SortOrder.LayoutOrder},grid)
 	for order,spec in ipairs(entries) do
-		local known=discovered[spec.id]==true
+		local known=history[spec.id][finish.id]==true
 		local r=rarity(spec.rarity)
 		local tile=card(grid,tileHeight);tile.LayoutOrder=order
-		tile:SetAttribute("IndexSpecies",spec.id)
+		tile:SetAttribute("IndexSpecies",spec.id);tile:SetAttribute("IndexVariant",finish.id)
 		tile:SetAttribute("Discovered",known)
-		previewStage(tile,known and r.color or C.line,UDim2.fromOffset(10,10),UDim2.new(1,-20,0,stageHeight))
-		viewport(tile,spec.id,UDim2.new(1,-12,0,stageHeight),UDim2.fromOffset(6,8),{silhouette=not known,static=true})
-		label(tile,known and spec.name or "???",15,known and C.text or C.muted,{Position=UDim2.fromOffset(12,129+shift),Size=UDim2.new(1,-24,0,38),TextWrapped=true,TextTruncate=Enum.TextTruncate.AtEnd,Font=Enum.Font.BuilderSansBold})
-		label(tile,known and r.name or (r.name.." · Undiscovered"),12,readable(r.color),{Position=UDim2.fromOffset(12,169+shift),Size=UDim2.new(1,-24,0,20),TextTruncate=Enum.TextTruncate.AtEnd})
+		previewStage(tile,known and variantTint(finish.id,spec.rarity) or C.line,UDim2.fromOffset(10,10),UDim2.new(1,-20,0,stageHeight))
+		viewport(tile,spec.id,UDim2.new(1,-12,0,stageHeight),UDim2.fromOffset(6,8),{silhouette=not known,static=true,variant=finish.id})
+		label(tile,discovered[spec.id] and spec.name or "???",15,discovered[spec.id] and C.text or C.muted,{Position=UDim2.fromOffset(12,129+shift),Size=UDim2.new(1,-24,0,38),TextWrapped=true,TextTruncate=Enum.TextTruncate.AtEnd,Font=Enum.Font.BuilderSansBold})
+		label(tile,r.name.." · "..finish.name..(known and "" or " missing"),12,readable(known and variantTint(finish.id,spec.rarity) or r.color),{Position=UDim2.fromOffset(12,169+shift),Size=UDim2.new(1,-24,0,20),TextTruncate=Enum.TextTruncate.AtEnd})
 		label(tile,discoveryHint(spec),12,C.muted,{Position=UDim2.fromOffset(12,192+shift),Size=UDim2.new(1,-24,0,36),TextWrapped=true})
-		label(tile,known and ("$"..money(Config.income(spec.id,1)).." / sec base · Own "..(ownedCounts[spec.id] or 0)) or "Catch to reveal",12,known and C.gold or C.muted,
+		label(tile,known and ("$"..money(Config.income(spec.id,1,finish.id)).." / sec base · Own "..(ownedCounts[spec.id] or 0)) or "Catch this finish to reveal",12,known and C.gold or C.muted,
 			{Position=UDim2.fromOffset(12,234+shift),Size=UDim2.new(1,-24,0,20),TextTruncate=Enum.TextTruncate.AtEnd})
 	end
 end
@@ -923,14 +990,15 @@ local function gardenPage()
 	end
 	local displayed=byUid[slots[selectedGardenSlot]]
 	local stacked=body.AbsoluteSize.X<440
-	local hero=card(body,displayed and stacked and 310 or 170)
+	local hero=card(body,displayed and stacked and 326 or 170)
 	hero.Name="GardenHero";hero:SetAttribute("Stacked",displayed~=nil and stacked)
 	if displayed then
-		previewStage(hero,rarity(displayed.rarity).color,UDim2.fromOffset(12,12),stacked and UDim2.new(1,-24,0,140) or UDim2.new(0.48,-12,1,-24))
-		viewport(hero,displayed.specId,stacked and UDim2.new(1,-16,0,140) or UDim2.new(0.48,-8,1,-16),UDim2.fromOffset(8,8))
+		previewStage(hero,variantTint(displayed.variant,displayed.rarity),UDim2.fromOffset(12,12),stacked and UDim2.new(1,-24,0,140) or UDim2.new(0.48,-12,1,-24))
+		viewport(hero,displayed.specId,stacked and UDim2.new(1,-16,0,140) or UDim2.new(0.48,-8,1,-16),UDim2.fromOffset(8,8),{variant=displayed.variant})
 		local sx,ox,sw,ow,top=stacked and 0 or 0.5,stacked and 16 or 8,stacked and 1 or 0.5,stacked and -32 or -24,stacked and 164 or 15
-		label(hero,displayed.name,16,C.text,{Name="GardenHeroTitle",Position=UDim2.new(sx,ox,0,top),Size=UDim2.new(sw,ow,0,48),TextWrapped=true,Font=Enum.Font.BuilderSansMedium})
-		label(hero,"Level "..displayed.level.." · $"..money(displayed.income).." / sec",13,C.gold,{Name="GardenHeroIncome",Position=UDim2.new(sx,ox,0,top+51),Size=UDim2.new(sw,ow,0,stacked and 30 or 42),TextWrapped=true})
+		local gardenTitle=label(hero,brainrotName(displayed),16,C.text,{Name="GardenHeroTitle",Position=UDim2.new(sx,ox,0,top),Size=UDim2.new(sw,ow,0,48),TextWrapped=true,TextScaled=true,TextTruncate=Enum.TextTruncate.AtEnd,Font=Enum.Font.BuilderSansMedium})
+		make("UITextSizeConstraint",{MinTextSize=14,MaxTextSize=16},gardenTitle)
+		label(hero,variantCaption(displayed.variant).."\nLv "..displayed.level.." · $"..money(displayed.income).." / sec",13,C.gold,{Name="GardenHeroIncome",Position=UDim2.new(sx,ox,0,top+51),Size=UDim2.new(sw,ow,0,stacked and 38 or 42),TextWrapped=true})
 		button(hero,"Clear slot",function() perform("GardenClear",{slot=selectedGardenSlot}) end,
 			{Position=UDim2.new(sx,ox,1,-56),Size=UDim2.new(sw,ow,0,44),TextSize=13})
 	else
@@ -943,8 +1011,8 @@ local function gardenPage()
 		local currentSlot=table.find(slots,brainrot.uid)
 		local f=card(body,112)
 		if selectedGardenUid==brainrot.uid then stroke(f,C.green,0.1) end
-		label(f,brainrot.name,15,C.text,{Position=UDim2.fromOffset(14,10),Size=UDim2.new(1,-154,0,42),TextWrapped=true,TextTruncate=Enum.TextTruncate.AtEnd,Font=Enum.Font.BuilderSansMedium})
-		label(f,"Lv "..brainrot.level.." · $"..money(brainrot.income).." / sec",13,C.gold,{Position=UDim2.fromOffset(14,57),Size=UDim2.new(1,-154,0,20),TextTruncate=Enum.TextTruncate.AtEnd})
+		label(f,brainrotName(brainrot),15,C.text,{Position=UDim2.fromOffset(14,10),Size=UDim2.new(1,-154,0,42),TextWrapped=true,TextTruncate=Enum.TextTruncate.AtEnd,Font=Enum.Font.BuilderSansMedium})
+		label(f,Config.variant(brainrot.variant).multiplier.."x · Lv "..brainrot.level.." · $"..money(brainrot.income).." / sec",13,C.gold,{Position=UDim2.fromOffset(14,57),Size=UDim2.new(1,-154,0,20),TextTruncate=Enum.TextTruncate.AtEnd})
 		label(f,currentSlot and ("Displayed in slot "..currentSlot) or "Ready for your garden",12,C.muted,{Position=UDim2.fromOffset(14,82),Size=UDim2.new(1,-154,0,18),TextTruncate=Enum.TextTruncate.AtEnd})
 		local here=currentSlot==selectedGardenSlot
 		button(f,here and "Already here" or (currentSlot and "Move here" or "Place here"),function()
@@ -963,13 +1031,14 @@ local function helpPage()
 	for _,entry in ipairs({
 		{"Find & collect","Stand on the sand and choose Dig (E). A scan takes one second, with a 50% chance to find a signal. Tap or press Space to capture it."},
 		{"Feed & grow","Open Collection, choose a brainrot, and feed it from your pantry. Every creature earns coins while you play."},
+		{"Rare finishes","Every found signal rolls a finish independently of species rarity: Bronze 12% (1.5x), Silver 5% (2x), Gold 2.5% (3x), Diamond 0.5% (5x). Others are Normal. Finishes improve income and sale value."},
 		{"Upgrade your kit","Food, Sell, and Gear take you straight to their shops. Stronger detectors uncover higher rarities; boosts last five minutes."},
 		{"Explore further","Use the glowing portal near each world’s entrance to travel or unlock new worlds. Hold Shift, click the left stick, or use Sprint on touch to move faster."},
 		{"Make it yours","Use Index (I) to track all "..#Config.Creatures.." species. Garden (G) opens your six displays and teleports you home. Display choices and discoveries save with your collection."},
 	}) do
-		local f=card(body,112)
+		local f=card(body,entry[1]=="Rare finishes" and (body.AbsoluteSize.X<440 and 178 or 142) or 112)
 		label(f,entry[1],16,C.text,{Position=UDim2.fromOffset(16,10),Size=UDim2.new(1,-32,0,24),Font=Enum.Font.BuilderSansMedium})
-		label(f,entry[2],14,C.muted,{Position=UDim2.fromOffset(16,39),Size=UDim2.new(1,-32,0,65),TextWrapped=true,TextYAlignment=Enum.TextYAlignment.Top})
+		label(f,entry[2],14,C.muted,{Position=UDim2.fromOffset(16,39),Size=UDim2.new(1,-32,1,-47),TextWrapped=true,TextYAlignment=Enum.TextYAlignment.Top})
 	end
 end
 
@@ -1027,8 +1096,10 @@ stroke(capturePanel, C.lime, 0.2)
 label(capturePanel, "You found a signal", 12, C.green, {Position = UDim2.new(0, 20, 0, 16), Size = UDim2.new(1, -40, 0, 22), TextXAlignment = Enum.TextXAlignment.Center})
 local captureName = label(capturePanel, "A brainrot!", 26, C.text, {Position = UDim2.new(0, 20, 0, 43), Size = UDim2.new(1, -40, 0, 32), TextXAlignment = Enum.TextXAlignment.Center, Font = Enum.Font.BuilderSansBold, TextScaled = true})
 make("UITextSizeConstraint", {MaxTextSize = 26, MinTextSize = 15}, captureName)
-local captureRarity = label(capturePanel, "COMMON", 13, C.muted, {AnchorPoint=Vector2.new(0.5,0),Position = UDim2.new(0.5, 0, 0, 79), Size = UDim2.fromOffset(142,24),BackgroundColor3=C.light,TextXAlignment = Enum.TextXAlignment.Center,Font=Enum.Font.BuilderSansMedium})
+local captureRarity = label(capturePanel, "COMMON", 13, C.muted, {AnchorPoint=Vector2.new(0.5,0),Position = UDim2.new(0.5, 0, 0, 79), Size = UDim2.new(1,-40,0,24),BackgroundColor3=C.light,TextXAlignment = Enum.TextXAlignment.Center,Font=Enum.Font.BuilderSansMedium})
 corner(captureRarity,12)
+captureRarity.TextScaled=true
+make("UITextSizeConstraint",{MinTextSize=12,MaxTextSize=13},captureRarity)
 local timerLabel = label(capturePanel, "0:10", 24, C.gold, {Name="CaptureTimer",AnchorPoint=Vector2.new(0.5,0),Position = UDim2.new(0.5, 0, 0, 232), Size = UDim2.fromOffset(112,36),BackgroundColor3=C.light,TextXAlignment = Enum.TextXAlignment.Center, Font = Enum.Font.BuilderSansBold})
 corner(timerLabel,14)
 local progressTrack = make("Frame", {Name="CaptureProgressTrack",Position = UDim2.new(0, 28, 0, 278), Size = UDim2.new(1, -56, 0, 10), BackgroundColor3 = C.line, BorderSizePixel = 0}, capturePanel)
@@ -1080,8 +1151,8 @@ tapDig = function()
 	captureProgress.Text = session.taps .. " / " .. session.required .. " taps"
 	TweenService:Create(progressFill, TweenInfo.new(0.08), {Size = UDim2.fromScale(math.clamp(session.taps / session.required, 0, 1), 1)}):Play()
 	if result.complete then
-		endCapture(result.message or ("Captured " .. session.name .. "! Open your collection to feed it."), "success")
-		celebrate(rarity(session.rarity).color)
+		endCapture(result.message or ("Captured " .. brainrotName(session) .. "! Open your collection to feed it."), "success")
+		celebrate(variantTint(session.variant,session.rarity))
 	end
 end
 startDig = function()
@@ -1100,20 +1171,21 @@ startDig = function()
 	digButton.TextColor3=C.paper
 	if not result or not result.ok or not result.dig then return end
 	local dig = result.dig
-	capture = {id = dig.id, required = dig.required, duration = dig.duration, deadline = os.clock() + dig.duration, taps = 0, name = dig.name or "brainrot", rarity = dig.rarity}
+	capture = {id = dig.id, required = dig.required, duration = dig.duration, deadline = os.clock() + dig.duration, taps = 0, name = dig.name or "brainrot", rarity = dig.rarity,variant=Config.variant(dig.variant).id}
 	syncDetectorUI()
 	screen:SetAttribute("Capturing", true)
-	captureName.Text = capture.name
+	captureName.Text = brainrotName(capture)
 	local r = rarity(dig.rarity)
-	captureRarity.Text = r.name
-	captureRarity.TextColor3 = readable(r.color)
-	captureRarity.BackgroundColor3 = r.color:Lerp(C.paper,0.84)
-	progressFill.BackgroundColor3 = readable(r.color)
+	local tint=variantTint(dig.variant,dig.rarity)
+	captureRarity.Text = r.name.." · "..variantCaption(dig.variant)
+	captureRarity.TextColor3 = readable(tint)
+	captureRarity.BackgroundColor3 = tint:Lerp(C.paper,0.84)
+	progressFill.BackgroundColor3 = readable(tint)
 	progressFill.Size = UDim2.fromScale(0, 1)
 	captureProgress.Text = "0 / " .. capture.required .. " taps"
 	for _,child in capturePreview:GetChildren() do child:Destroy() end
-	previewStage(capturePreview,r.color,UDim2.new(),UDim2.fromScale(1,1))
-	viewport(capturePreview,dig.specId,UDim2.fromScale(1,1))
+	previewStage(capturePreview,tint,UDim2.new(),UDim2.fromScale(1,1))
+	viewport(capturePreview,dig.specId,UDim2.fromScale(1,1),nil,{variant=dig.variant})
 	captureShade.Visible = true
 	capturePanel.Position=UDim2.new(0.5,0,0.5,6)
 	TweenService:Create(capturePanel,TweenInfo.new(0.16,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),{Position=UDim2.fromScale(0.5,0.5)}):Play()

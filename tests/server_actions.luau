@@ -75,6 +75,7 @@ Players.PlayerAdded:Fire(rich)
 local loaded=state(rich)
 check(#loaded.brainrots==2 and loaded.activeBrainrot=="pet-a","Saved collection must load")
 check(loaded.uniqueDiscovered==2 and table.find(loaded.discoveredIds,"sprout") and table.find(loaded.discoveredIds,"toast"),"Legacy owned species must migrate into index history")
+check(loaded.brainrots[1].variant=="Normal" and loaded.discoveredVariants.sprout.Normal and loaded.discoveredVariants.toast.Normal,"Legacy creatures and index entries must migrate to Normal finishes")
 check(loaded.garden.slots[1]=="pet-a" and loaded.garden.slots[2]=="pet-b","Legacy saves must receive inviting owned-creature garden placements")
 local baseA=loaded.brainrots[1].income
 local baseB=loaded.brainrots[2].income
@@ -151,6 +152,73 @@ check(records.Player_260.data.coins==Config.StartCoins and clean.coins>=Config.S
 check(#clean.brainrots==1 and clean.brainrots[1].level==1 and clean.brainrots[1].xp==0,"Invalid/duplicate species and malformed saved levels must be sanitized")
 check(clean.detector==Config.Detectors[1].id and #clean.ownedDetectors==1,"Saved unknown/unowned gear must be discarded")
 check(clean.activeBrainrot=="same","Missing saved companion must fall back to an owned brainrot")
+
+-- Permanent finishes remain authoritative through growth, boosts, sales,
+-- captured rewards, private discovery snapshots and a real save/reload.
+local finishPets={}
+for _,variant in Config.Variants do
+	table.insert(finishPets,{uid="finish-"..variant.id,specId="sprout",variant=variant.id,level=10,xp=0,multiplier=100000})
+end
+table.insert(finishPets,{uid="legacy-finish",specId="toast",level=1})
+table.insert(finishPets,{uid="bad-finish",specId="pebble",variant="Rainbow",variantMultiplier=100000,level=1})
+records.Player_270={data={coins=1000000,brainrots=finishPets,foods={crumb=100},activeBrainrot="finish-Gold",
+	discoveredVariants={toast={Diamond=true,Gold=false,Silver="true",Rainbow=true},dragon={Gold=true},missing={Gold=true},frog="Diamond"}}}
+local finishPlayer=makePlayer(270);Players.PlayerAdded:Fire(finishPlayer)
+local finishes=state(finishPlayer)
+for index,variant in Config.Variants do
+	local brainrot=finishes.brainrots[index]
+	check(brainrot.variant==variant.id and brainrot.variantMultiplier==variant.multiplier,"Saved finish identity must load without trusting saved multipliers")
+	check(brainrot.income==Config.income("sprout",10,variant.id) and brainrot.sellValue==Config.sellValue("sprout",10,variant.id),"Income and sale quotes must include each permanent finish")
+	check(finishes.discoveredVariants.sprout[variant.id],"Owned finishes must seed their permanent index entries")
+end
+check(finishes.brainrots[6].variant=="Normal" and finishes.brainrots[7].variant=="Normal","Missing and unknown saved finishes must fall back safely to Normal")
+check(finishes.discoveredVariants.toast.Diamond and not finishes.discoveredVariants.toast.Gold and not finishes.discoveredVariants.toast.Silver
+	and not finishes.discoveredVariants.toast.Rainbow and not finishes.discoveredVariants.missing and not finishes.discoveredVariants.frog,"Only known species and true known-finish discovery flags may load")
+local companion=workspace:FindFirstChild("Player270's Gold Sproutini Spaghetti")
+check(companion and companion.AppliedVariant=="Gold","The server must create the selected companion with its saved finish")
+local totalFinishIncome=0
+for _,brainrot in finishes.brainrots do totalFinishIncome+=brainrot.income end
+check(finishes.income==totalFinishIncome,"The wallet income rate must sum the variant-aware collection")
+advance(2)
+local finishTick=state(finishPlayer)
+check(finishTick.coins>=finishes.coins+totalFinishIncome*2,"Passive payout ticks must pay the permanent finish bonuses")
+local grownFinish=call(finishPlayer,"Feed",{uid="finish-Bronze",foodId="crumb",quantity=20,variant="Diamond",variantMultiplier=100000})
+check(grownFinish.ok and grownFinish.state.brainrots[2].variant=="Bronze" and grownFinish.state.brainrots[2].level>10,"Feeding may grow a creature but cannot accept a client finish change")
+check(grownFinish.state.brainrots[2].income==Config.income("sprout",grownFinish.state.brainrots[2].level,"Bronze"),"Level growth must retain and apply the permanent multiplier")
+local diamondIncome=finishes.brainrots[5].income
+local boostedFinish=call(finishPlayer,"BuyBoost",{uid="finish-Diamond",kind="Income",variant="Normal"})
+check(boostedFinish.ok and boostedFinish.state.brainrots[5].income==diamondIncome*2,"Temporary income boosts must multiply the permanent finish payout")
+check(boostedFinish.state.brainrots[5].sellValue==finishes.brainrots[5].sellValue,"Temporary income boosts must not inflate sale quotes")
+local saleQuote=finishes.brainrots[4].sellValue
+local preFinishSale=state(finishPlayer)
+local finishSale=Action.OnServerInvoke(finishPlayer,"Sell",{uid="finish-Gold",variant="Diamond",sellValue=1e12})
+check(finishSale.ok and finishSale.state.coins==preFinishSale.coins+saleQuote,"Selling must award the server's permanent-finish value and ignore forged values")
+check(finishSale.state.discoveredVariants.sprout.Gold,"Selling the only owned copy must retain its finish discovery")
+finishes.discoveredVariants.toast.Diamond=false;finishes.discoveredVariants.sprout.Rainbow=true
+local privateFinishes=state(finishPlayer)
+check(privateFinishes.discoveredVariants.toast.Diamond and not privateFinishes.discoveredVariants.sprout.Rainbow,"Returned finish history must be a deep copy, never a writable profile reference")
+local rollUnits={0,0.8,0.92,0.97,0.995}
+for index,variant in Config.Variants do
+	check(call(finishPlayer,"Teleport",{destination="Meadow"}).ok,"Finish roll test requires the unlocked starter pit")
+	advance(Config.SearchSeconds+Config.Detectors[1].speed+0.1)
+	table.insert(forcedRandomNumbers,0);table.insert(forcedRandomNumbers,0);table.insert(forcedRandomNumbers,rollUnits[index]);table.insert(forcedRandomIntegers,1)
+	local rolled=call(finishPlayer,"StartDig",{variant="Diamond",variantMultiplier=100000})
+	check(rolled.ok and rolled.dig.specId=="sprout" and rolled.dig.variant==variant.id and rolled.dig.variantMultiplier==variant.multiplier,"Each finish must roll independently of species rarity on the server")
+	local finishCaught
+	for _=1,rolled.dig.required do finishCaught=call(finishPlayer,"TapDig",{sessionId=rolled.dig.id,variant="Diamond",variantMultiplier=100000},0.1) end
+	local award=finishCaught.state.brainrots[#finishCaught.state.brainrots]
+	check(finishCaught.complete and award.variant==variant.id and award.income==Config.income("sprout",1,variant.id),"Completed captures must award the server session's finish, ignoring client overrides")
+end
+check(#forcedRandomNumbers==0 and #forcedRandomIntegers==0,"Finish roll queues must be fully consumed")
+Players.PlayerRemoving:Fire(finishPlayer);finishPlayer.Parent=nil
+local finishRejoin=makePlayer(270);Players.PlayerAdded:Fire(finishRejoin)
+local restoredFinishes=state(finishRejoin)
+check(restoredFinishes.discoveredVariants.sprout.Gold and restoredFinishes.discoveredVariants.toast.Diamond,"Sold and historical finishes must survive save and rejoin")
+check(restoredFinishes.discoveredVariants.dragon.Gold and not restoredFinishes.discoveredVariants.dragon.Normal,"Reloading a variant-only historical discovery must not invent a Normal discovery")
+check(restoredFinishes.brainrots[2].variant=="Bronze" and restoredFinishes.brainrots[2].level==grownFinish.state.brainrots[2].level,"Feeding and saving must preserve a creature's permanent finish")
+check(records.Player_270.data.brainrots[2].variant=="Bronze" and records.Player_270.data.discoveredVariants.sprout.Diamond,"Serialized profiles must retain owned finishes and nested history")
+Players.PlayerRemoving:Fire(finishRejoin);finishRejoin.Parent=nil
+
 -- Existing live session locks must prevent loading and all writes.
 records.Player_300={data={coins=987654},session={id="other-server",expires=os.time()+100}}
 local lockedRecord=records.Player_300
@@ -276,6 +344,7 @@ records.Player_810={data={coins=1000,brainrots={{uid="one",specId="sprout",level
 local migration=makePlayer(810);Players.PlayerAdded:Fire(migration)
 local migrated=state(migration)
 check(migrated.uniqueDiscovered==3 and table.find(migrated.discoveredIds,"void") and not table.find(migrated.discoveredIds,"missing"),"Index migration accepts only known true discovery flags and owned species")
+check(migrated.discoveredVariants.void.Normal,"A species sold before variants existed must migrate its legacy index entry to Normal")
 check(migrated.garden.slots[1]=="one" and migrated.garden.slots[2]=="" and migrated.garden.slots[3]=="" and migrated.garden.slots[4]=="two","Saved duplicate and foreign garden IDs must be sanitized")
 check(call(migration,"Teleport",{destination="Meadow"}).ok,"Book test needs a valid digging position")
 table.insert(forcedRandomNumbers,0);table.insert(forcedRandomNumbers,0);table.insert(forcedRandomIntegers,1)

@@ -6,6 +6,7 @@ actual transformed Parts from that export. It approximates materials/light and
 omits GUI text, particles and physics, so Studio visual review remains necessary.
 """
 from pathlib import Path
+import argparse
 import json
 import math
 import numpy as np
@@ -130,8 +131,33 @@ def font(size,bold=False):
     except OSError:return ImageFont.load_default()
 
 def main():
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--variants-only',action='store_true',help='Render the finish comparison without rebuilding the other previews')
+    args=parser.parse_args()
     content=json.loads((ROOT/'build/scene-geometry.json').read_text())
     output=ROOT/'build/previews';output.mkdir(exist_ok=True)
+    if content.get('variants'):
+        tile_w,tile_h=420,410
+        variants=content['variants']
+        rows=math.ceil(len(variants)/5)
+        sheet=Image.new('RGB',(tile_w*5,tile_h*rows+150),(239,235,222))
+        pen=ImageDraw.Draw(sheet)
+        pen.text((30,20),'BRAINROT BLOOM / COLLECTIBLE FINISHES',font=font(30,True),fill=(34,53,43))
+        pen.text((30,66),'Every species can have any finish. Odds below apply after finding a signal.',font=font(21),fill=(92,108,93))
+        for i,creature in enumerate(variants):
+            x,y=(i%5)*tile_w,150+(i//5)*tile_h
+            if i<5:
+                chance=creature['weight']/100
+                text=f"{creature['variant']}  /  {creature['multiplier']:g}x  /  {chance:g}%"
+                pen.text((x+22,112),text,font=font(23,True),fill=(34,53,43))
+            picture=render(creature['parts'],(tile_w,tile_h-72),depth_buffer=True)
+            sheet.paste(picture,(x,y))
+            pen.text((x+22,y+tile_h-62),creature['name'].split(' ')[0],font=font(22,True),fill=(34,53,43))
+            pen.text((x+22,y+tile_h-32),creature['variant']+' finish',font=font(18),fill=(92,108,93))
+        sheet.resize((1500,round(sheet.height*1500/sheet.width)),Image.Resampling.LANCZOS).save(output/'variant-contact-sheet.png')
+        print('Rendered all five collectible finishes in build/previews/variant-contact-sheet.png')
+    if args.variants_only:
+        return
     w,h=720,650
     columns=4 if len(content['creatures'])>24 else 3
     rows=math.ceil(len(content['creatures'])/columns)

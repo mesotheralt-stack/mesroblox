@@ -77,7 +77,10 @@ Instance.new=function(class)
 end
 local baseRequire=require
 local require=function(module)
-	if module.Name=="CreatureFactory" then return {create=function() return Instance.new("Model") end} end
+	if module.Name=="CreatureFactory" then return {create=function(_spec,_scale,variant)
+		assert(Config.variant(variant).id==variant,"Every viewport must explicitly request its selected finish")
+		local model=Instance.new("Model");model:SetAttribute("PreviewVariant",variant);return model
+	end} end
 	return baseRequire(module)
 end
 local player=makePlayer(999)
@@ -94,10 +97,12 @@ local gui=node("PlayerGui");gui.Parent=player
 local state={coins=10000,income=500,world="Meadow",detector="twig",ownedDetectors={"twig"},unlockedWorlds={"Meadow"},brainrots={},foods={crumb=3},stock={{id="crumb",remaining=24}},rotationEnds=1700000300,discoveryCount=50}
 for index=1,50 do
 	local spec=Config.Creatures[(index-1)%#Config.Creatures+1]
-	table.insert(state.brainrots,{uid="pet-"..index,specId=spec.id,name=spec.name,rarity=spec.rarity,level=index,xp=2,xpNeeded=Config.xpNeeded(index),income=Config.income(spec.id,index),growthBoostUntil=0,incomeBoostUntil=0})
+	local finish=Config.Variants[(index-1)%#Config.Variants+1]
+	table.insert(state.brainrots,{variant=finish.id,variantMultiplier=finish.multiplier,uid="pet-"..index,specId=spec.id,name=spec.name,rarity=spec.rarity,level=index,xp=2,xpNeeded=Config.xpNeeded(index),income=Config.income(spec.id,index,finish.id),growthBoostUntil=0,incomeBoostUntil=0})
 end
 state.activeBrainrot=state.brainrots[1].uid
 state.discoveredIds={"sprout"};state.uniqueDiscovered=1
+state.discoveredVariants={sprout={Normal=true,Diamond=true}}
 state.garden={id=1,slots={"pet-1","","","","",""},capacity=6}
 local remoteFolder=node("Folder","BrainrotRemotes");remoteFolder.Parent=ReplicatedStorage
 local action=node("RemoteFunction","Action");action.Parent=remoteFolder
@@ -111,7 +116,7 @@ function action:InvokeServer(kind,payload)
 	if kind=="StartDig" then
 		task.wait(Config.SearchSeconds)
 		result.found=table.remove(searchOutcomes,1)
-		if result.found then result.dig={id="capture-test",required=6,duration=10,specId="sprout",name="Sproutini Spaghetti",rarity="Common"}
+		if result.found then result.dig={id="capture-test",required=6,duration=10,specId="sprout",name="Sproutini Spaghetti",rarity="Common",variant="Diamond",variantMultiplier=5}
 		else result.message="No signal this time. Try another spot in the sand." end
 	end
 	if kind=="TapDig" then result.taps=6;result.complete=true end
@@ -142,7 +147,9 @@ local function click(text)
 	for i=#uiNodes,1,-1 do
 		local object=uiNodes[i]
 		local navigation=object:FindFirstChild("NavigationLabel")
-		if object.ClassName=="TextButton" and (object.Text==text or object:GetAttribute("ShortcutPage")==text or navigation and navigation.Text==text) and visible(object) then task.spawn(function() object.Activated:Fire() end); return object end
+		if object.ClassName=="TextButton" and (object.Text==text or object:GetAttribute("ShortcutPage")==text or navigation and navigation.Text==text) and visible(object) then
+			if object.Parent then object:SetAttribute("TestCollectionUID",object.Parent:GetAttribute("CollectionUID")) end
+			task.spawn(function() object.Activated:Fire() end); return object end
 	end
 	error("Visible button not found: "..text)
 end
@@ -256,11 +263,26 @@ local function checkClient()
 		local previews=0
 		for _,object in uiNodes do if object.ClassName=="ViewportFrame" and visible(object) then previews+=1 end end
 		assert(previews==12,"Pagination must limit visible models to twelve, got "..previews)
+		for _,tile in collectionGrid:GetChildren() do
+			local uid=tile:GetAttribute("CollectionUID")
+			if uid then
+				local owned;for _,brainrot in state.brainrots do if brainrot.uid==uid then owned=brainrot end end
+				local preview=tile:FindFirstChildOfClass("ViewportFrame")
+				local finishBadge=tile:FindFirstChild("VariantBadge")
+				assert(preview:GetAttribute("Variant")==owned.variant and finishBadge:GetAttribute("Variant")==owned.variant,"Collection models and badges must use the creature's actual finish")
+				local model=preview:FindFirstChildOfClass("WorldModel"):FindFirstChildOfClass("Model")
+				assert(model:GetAttribute("PreviewVariant")==owned.variant,"Viewport finish must reach the actual model factory")
+			end
+		end
 		click("Next");assert(textExists("2 / 5"),"Next collection page must work")
 		click("Uncommon");assert(textExists("Uncommon"),"All rarity filters must build valid dimensions")
 		click("All");click("Sort: Income");assert(textExists("Sort: Rarity"),"Sort must cycle");click("Sort: Rarity");click("Sort: Level")
-		click("Feed & grow");assert(textExists("Feed to grow"),"Creature detail must open")
+		local detailButton=click("Feed & grow");assert(textExists("Feed to grow"),"Creature detail must open")
+		local detailUid=detailButton:GetAttribute("TestCollectionUID")
+		local detailed;for _,brainrot in state.brainrots do if brainrot.uid==detailUid then detailed=brainrot end end
+		assert(textExists(Config.variant(detailed.variant).name.." · "..Config.variant(detailed.variant).multiplier.."x income"),"Detail must explain the selected finish multiplier")
 		local hero=screen:FindFirstChild("CreatureHero",true)
+		assert(hero:FindFirstChildOfClass("ViewportFrame"):GetAttribute("Variant")==detailed.variant,"Detail sculpture must retain the captured finish")
 		if hero:GetAttribute("Stacked") then
 			local stageBounds=bounds(hero:FindFirstChild("SculptureStage"),hero.AbsoluteSize.X,hero.AbsoluteSize.Y)
 			local levelBounds=bounds(hero:FindFirstChild("HeroLevel"),hero.AbsoluteSize.X,hero.AbsoluteSize.Y)
@@ -295,13 +317,28 @@ local function checkClient()
 		local fullCollection=state.brainrots
 		state.brainrots={fullCollection[1]}
 		state.garden.slots={"pet-1","","","","",""}
-		click("Index");click("All rarities")
+		click("Index");click("All rarities");click("Normal 1x")
 		assert(textExists("Brainrot index") and textExists("1 / "..#Config.Creatures.." discovered"),"Index book must show unique lifetime progress")
 		local indexGrid=screen:FindFirstChild("IndexGrid",true)
 		if size.X<440 then assert(indexGrid:GetAttribute("CardColumns")==1,"Index sculptures must stay comfortably sized on phones") end
 		local unknown=0
 		for _,object in uiNodes do if object.ClassName=="ViewportFrame" and visible(object) and object:GetAttribute("Silhouette") then unknown+=1 end end
 		assert(unknown==#Config.Creatures-1 and textExists("???"),"Uncaught species must use hidden names and silhouette previews")
+		assert(textExists("2 / "..(#Config.Creatures*#Config.Variants).." species finishes found"),"Index must count species/finish pairs separately from species")
+		for _,finish in Config.Variants do
+			click(finish.name.." "..finish.multiplier.."x")
+			local expectedKnown=finish.id=="Normal" or finish.id=="Diamond"
+			local silhouettes=0
+			for _,object in uiNodes do
+				if visible(object) and object.ClassName=="ViewportFrame" then
+					assert(object:GetAttribute("Variant")==finish.id,"Index finish switching must change every sculpture")
+					if object:GetAttribute("Silhouette") then silhouettes+=1 end
+				end
+			end
+			assert(silhouettes==#Config.Creatures-(expectedKnown and 1 or 0),"Index must reveal only the exact discovered finish")
+			assert(textExists(string.format("%g%% of found signals · %d / %d discovered",finish.weight/100,expectedKnown and 1 or 0,#Config.Creatures)),"Index odds must describe found signals and the selected finish count")
+		end
+		click("Normal 1x")
 		local commonCount=0;for _,spec in Config.Creatures do if spec.rarity=="Common" then commonCount+=1 end end
 		click("Common 1/"..commonCount)
 		local entries=0
@@ -331,6 +368,35 @@ local function checkClient()
 		state.brainrots=fullCollection
 		rendered.RenderStepped:Fire(0.3)
 	end
+	-- A controlled Diamond specimen checks projected income, boost composition,
+	-- sale review, and history-only redraws without depending on sort order.
+	local savedCollection=state.brainrots
+	local savedActive=state.activeBrainrot
+	local diamond={uid="diamond-preview",specId="sprout",name="Sproutini Spaghetti",rarity="Common",variant="Diamond",variantMultiplier=5,level=1,xp=0,xpNeeded=Config.xpNeeded(1),income=10,growthBoostUntil=0,incomeBoostUntil=0}
+	state.brainrots={diamond};state.activeBrainrot=diamond.uid
+	click(viewportSize.X<900 and "Bag" or "Collection");click("Feed & grow")
+	assert(textExists("Diamond Sproutini Spaghetti") and textExists("Next level: $15 / sec"),"Next-level income must include the Diamond base multiplier")
+	diamond.incomeBoostUntil=os.time()+300;diamond.income=20
+	remoteFolder:FindFirstChild("State").OnClientEvent:Fire(state)
+	assert(textExists("Next level: $30 / sec"),"Temporary income boosts must multiply the finished specimen's projected income")
+	diamond.variant="Gold";diamond.variantMultiplier=3;diamond.income=12
+	remoteFolder:FindFirstChild("State").OnClientEvent:Fire(state)
+	assert(textExists("Gold Sproutini Spaghetti") and textExists("Next level: $18 / sec"),"Changing only the finish must redraw the detail state and multiplier")
+	diamond.variant="Diamond";diamond.variantMultiplier=5;diamond.incomeBoostUntil=0;diamond.income=10
+	click("×");click("Sell");click("Review sale")
+	assert(textExists("Sell for $450"),"Sale fallback must use the permanent finish multiplier")
+	click("Sell for $450")
+	assert(textExists("Tap SELL again to confirm this permanent sale."),"Finished creatures must keep the explicit sale confirmation")
+	click("×")
+	state.brainrots={}
+	click("Index")
+	assert(textExists("2 / "..(#Config.Creatures*#Config.Variants).." species finishes found"),"Selling all owned finishes must retain saved finish discoveries")
+	state.discoveredVariants.sprout.Gold=true
+	remoteFolder:FindFirstChild("State").OnClientEvent:Fire(state)
+	assert(textExists("3 / "..(#Config.Creatures*#Config.Variants).." species finishes found"),"A history-only update must refresh the index")
+	state.discoveredVariants.sprout.Gold=nil
+	state.brainrots=savedCollection;state.activeBrainrot=savedActive
+	click("×")
 	local function searches()
 		local count=0
 		for _,request in requests do if request.kind=="StartDig" then count+=1 end end
@@ -351,6 +417,10 @@ local function checkClient()
 	click("Dig  ·  E")
 	advance(Config.SearchSeconds+0.001)
 	assert(textExists("Tap to collect"),"A successful delayed search must open the capture sheet")
+	assert(textExists("Diamond Sproutini Spaghetti") and textExists("Common · Diamond · 5x income"),"Capture sheet must reveal the finish and its multiplier")
+	local captureModel
+	for _,object in uiNodes do if visible(object) and object.ClassName=="ViewportFrame" then captureModel=object end end
+	assert(captureModel and captureModel:GetAttribute("Variant")=="Diamond","Capture preview must use the server's rolled finish")
 	local timer=gameScreen:FindFirstChild("CaptureTimer",true)
 	local meter=gameScreen:FindFirstChild("CaptureProgressTrack",true)
 	assert(timer.Position.Y.Offset+timer.Size.Y.Offset+8<=meter.Position.Y.Offset,"The capture timer and progress meter must keep a comfortable visual gap")
@@ -382,5 +452,5 @@ local function checkClient()
 	assert(controlsShown(),"An old character event must not hide the new character's detector HUD")
 	detector:Destroy()
 	assert(controlsHidden(),"Destroying an equipped detector must hide its controls")
-	print("PASS client pages, centered left dock bounds, aligned navigation icons, modal clearance, equipped detector visibility, sprint input states, persistent index, gardens, portal travel and delayed searches")
+	print("PASS client pages, centered left dock bounds, aligned navigation icons, modal clearance, equipped detector visibility, sprint input states, persistent species/finish index, variant viewports, income projections, sale previews, gardens, portal travel and delayed searches")
 end

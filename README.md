@@ -17,6 +17,7 @@ Studio is needed to actually play Roblox. This Linux cloud workspace builds the 
 ## What's included
 
 - **28 individually sculpted creatures** with different anatomy: sliced toast, a pasta planter, a squat frog, a segmented bee, a full shark in slippers, curled tentacles, four-legged lion/dragon/capybara, a crescent moon, and robed wizard/emperor. New designs include a butter croissant, coiled snail, porcelain teapot, terrarium turtle, golden koi, pocketwatch, and astral manta. Each has tailored face placement, limbs, accessories, and layered construction. Four in each rarity: Common, Uncommon, Rare, Epic, Legendary, Mythic, Secret. Each has a distinct procedural silhouette and palette.
+- **Five collectible finishes for every species**: Normal, Bronze, Silver, Gold, and Diamond, making 140 species/finish combinations. Metallic versions have distinct polished palettes; Diamond has an icy finish and small crystal facets. Finishes increase passive income and sale value, appear on companions and garden displays, and are recorded permanently in the index.
 - **Feeding and levels** to level 100. Food grants XP; every level increases income and the displayed companion grows as it levels. All owned creatures earn income while you are online, including creatures you are not displaying.
 - **15 foods**, from Suspicious Crumb to Secret Midnight Feast. A random six-food selection refreshes at shared five-minute boundaries. The inexpensive Crumb is always available; purchase quantities are personal to the current player session.
 - **Seven detector tiers**, progressively shorter search cooldowns and higher rarity reach. Higher power also improves the weighting of rare finds. Detectors are visible tools held by the character, with ribbed grips, recessed signal displays, hollow search coils, and broader/double windings on higher tiers.
@@ -41,6 +42,22 @@ A world's rarity ceiling also requires a sufficiently strong detector. The start
 
 Income is earned online only. Boost clocks continue to expire while offline. There are no Robux purchases or external account requirements.
 
+## Collectible finishes
+
+After a successful signal, the server rolls a finish independently of species rarity, world, and detector power. Any of the 28 species can appear with any finish:
+
+| Finish | Chance per successful signal | Income multiplier |
+| --- | ---: | ---: |
+| Normal | 80% | 1× |
+| Bronze | 12% | 1.5× |
+| Silver | 5% | 2× |
+| Gold | 2.5% | 3× |
+| Diamond | 0.5% | 5× |
+
+The existing one-second scan still has a 50% chance to find a signal; a finish is awarded only after completing its capture. For example, a level-one Common normally earns $2 per second; Bronze earns $3, Silver $4, Gold $6, and Diamond $10. Fractional income is rounded down to whole coins. Sale value is 45 seconds of the creature's unboosted income, including its finish. Golden Hour doubles finish-adjusted income for five minutes and does not increase the sale price.
+
+The index lets you inspect each finish and remembers discoveries after selling. Existing creatures keep their levels and XP and migrate to Normal. The save store and existing species discovery progress are preserved.
+
 ## World portals
 
 Every world has a large circular **World portal** on the main avenue between the village and sand pit. Follow the turquoise ground arrows; signs label the gate from both sides, and the garden approach points toward it. Three spiral arms rotate inside the stone ring, sparks orbit in the opposite direction, and the glow pulses gently. Press **F** or tap the prompt to choose a world. Unlocked worlds offer travel; locked worlds show their cost and detector requirement.
@@ -51,7 +68,7 @@ The three shop stations now have original characters: **Chef Pip** at Food, **Mi
 
 ## Index book and personal gardens
 
-- **Index (I)** records all 28 species with rarity progress, silhouettes for undiscovered brainrots, and world/detector hints. Discoveries stay recorded after selling a creature. Existing saves seed the book from currently owned creatures; species sold before this feature existed cannot be reconstructed from the old capture total.
+- **Index (I)** records all 28 species with rarity progress, a finish selector and persistent finish discoveries, silhouettes for undiscovered brainrots, and world/detector hints. Discoveries stay recorded after selling a creature. Existing saves seed the book from currently owned creatures and known Normal species; species sold before the index feature existed cannot be reconstructed from the old capture total.
 - **Garden (G)** opens your personal layout. Each server has **six gardens**, and each player is assigned one on arrival. The neighborhood is connected to Clover Commons by a bridge; players can walk around and visit one another.
 - Each garden has **six display pads**. New captures fill empty pads automatically until all six are occupied. Choose a slot in Garden to place, move, or clear one of your owned brainrots. Clear removes the display only; selling removes that creature from its pad. Feeding updates its displayed size.
 - Discoveries and display choices save alongside the collection. Physical plot numbers are reassigned between servers, so you always receive an available plot with your saved arrangement. Every owned brainrot still earns income; displaying it does not duplicate its income.
@@ -90,7 +107,7 @@ Cloud tasks already have an isolated checkout; use this checkout without creatin
 
 | Source | Purpose |
 | --- | --- |
-| `src/shared/Config.luau` | Rarities, creatures, foods, prices, XP, income, worlds, detector tuning |
+| `src/shared/Config.luau` | Rarities, creatures, finish odds/multipliers, foods, prices, XP, income, worlds, detector tuning |
 | `src/shared/CreatureFactory.luau` | Original procedural creature models |
 | `src/server/World.luau` | Themed terrain, shops, sand pits, world portals, lighting cycle |
 | `src/server/PortalFactory.luau` | Circular travel gates and animated effect metadata |
@@ -105,7 +122,7 @@ Cloud tasks already have an isolated checkout; use this checkout without creatin
 
 ## Geometry previews
 
-[Creature sculpture contact sheet](docs/creature-geometry-preview.png) · [Detector models](docs/detector-geometry-preview.png) · [Six gardens](docs/garden-geometry-preview.png) · [Village detail](docs/village-geometry-preview.png) · [Clover Commons](docs/meadow-geometry-preview.png) · [Sunset Sands](docs/dunes-geometry-preview.png) · [Moonbloom Cove](docs/cove-geometry-preview.png)
+[Creature sculpture contact sheet](docs/creature-geometry-preview.png) · [Collectible finishes](docs/variant-geometry-preview.png) · [Detector models](docs/detector-geometry-preview.png) · [Six gardens](docs/garden-geometry-preview.png) · [Village detail](docs/village-geometry-preview.png) · [Clover Commons](docs/meadow-geometry-preview.png) · [Sunset Sands](docs/dunes-geometry-preview.png) · [Moonbloom Cove](docs/cove-geometry-preview.png)
 
 [Meadow terrain](docs/meadow-terrain-preview.png) · [Canyon terrain](docs/canyon-terrain-preview.png) · [Crystal grotto](docs/grotto-terrain-preview.png)
 
@@ -122,6 +139,6 @@ The scene exporter uses deterministic preview randomness for scattered vegetatio
 
 ## Verification boundary
 
-The automated suite compiles every source with the official Luau compiler, executes real economy functions, and exercises the actual server action handlers with deterministic Roblox service doubles. It checks purchases, finite quantities, capture success/failure/replays, growth, boost expiration, passive income, world progression, and save/reload behavior. The garden tests cover six concurrent owners, seventh-join refusal, saved placements/discovery history, and disconnect/save-retry cleanup. Sprint checks execute the actual server and client scripts together for fixed speeds, malformed requests, all three input methods, UI cancellation, death, and respawn. It also executes every creature factory, the actual expanded map builder with the restricted Workspace-write guard, and client UI flows at seven mocked viewport sizes, including left-side dock bounds and detector equipment visibility through tool swaps, death, and respawn. Portal animation checks cover rotation, pulses, rate limiting, distance culling, late replication, and scene cleanup. UI mocks do not validate real layout or rendering. The build also executes every sculpture and the map using native Roblox datatypes and reflected Instances via Lune, validates finite transforms, confirms pit alignment and the saved R6 setting, checks the new stair rises, landing heights, terrace surfaces, portal effects metadata, and station attendants, and bakes the editor-visible scene.
+The automated suite compiles every source with the official Luau compiler, executes real economy functions, and exercises the actual server action handlers with deterministic Roblox service doubles. It checks purchases, finite quantities, capture success/failure/replays, growth, boost expiration, passive income, world progression, and save/reload behavior. Finish checks cover all weighted roll boundaries, bonuses, forged client values, temporary boost stacking, legacy saves, and lifetime discovery history. The garden tests cover six concurrent owners, seventh-join refusal, saved placements/discovery history, and disconnect/save-retry cleanup. Sprint checks execute the actual server and client scripts together for fixed speeds, malformed requests, all three input methods, UI cancellation, death, and respawn. It also executes all 140 species/finish model combinations, the actual expanded map builder with the restricted Workspace-write guard, and client UI flows at seven mocked viewport sizes, including finish selectors and previews, left-side dock bounds and detector equipment visibility through tool swaps, death, and respawn. Portal animation checks cover rotation, pulses, rate limiting, distance culling, late replication, and scene cleanup. UI mocks do not validate real layout or rendering. The build also executes every species/finish sculpture and the map using native Roblox datatypes and reflected Instances via Lune, validates finite transforms, confirms pit alignment and the saved R6 setting, checks stair rises, landing heights, terrace surfaces, portal effects metadata, and station attendants, and bakes the editor-visible scene.
 
 These checks do **not** render the game or connect to Roblox DataStores. Follow [`docs/PLAYTEST.md`](docs/PLAYTEST.md) in Roblox Studio for real character controls, touch layouts, multiplayer, and live saving before publishing the game to players. The built place has not been published to Roblox.

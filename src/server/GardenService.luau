@@ -178,7 +178,7 @@ function GardenService.new(plots,config,factory)
 		plot.model:SetAttribute("OwnerUserId",0)
 		plot.ownerSign.Text="Garden "..plot.id.." · Unclaimed"
 		for _,child in table.clone(plot.displays:GetChildren()) do child:Destroy() end
-		for slot,label in ipairs(plot.slotSigns) do label.Text="Display "..slot.." · Empty" end
+		for slot,label in ipairs(plot.slotSigns) do label.Text="Display "..slot.." · Empty";label.TextColor3=CREAM end
 	end
 	function manager:sync(player,brainrots,gardenSlots)
 		local plot=self:getPlot(player)
@@ -197,18 +197,22 @@ function GardenService.new(plots,config,factory)
 			local value=brainrot and brainrot.level or 1
 			if type(value)~="number" or value~=value or math.abs(value)==math.huge then value=1 end
 			local level=math.clamp(math.floor(value),1,config.MaxLevel)
-			local signature=spec and (uid..":"..spec.id..":"..level) or ""
+			local variant=config.variant(brainrot and brainrot.variant)
+			local displayName=spec and (variant.id=="Normal" and spec.name or variant.name.." "..spec.name)
+			local signature=spec and (uid..":"..spec.id..":"..level..":"..variant.id) or ""
 			local old=cache[slot]
 			if not old or old.signature~=signature then
 				if old and old.model then old.model:Destroy() end
 				if spec then
-					local model=factory.create(spec,0.75+(level-1)*0.0075)
-					model.Name=spec.name;model:SetAttribute("GardenId",plot.id);model:SetAttribute("OwnerUserId",player.UserId);model:SetAttribute("BrainrotUID",uid)
+					local model=factory.create(spec,0.75+(level-1)*0.0075,variant.id)
+					model.Name=displayName;model:SetAttribute("Variant",variant.id);model:SetAttribute("GardenId",plot.id);model:SetAttribute("OwnerUserId",player.UserId);model:SetAttribute("BrainrotUID",uid)
 					model:PivotTo(plot.slots[slot]);model.Parent=plot.displays
-					plot.slotSigns[slot].Text=spec.name.." · Lv "..level
+					plot.slotSigns[slot].Text=displayName.." · Lv "..level
+					plot.slotSigns[slot].TextColor3=variant.id=="Normal" and CREAM or variant.accent
 					cache[slot]={signature=signature,model=model}
 				else
 					plot.slotSigns[slot].Text="Display "..slot.." · Empty"
+					plot.slotSigns[slot].TextColor3=CREAM
 					cache[slot]={signature=""}
 				end
 			end

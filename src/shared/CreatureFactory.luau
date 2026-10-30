@@ -1,6 +1,7 @@
 -- Original collectible sculptures. Every species has its own anatomy, proportions,
 -- and face placement. Anchored geometry is shared by companions and ViewportFrames.
 local CreatureFactory = {}
+local Config = require(game:GetService("ReplicatedStorage"):WaitForChild("BrainrotShared"):WaitForChild("Config"))
 local V = Vector3.new
 local A = CFrame.Angles
 local ballShape = Enum.PartType.Ball
@@ -23,9 +24,11 @@ local function part(model, name, size, position, color, shape, rotation)
 	return object
 end
 
-function CreatureFactory.create(spec, scale)
+function CreatureFactory.create(spec, scale, variantId)
 	local model = Instance.new("Model")
 	model.Name = spec.name or "Brainrot"
+	local variant = Config.variant(variantId)
+	model:SetAttribute("Variant", variant.id)
 	local base = spec.color or Color3.fromRGB(156, 215, 133)
 	local trim = spec.accent or Color3.fromRGB(255, 217, 132)
 	local ivory = Color3.fromRGB(255, 248, 226)
@@ -131,6 +134,7 @@ function CreatureFactory.create(spec, scale)
 	end
 	local root=piece("Root",V(0.15,0.15,0.15),Vector3.zero,base)
 	root.Transparency=1
+	root:SetAttribute("Variant", variant.id)
 	model.PrimaryPart=root
 
 	if shape=="toast" then
@@ -704,9 +708,56 @@ function CreatureFactory.create(spec, scale)
 			end
 		end
 	end
+	if variant.id~="Normal" then
+		-- Finish the complete sculpture, including species-specific hard-coded
+		-- details. Luminance keeps engraved patterns and trim distinct; eyes and
+		-- expressions remain painted so a rare finish never hides the face.
+		local shadow=variant.color:Lerp(ink,0.48)
+		local highlight=variant.accent
+		local diamond=variant.id=="Diamond"
+		local crystalHost,hostHeight=nil,-math.huge
+		for _,object in model:GetChildren() do
+			if object:IsA("BasePart") and object~=root then
+				local name=object.Name
+				local facialWhite=string.match(name,"White$") or string.match(name,"Catchlight$") or string.match(name,"SoftReflection$")
+				local facialInk=string.match(name,"Pupil$") or string.find(name,"Smile",1,true) or name=="HappyMouth" or name=="Nostril"
+				local facialColor=name=="Cheek" or name=="Tongue"
+				if string.match(name,"Iris$") then
+					object.Color=variant.color:Lerp(ink,0.6)
+				elseif name=="VoidEye" then
+					object.Color=highlight
+				elseif not facialWhite and not facialInk and not facialColor then
+					local original=object.Color
+					local luminance=original.R*0.2126+original.G*0.7152+original.B*0.0722
+					object.Color=shadow:Lerp(highlight,math.clamp(luminance*0.88,0.06,0.94))
+					object.Material=diamond and Enum.Material.Glass or Enum.Material.Metal
+					object.Reflectance=diamond and 0.13 or 0.08
+					-- Existing transparent helmets, wings and steam keep their
+					-- transparency; opaque bodies stay solid and easy to read.
+					if math.max(object.Size.X,object.Size.Z)>=1 and object.Size.Y>=0.4 and math.min(object.Size.X,object.Size.Z)>=0.5 then
+						local height=object.CFrame.Y+object.Size.Y/2
+						if height>hostHeight then crystalHost,hostHeight=object,height end
+					end
+				end
+			end
+		end
+		if diamond and crystalHost then
+			-- Two small cut stones follow an existing upper surface rather than
+			-- adding an aura or changing the creature's authored silhouette.
+			for _,side in {-1,1} do
+				local offset=V(side*0.25,crystalHost.Size.Y/2+0.11,0)
+				for _,facet in {-1,1} do
+					local stone=piece("DiamondFacet",V(0.22,0.28,0.18),Vector3.zero,
+						facet<0 and variant.color or highlight,"Wedge")
+					stone.CFrame=crystalHost.CFrame*CFrame.new(offset+V(0,0,facet*0.075))*A(0,facet<0 and math.pi or 0,0)
+					stone.Material=Enum.Material.Glass;stone.Reflectance=0.2;stone.CastShadow=false
+				end
+			end
+		end
+	end
 	if spec.rarity=="Mythic" or spec.rarity=="Secret" then
 		local light=Instance.new("PointLight")
-		light.Color=trim
+		light.Color=variant.id=="Normal" and trim or variant.accent
 		light.Brightness=0.35
 		light.Range=7
 		light.Parent=root

@@ -63,6 +63,16 @@ Config.DigDuration = 10
 Config.SearchSeconds = 1
 Config.FindChance = 0.5
 
+-- Finishes roll independently of species rarity, after a successful signal.
+-- The weights total 10,000: 80%, 12%, 5%, 2.5%, and 0.5% respectively.
+Config.Variants = {
+	{id = "Normal", name = "Normal", weight = 8000, multiplier = 1, color = Color3.fromRGB(177, 191, 180), accent = Color3.fromRGB(239, 229, 201)},
+	{id = "Bronze", name = "Bronze", weight = 1200, multiplier = 1.5, color = Color3.fromRGB(191, 122, 71), accent = Color3.fromRGB(245, 185, 124)},
+	{id = "Silver", name = "Silver", weight = 500, multiplier = 2, color = Color3.fromRGB(184, 201, 215), accent = Color3.fromRGB(241, 249, 255)},
+	{id = "Gold", name = "Gold", weight = 250, multiplier = 3, color = Color3.fromRGB(237, 184, 60), accent = Color3.fromRGB(255, 232, 155)},
+	{id = "Diamond", name = "Diamond", weight = 50, multiplier = 5, color = Color3.fromRGB(119, 220, 244), accent = Color3.fromRGB(222, 251, 255)},
+}
+
 Config.Rarities = {
 	{id = "Common", name = "Common", color = Color3.fromRGB(177, 191, 180), weight = 5800, multiplier = 1, taps = 6},
 	{id = "Uncommon", name = "Uncommon", color = Color3.fromRGB(131, 227, 108), weight = 2600, multiplier = 2.5, taps = 9},
@@ -155,16 +165,33 @@ function Config.xpNeeded(level: number): number
 	return math.floor(40 + 18 * level ^ 1.2)
 end
 
-function Config.income(specId: string, level: number): number
+function Config.variant(id)
+	return Config.get(Config.Variants, id) or Config.Variants[1]
+end
+
+function Config.rollVariant(unitRoll: number)
+	local total = 0
+	for _, variant in Config.Variants do total += variant.weight end
+	local roll = math.clamp(unitRoll, 0, 1) * total
+	local threshold = 0
+	for _, variant in Config.Variants do
+		threshold += variant.weight
+		if roll < threshold then return variant end
+	end
+	return Config.Variants[#Config.Variants]
+end
+
+function Config.income(specId: string, level: number, variantId: string?): number
 	local spec = Config.get(Config.Creatures, specId)
 	if not spec then return 0 end
 	local rarity = Config.get(Config.Rarities, spec.rarity)
 	local growth = math.clamp(level, 1, Config.MaxLevel) - 1
-	return math.floor(2 * rarity.multiplier * (1 + growth * 0.24) ^ 1.15) + growth
+	local base = math.floor(2 * rarity.multiplier * (1 + growth * 0.24) ^ 1.15) + growth
+	return math.floor(base * Config.variant(variantId).multiplier)
 end
 
-function Config.sellValue(specId: string, level: number): number
-	return Config.income(specId, level) * 45
+function Config.sellValue(specId: string, level: number, variantId: string?): number
+	return Config.income(specId, level, variantId) * 45
 end
 
 return Config
@@ -177,6 +204,7 @@ return Config
           <string name="Source"><![CDATA[-- Original collectible sculptures. Every species has its own anatomy, proportions,
 -- and face placement. Anchored geometry is shared by companions and ViewportFrames.
 local CreatureFactory = {}
+local Config = require(game:GetService("ReplicatedStorage"):WaitForChild("BrainrotShared"):WaitForChild("Config"))
 local V = Vector3.new
 local A = CFrame.Angles
 local ballShape = Enum.PartType.Ball
@@ -199,9 +227,11 @@ local function part(model, name, size, position, color, shape, rotation)
 	return object
 end
 
-function CreatureFactory.create(spec, scale)
+function CreatureFactory.create(spec, scale, variantId)
 	local model = Instance.new("Model")
 	model.Name = spec.name or "Brainrot"
+	local variant = Config.variant(variantId)
+	model:SetAttribute("Variant", variant.id)
 	local base = spec.color or Color3.fromRGB(156, 215, 133)
 	local trim = spec.accent or Color3.fromRGB(255, 217, 132)
 	local ivory = Color3.fromRGB(255, 248, 226)
@@ -307,6 +337,7 @@ function CreatureFactory.create(spec, scale)
 	end
 	local root=piece("Root",V(0.15,0.15,0.15),Vector3.zero,base)
 	root.Transparency=1
+	root:SetAttribute("Variant", variant.id)
 	model.PrimaryPart=root
 
 	if shape=="toast" then
@@ -880,9 +911,56 @@ function CreatureFactory.create(spec, scale)
 			end
 		end
 	end
+	if variant.id~="Normal" then
+		-- Finish the complete sculpture, including species-specific hard-coded
+		-- details. Luminance keeps engraved patterns and trim distinct; eyes and
+		-- expressions remain painted so a rare finish never hides the face.
+		local shadow=variant.color:Lerp(ink,0.48)
+		local highlight=variant.accent
+		local diamond=variant.id=="Diamond"
+		local crystalHost,hostHeight=nil,-math.huge
+		for _,object in model:GetChildren() do
+			if object:IsA("BasePart") and object~=root then
+				local name=object.Name
+				local facialWhite=string.match(name,"White$") or string.match(name,"Catchlight$") or string.match(name,"SoftReflection$")
+				local facialInk=string.match(name,"Pupil$") or string.find(name,"Smile",1,true) or name=="HappyMouth" or name=="Nostril"
+				local facialColor=name=="Cheek" or name=="Tongue"
+				if string.match(name,"Iris$") then
+					object.Color=variant.color:Lerp(ink,0.6)
+				elseif name=="VoidEye" then
+					object.Color=highlight
+				elseif not facialWhite and not facialInk and not facialColor then
+					local original=object.Color
+					local luminance=original.R*0.2126+original.G*0.7152+original.B*0.0722
+					object.Color=shadow:Lerp(highlight,math.clamp(luminance*0.88,0.06,0.94))
+					object.Material=diamond and Enum.Material.Glass or Enum.Material.Metal
+					object.Reflectance=diamond and 0.13 or 0.08
+					-- Existing transparent helmets, wings and steam keep their
+					-- transparency; opaque bodies stay solid and easy to read.
+					if math.max(object.Size.X,object.Size.Z)>=1 and object.Size.Y>=0.4 and math.min(object.Size.X,object.Size.Z)>=0.5 then
+						local height=object.CFrame.Y+object.Size.Y/2
+						if height>hostHeight then crystalHost,hostHeight=object,height end
+					end
+				end
+			end
+		end
+		if diamond and crystalHost then
+			-- Two small cut stones follow an existing upper surface rather than
+			-- adding an aura or changing the creature's authored silhouette.
+			for _,side in {-1,1} do
+				local offset=V(side*0.25,crystalHost.Size.Y/2+0.11,0)
+				for _,facet in {-1,1} do
+					local stone=piece("DiamondFacet",V(0.22,0.28,0.18),Vector3.zero,
+						facet<0 and variant.color or highlight,"Wedge")
+					stone.CFrame=crystalHost.CFrame*CFrame.new(offset+V(0,0,facet*0.075))*A(0,facet<0 and math.pi or 0,0)
+					stone.Material=Enum.Material.Glass;stone.Reflectance=0.2;stone.CastShadow=false
+				end
+			end
+		end
+	end
 	if spec.rarity=="Mythic" or spec.rarity=="Secret" then
 		local light=Instance.new("PointLight")
-		light.Color=trim
+		light.Color=variant.id=="Normal" and trim or variant.accent
 		light.Brightness=0.35
 		light.Range=7
 		light.Parent=root
@@ -1184,7 +1262,7 @@ function GardenService.new(plots,config,factory)
 		plot.model:SetAttribute("OwnerUserId",0)
 		plot.ownerSign.Text="Garden "..plot.id.." · Unclaimed"
 		for _,child in table.clone(plot.displays:GetChildren()) do child:Destroy() end
-		for slot,label in ipairs(plot.slotSigns) do label.Text="Display "..slot.." · Empty" end
+		for slot,label in ipairs(plot.slotSigns) do label.Text="Display "..slot.." · Empty";label.TextColor3=CREAM end
 	end
 	function manager:sync(player,brainrots,gardenSlots)
 		local plot=self:getPlot(player)
@@ -1203,18 +1281,22 @@ function GardenService.new(plots,config,factory)
 			local value=brainrot and brainrot.level or 1
 			if type(value)~="number" or value~=value or math.abs(value)==math.huge then value=1 end
 			local level=math.clamp(math.floor(value),1,config.MaxLevel)
-			local signature=spec and (uid..":"..spec.id..":"..level) or ""
+			local variant=config.variant(brainrot and brainrot.variant)
+			local displayName=spec and (variant.id=="Normal" and spec.name or variant.name.." "..spec.name)
+			local signature=spec and (uid..":"..spec.id..":"..level..":"..variant.id) or ""
 			local old=cache[slot]
 			if not old or old.signature~=signature then
 				if old and old.model then old.model:Destroy() end
 				if spec then
-					local model=factory.create(spec,0.75+(level-1)*0.0075)
-					model.Name=spec.name;model:SetAttribute("GardenId",plot.id);model:SetAttribute("OwnerUserId",player.UserId);model:SetAttribute("BrainrotUID",uid)
+					local model=factory.create(spec,0.75+(level-1)*0.0075,variant.id)
+					model.Name=displayName;model:SetAttribute("Variant",variant.id);model:SetAttribute("GardenId",plot.id);model:SetAttribute("OwnerUserId",player.UserId);model:SetAttribute("BrainrotUID",uid)
 					model:PivotTo(plot.slots[slot]);model.Parent=plot.displays
-					plot.slotSigns[slot].Text=spec.name.." · Lv "..level
+					plot.slotSigns[slot].Text=displayName.." · Lv "..level
+					plot.slotSigns[slot].TextColor3=variant.id=="Normal" and CREAM or variant.accent
 					cache[slot]={signature=signature,model=model}
 				else
 					plot.slotSigns[slot].Text="Display "..slot.." · Empty"
+					plot.slotSigns[slot].TextColor3=CREAM
 					cache[slot]={signature=""}
 				end
 			end
@@ -1314,8 +1396,22 @@ local function newData()
 		activeBrainrot = nil,
 		discoveryCount = 0,
 		discovered = {},
+		discoveredVariants = {},
 		gardenSlots = emptyGardenSlots(),
 	}
+end
+
+local function rememberDiscovery(data, specId, variantId)
+	data.discovered[specId] = true
+	local finishes = data.discoveredVariants[specId] or {}
+	finishes[Config.variant(variantId).id] = true
+	data.discoveredVariants[specId] = finishes
+end
+
+local function copyVariantDiscoveries(discovered)
+	local copy = {}
+	for specId, finishes in discovered do copy[specId] = table.clone(finishes) end
+	return copy
 end
 
 local function sanitize(raw)
@@ -1348,7 +1444,7 @@ local function sanitize(raw)
 					seen[uid] = true
 					local level = integer(saved.level, 1, Config.MaxLevel, 1)
 					table.insert(data.brainrots, {
-						uid = uid, specId = saved.specId, level = level,
+						uid = uid, specId = saved.specId, variant = Config.variant(saved.variant).id, level = level,
 						xp = level < Config.MaxLevel and integer(saved.xp, 0, Config.xpNeeded(level) - 1, 0) or 0,
 						growthBoostUntil = integer(saved.growthBoostUntil, 0, os.time() + Config.Boosts.Growth.duration, 0),
 						incomeBoostUntil = integer(saved.incomeBoostUntil, 0, os.time() + Config.Boosts.Income.duration, 0),
@@ -1357,12 +1453,21 @@ local function sanitize(raw)
 			end
 		end
 	end
-	-- Discovery history is independent of the currently owned collection. Old
-	-- saves seed the new book from owned species; past sales cannot be inferred.
+	-- Discovery history survives sales. Saves made before finishes existed only
+	-- knew Normal creatures; newer saves retain the exact finishes discovered.
 	for _, spec in Config.Creatures do
-		if type(raw.discovered) == "table" and raw.discovered[spec.id] == true then data.discovered[spec.id] = true end
+		if type(raw.discovered) == "table" and raw.discovered[spec.id] == true then
+			data.discovered[spec.id] = true
+			if type(raw.discoveredVariants) ~= "table" then rememberDiscovery(data, spec.id, "Normal") end
+		end
+		local finishes = type(raw.discoveredVariants) == "table" and raw.discoveredVariants[spec.id]
+		if type(finishes) == "table" then
+			for _, variant in Config.Variants do
+				if finishes[variant.id] == true then rememberDiscovery(data, spec.id, variant.id) end
+			end
+		end
 	end
-	for _, brainrot in data.brainrots do data.discovered[brainrot.specId] = true end
+	for _, brainrot in data.brainrots do rememberDiscovery(data, brainrot.specId, brainrot.variant) end
 	if type(raw.gardenSlots) == "table" then
 		local placed = {}
 		for slot = 1, Config.GardenSlots do
@@ -1391,7 +1496,7 @@ end
 
 local function brainrotIncome(brainrot)
 	local boost = brainrot.incomeBoostUntil > os.time() and 2 or 1
-	return Config.income(brainrot.specId, brainrot.level) * boost
+	return Config.income(brainrot.specId, brainrot.level, brainrot.variant) * boost
 end
 
 local function totalIncome(profile)
@@ -1431,8 +1536,11 @@ local function publicState(profile)
 	local brainrots = {}
 	for _, brainrot in profile.data.brainrots do
 		local spec = lookup(Config.Creatures, brainrot.specId)
+		local variant = Config.variant(brainrot.variant)
 		table.insert(brainrots, {
 			uid = brainrot.uid, specId = brainrot.specId, name = spec.name, rarity = spec.rarity,
+			variant = variant.id, variantMultiplier = variant.multiplier,
+			sellValue = Config.sellValue(brainrot.specId, brainrot.level, variant.id),
 			level = brainrot.level, xp = brainrot.xp, xpNeeded = Config.xpNeeded(brainrot.level),
 			income = brainrotIncome(brainrot), growthBoostUntil = brainrot.growthBoostUntil,
 			incomeBoostUntil = brainrot.incomeBoostUntil,
@@ -1454,6 +1562,7 @@ local function publicState(profile)
 		rotationEnds = (cachedEpoch + 1) * Config.RotationSeconds, discoveryCount = profile.data.discoveryCount,
 		serverTime = os.time(), persistenceEnabled = profile.persistent,
 		discoveredIds = discoveredIds, uniqueDiscovered = #discoveredIds,
+		discoveredVariants = copyVariantDiscoveries(profile.data.discoveredVariants),
 		garden = {id = gardens:getPlotId(profile.player), slots = table.clone(profile.data.gardenSlots), capacity = Config.GardenSlots},
 	}
 end
@@ -1467,8 +1576,10 @@ local function updateCompanion(profile)
 	local brainrot = findBrainrot(profile, profile.data.activeBrainrot)
 	if not brainrot then return end
 	local spec = lookup(Config.Creatures, brainrot.specId)
-	local model = CreatureFactory.create(spec, 0.7 + (brainrot.level - 1) * 0.015)
-	model.Name = profile.player.Name .. "'s " .. spec.name
+	local variant = Config.variant(brainrot.variant)
+	local displayName = (variant.id ~= "Normal" and variant.name .. " " or "") .. spec.name
+	local model = CreatureFactory.create(spec, 0.7 + (brainrot.level - 1) * 0.015, variant.id)
+	model.Name = profile.player.Name .. "'s " .. displayName
 	model.Parent = workspace
 	local primary = model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart", true)
 	if primary then
@@ -1485,9 +1596,9 @@ local function updateCompanion(profile)
 		text.BackgroundTransparency = 1
 		text.Font = Enum.Font.BuilderSansMedium
 		text.TextSize = 12
-		text.TextColor3 = Color3.new(1, 1, 1)
+		text.TextColor3 = variant.id ~= "Normal" and variant.accent or Color3.new(1, 1, 1)
 		text.TextStrokeTransparency = 0.3
-		text.Text = string.format("%s  •  Lv.%d\n$%s / sec", spec.name, brainrot.level, tostring(brainrotIncome(brainrot)))
+		text.Text = string.format("%s  •  Lv.%d\n$%s / sec", displayName, brainrot.level, tostring(brainrotIncome(brainrot)))
 		text.Parent = label
 	end
 	profile.companion = model
@@ -1500,6 +1611,7 @@ local function snapshot(profile)
 		ownedDetectors = table.clone(profile.data.ownedDetectors), unlockedWorlds = table.clone(profile.data.unlockedWorlds),
 		activeBrainrot = profile.data.activeBrainrot, brainrots = {},
 		discovered = table.clone(profile.data.discovered), gardenSlots = table.clone(profile.data.gardenSlots),
+		discoveredVariants = copyVariantDiscoveries(profile.data.discoveredVariants),
 	}
 	for _, brainrot in profile.data.brainrots do table.insert(copy.brainrots, table.clone(brainrot)) end
 	return copy
@@ -1729,7 +1841,7 @@ end
 function handlers.Sell(_player, profile, payload)
 	local brainrot, index = findBrainrot(profile, payload.uid)
 	if not brainrot then return fail("Choose a brainrot to sell.") end
-	local value = Config.sellValue(brainrot.specId, brainrot.level)
+	local value = Config.sellValue(brainrot.specId, brainrot.level, brainrot.variant)
 	table.remove(profile.data.brainrots, index)
 	profile.data.coins = math.min(MAX_COINS, profile.data.coins + value)
 	for slot = 1, Config.GardenSlots do
@@ -1837,12 +1949,13 @@ function handlers.StartDig(player, profile, _payload)
 	end
 
 	local spec, rarity = rollCreature(world, detector)
+	local variant = Config.rollVariant(rng:NextNumber(0, 1))
 	local duration = Config.DigDuration
 	profile.dig = {
-		id = HttpService:GenerateGUID(false), specId = spec.id, required = rarity.taps,
+		id = HttpService:GenerateGUID(false), specId = spec.id, variant = variant.id, required = rarity.taps,
 		count = 0, deadline = os.clock() + duration, lastTap = 0, world = world.id,
 	}
-	return { ok = true, found = true, dig = { id = profile.dig.id, required = rarity.taps, duration = duration, specId = spec.id, rarity = rarity.id, name = spec.name } }
+	return { ok = true, found = true, dig = { id = profile.dig.id, required = rarity.taps, duration = duration, specId = spec.id, rarity = rarity.id, name = spec.name, variant = variant.id, variantMultiplier = variant.multiplier } }
 end
 
 function handlers.TapDig(player, profile, payload)
@@ -1858,17 +1971,19 @@ function handlers.TapDig(player, profile, payload)
 	if dig.count < dig.required then return { ok = true, count = dig.count, taps = dig.count } end
 	profile.dig = nil -- Clear the session before awarding; replayed requests cannot grant another creature.
 	if #profile.data.brainrots >= Config.MaxBrainrots then return fail("Your collection is full.") end
-	local brainrot = { uid = HttpService:GenerateGUID(false), specId = dig.specId, level = 1, xp = 0, growthBoostUntil = 0, incomeBoostUntil = 0 }
+	local brainrot = { uid = HttpService:GenerateGUID(false), specId = dig.specId, variant = dig.variant, level = 1, xp = 0, growthBoostUntil = 0, incomeBoostUntil = 0 }
 	table.insert(profile.data.brainrots, brainrot)
 	profile.data.discoveryCount += 1
-	profile.data.discovered[brainrot.specId] = true
+	rememberDiscovery(profile.data, brainrot.specId, brainrot.variant)
 	for slot = 1, Config.GardenSlots do
 		if profile.data.gardenSlots[slot] == "" then profile.data.gardenSlots[slot] = brainrot.uid; break end
 	end
 	gardens:sync(player, profile.data.brainrots, profile.data.gardenSlots)
 	if not profile.data.activeBrainrot then profile.data.activeBrainrot = brainrot.uid; updateCompanion(profile) end
 	local spec = lookup(Config.Creatures, brainrot.specId)
-	return { ok = true, complete = true, message = "Captured " .. spec.name .. "! It now earns coins every second." }
+	local variant = Config.variant(brainrot.variant)
+	local displayName = (variant.id ~= "Normal" and variant.name .. " " or "") .. spec.name
+	return { ok = true, complete = true, message = "Captured " .. displayName .. "! It now earns coins every second." }
 end
 
 Action.OnServerInvoke = function(player, action, payload)
@@ -1992,7 +2107,9 @@ task.spawn(function()
 				local text = label and label:FindFirstChild("Text")
 				if brainrot and text then
 					local spec = lookup(Config.Creatures, brainrot.specId)
-					text.Text = string.format("%s  •  Lv.%d\n$%s / sec", spec.name, brainrot.level, tostring(brainrotIncome(brainrot)))
+					local variant = Config.variant(brainrot.variant)
+					local displayName = (variant.id ~= "Normal" and variant.name .. " " or "") .. spec.name
+					text.Text = string.format("%s  •  Lv.%d\n$%s / sec", displayName, brainrot.level, tostring(brainrotIncome(brainrot)))
 				end
 			end
 		end
@@ -3349,6 +3466,7 @@ local collectionQuery = ""
 local collectionPageIndex = 1
 local collectionPageSize = 12
 local indexRarityFilter = "All"
+local indexVariant = "Normal"
 local selectedGardenSlot = 1
 local selectedGardenUid = nil
 local panelRestPosition = UDim2.fromScale(0.5, 0.49)
@@ -3726,6 +3844,25 @@ local function notify(text, kind)
 	task.delay(4, function() if version == toastVersion then toast.Visible = false end end)
 end
 
+local function variantCaption(id)
+	local finish=Config.variant(id)
+	return finish.name.." · "..tostring(finish.multiplier).."x income"
+end
+local function brainrotName(brainrot)
+	local finish=Config.variant(brainrot.variant)
+	return (finish.id~="Normal" and finish.name.." " or "")..brainrot.name
+end
+local function variantTint(id, rarityId)
+	local finish=Config.variant(id)
+	return finish.id=="Normal" and rarity(rarityId).color or finish.color
+end
+local function finishBadge(parent,id,position,size)
+	local finish=Config.variant(id)
+	local field=badge(parent,variantCaption(id),finish.color,position,size)
+	field.Name="VariantBadge";field:SetAttribute("Variant",finish.id)
+	field.TextTruncate=Enum.TextTruncate.AtEnd
+	return field
+end
 local function viewport(parent, specId, size, pos, options)
 	options=options or {}
 	local spec = find(Config.Creatures, specId)
@@ -3734,8 +3871,9 @@ local function viewport(parent, specId, size, pos, options)
 		Ambient = Color3.fromRGB(205, 220, 210), LightColor = Color3.fromRGB(255, 248, 219),
 		LightDirection = Vector3.new(-1, -1, -2)}, parent)
 	frame:SetAttribute("Silhouette",options.silhouette==true)
+	frame:SetAttribute("Variant",Config.variant(options.variant).id)
 	local world = make("WorldModel", {}, frame)
-	local ok, model = pcall(CreatureFactory.create, spec, 1)
+	local ok, model = pcall(CreatureFactory.create, spec, 1, Config.variant(options.variant).id)
 	if not ok or not model then return end
 	if options.silhouette then
 		for _,object in ipairs(model:GetDescendants()) do
@@ -3784,12 +3922,18 @@ local function pageSignature()
 	for _, id in ipairs(state.ownedDetectors or {}) do table.insert(values, id) end
 	for _, id in ipairs(state.unlockedWorlds or {}) do table.insert(values, id) end
 	for _,id in ipairs(state.discoveredIds or {}) do table.insert(values,"discovered:"..id) end
+	for _,spec in ipairs(Config.Creatures) do
+		local finishes=(state.discoveredVariants or {})[spec.id] or {}
+		for _,finish in ipairs(Config.Variants) do
+			if finishes[finish.id]==true then table.insert(values,"finish:"..spec.id..":"..finish.id) end
+		end
+	end
 	if state.garden then
 		table.insert(values,"garden:"..tostring(state.garden.id))
 		for slot,uid in ipairs(state.garden.slots or {}) do table.insert(values,"slot:"..slot..":"..uid) end
 	end
 	for _, brainrot in ipairs(state.brainrots or {}) do
-		table.insert(values, table.concat({brainrot.uid, brainrot.level, brainrot.xp, brainrot.income,
+		table.insert(values, table.concat({brainrot.uid, brainrot.variant or "Normal", brainrot.level, brainrot.xp, brainrot.income,
 			brainrot.growthBoostUntil or 0, brainrot.incomeBoostUntil or 0,
 			tostring((brainrot.growthBoostUntil or 0) > now()), tostring((brainrot.incomeBoostUntil or 0) > now())}, ":"))
 	end
@@ -3837,7 +3981,7 @@ local function collectionPage(sellMode)
 	end
 	local controls=row(body,44)
 	local search=make("TextBox",{Size=UDim2.new(0.56,-6,1,0),BackgroundColor3=C.card,TextColor3=C.text,
-		PlaceholderText="Search your collection…",PlaceholderColor3=C.muted,Text=collectionQuery,ClearTextOnFocus=false,
+		PlaceholderText="Search name or finish…",PlaceholderColor3=C.muted,Text=collectionQuery,ClearTextOnFocus=false,
 		Font=Enum.Font.BuilderSans,TextSize=14,TextXAlignment=Enum.TextXAlignment.Left,BorderSizePixel=0},controls)
 	corner(search,10); padding(search,10)
 	search.FocusLost:Connect(function()
@@ -3867,7 +4011,7 @@ local function collectionPage(sellMode)
 	local ranks={}
 	for index,r in ipairs(Config.Rarities) do ranks[r.id]=index end
 	for _,b in ipairs(state.brainrots) do
-		if (collectionFilter=="All" or b.rarity==collectionFilter) and string.find(string.lower(b.name),string.lower(collectionQuery),1,true) then table.insert(list,b) end
+		if (collectionFilter=="All" or b.rarity==collectionFilter) and string.find(string.lower(Config.variant(b.variant).name.." "..b.name),string.lower(collectionQuery),1,true) then table.insert(list,b) end
 	end
 	table.sort(list,function(a,b)
 		local av=collectionSort=="Rarity" and ranks[a.rarity] or collectionSort=="Level" and a.level or a.income
@@ -3895,8 +4039,9 @@ local function collectionPage(sellMode)
 		local tile=card(grid,tileHeight)
 		tile.LayoutOrder=index
 		tile:SetAttribute("CollectionUID",b.uid)
-		previewStage(tile,r.color,UDim2.fromOffset(10,10),UDim2.new(1,-20,0,stageHeight))
-		viewport(tile,b.specId,UDim2.new(1,-12,0,stageHeight),UDim2.fromOffset(6,8))
+		previewStage(tile,variantTint(b.variant,b.rarity),UDim2.fromOffset(10,10),UDim2.new(1,-20,0,stageHeight))
+		viewport(tile,b.specId,UDim2.new(1,-12,0,stageHeight),UDim2.fromOffset(6,8),{variant=b.variant})
+		finishBadge(tile,b.variant,UDim2.fromOffset(16,stageHeight-18),UDim2.new(1,-32,0,22))
 		label(tile,b.name,15,C.text,{Position=UDim2.fromOffset(12,143+shift),Size=UDim2.new(1,-24,0,38),TextWrapped=true,TextTruncate=Enum.TextTruncate.AtEnd,Font=Enum.Font.BuilderSansBold})
 		label(tile,r.name.." · Lv "..b.level,12,readable(r.color),{Position=UDim2.fromOffset(12,183+shift),Size=UDim2.new(1,-24,0,18),TextTruncate=Enum.TextTruncate.AtEnd})
 		label(tile,"+$"..money(b.income).." / sec",15,C.gold,{Name="IncomeStat",Position=UDim2.fromOffset(12,207+shift),Size=UDim2.new(1,-24,0,20),Font=Enum.Font.BuilderSansMedium,TextTruncate=Enum.TextTruncate.AtEnd})
@@ -3921,14 +4066,15 @@ local function detailPage(sellMode)
 	local brainrot = selected()
 	if not brainrot then selectedUid = nil; activePage = sellMode and "Sell" or "Collection"; collectionPage(sellMode); return end
 	local r = rarity(brainrot.rarity)
-	title.Text = brainrot.name
+	title.Text = brainrotName(brainrot)
 	subtitle.Text = r.name .. "  ·  Level " .. brainrot.level .. "  /  +$" .. money(brainrot.income) .. " per second"
 	button(body, "‹ Back to collection", function() openPage(sellMode and "Sell" or "Collection") end, {Size = UDim2.new(1, 0, 0, 32), TextSize = 13})
+	finishBadge(body,brainrot.variant,UDim2.new(),UDim2.new(1,0,0,30))
 	local stacked=body.AbsoluteSize.X<440
 	local hero = card(body, stacked and 360 or 204)
 	hero.Name="CreatureHero";hero:SetAttribute("Stacked",stacked)
-	previewStage(hero,r.color,UDim2.fromOffset(12,12),stacked and UDim2.new(1,-24,0,150) or UDim2.new(0.48,-12,1,-24))
-	viewport(hero,brainrot.specId,stacked and UDim2.new(1,-16,0,150) or UDim2.new(0.48,-8,1,-16),UDim2.fromOffset(8,8))
+	previewStage(hero,variantTint(brainrot.variant,brainrot.rarity),UDim2.fromOffset(12,12),stacked and UDim2.new(1,-24,0,150) or UDim2.new(0.48,-12,1,-24))
+	viewport(hero,brainrot.specId,stacked and UDim2.new(1,-16,0,150) or UDim2.new(0.48,-8,1,-16),UDim2.fromOffset(8,8),{variant=brainrot.variant})
 	local sx,ox,sw,ow,top=stacked and 0 or 0.5,stacked and 16 or 8,stacked and 1 or 0.5,stacked and -32 or -24,stacked and 176 or 17
 	label(hero,"Level "..brainrot.level.." / "..Config.MaxLevel,18,C.text,{Name="HeroLevel",Position=UDim2.new(sx,ox,0,top),Size=UDim2.new(sw,ow,0,28),Font=Enum.Font.BuilderSansBold})
 	local maxed=brainrot.level>=Config.MaxLevel
@@ -3939,7 +4085,7 @@ local function detailPage(sellMode)
 	local fill=make("Frame",{Size=UDim2.new(maxed and 1 or math.clamp((brainrot.xp or 0)/math.max(1,brainrot.xpNeeded or Config.xpNeeded(brainrot.level)),0,1),0,1,0),BackgroundColor3=readable(r.color),BorderSizePixel=0},track)
 	corner(fill,4)
 	local incomeFactor=(brainrot.incomeBoostUntil or 0)>now() and 2 or 1
-	local nextIncome=Config.income(brainrot.specId,math.min(Config.MaxLevel,brainrot.level+1))*incomeFactor
+	local nextIncome=Config.income(brainrot.specId,math.min(Config.MaxLevel,brainrot.level+1),brainrot.variant)*incomeFactor
 	label(hero,maxed and "A perfect little earner." or ("Next level: $"..money(nextIncome).." / sec"),13,C.gold,
 		{Position=UDim2.new(sx,ox,0,top+81),Size=UDim2.new(sw,ow,0,34),TextWrapped=true})
 	button(hero,state.activeBrainrot==brainrot.uid and "Following you" or "Set as companion",function() perform("EquipBrainrot",{uid=brainrot.uid}) end,
@@ -3955,7 +4101,7 @@ local function detailPage(sellMode)
 	end
 	if sellMode then
 		label(body, "Sold creatures and their levels cannot be recovered.", 12, C.muted, {Size = UDim2.new(1, 0, 0, 42), TextWrapped = true})
-		local sale = brainrot.sellValue or brainrot.value or Config.sellValue(brainrot.specId, brainrot.level)
+		local sale = brainrot.sellValue or brainrot.value or Config.sellValue(brainrot.specId, brainrot.level, brainrot.variant)
 		button(body, sale and ("Sell for $" .. money(sale)) or "Sell this brainrot", function()
 			if activePage == "SellConfirm" then
 				local result = perform("Sell", {uid = brainrot.uid})
@@ -4148,23 +4294,61 @@ local function discoveryHint(spec)
 	return (world and world.name or "Explore the worlds").." · Power "..math.max(rank,world and world.minPower or rank).."+"
 end
 
+local function variantDiscoverySet()
+	local history={}
+	for _,spec in ipairs(Config.Creatures) do
+		local saved=(state.discoveredVariants or {})[spec.id] or {}
+		local finishes={}
+		for _,finish in ipairs(Config.Variants) do if saved[finish.id]==true then finishes[finish.id]=true end end
+		history[spec.id]=finishes
+	end
+	-- Older servers only reported species discoveries; their finds were Normal.
+	if state.discoveredVariants==nil then
+		for _,id in ipairs(state.discoveredIds or {}) do if history[id] then history[id].Normal=true end end
+	end
+	for _,brainrot in ipairs(state.brainrots or {}) do
+		if history[brainrot.specId] then history[brainrot.specId][Config.variant(brainrot.variant).id]=true end
+	end
+	return history
+end
+
 local function indexPage()
 	title.Text="Brainrot index"
-	subtitle.Text="Every discovery is remembered, even after a creature is sold."
+	subtitle.Text="Species and their finishes are remembered, even after selling."
 	journalLinks("Index")
 	local discovered=discoverySet()
-	local total=0
+	local history=variantDiscoverySet()
+	local finish=Config.variant(indexVariant)
+	local total,finishCount,allFinishes,totalWeight=0,0,0,0
 	local rarityCounts={}
 	local ownedCounts={}
-	for _,brainrot in ipairs(state.brainrots or {}) do ownedCounts[brainrot.specId]=(ownedCounts[brainrot.specId] or 0)+1 end
+	for _,brainrot in ipairs(state.brainrots or {}) do
+		if Config.variant(brainrot.variant).id==finish.id then ownedCounts[brainrot.specId]=(ownedCounts[brainrot.specId] or 0)+1 end
+	end
+	for _,entry in ipairs(Config.Variants) do totalWeight+=entry.weight end
 	for _,spec in ipairs(Config.Creatures) do
 		if discovered[spec.id] then total+=1;rarityCounts[spec.rarity]=(rarityCounts[spec.rarity] or 0)+1 end
+		if history[spec.id][finish.id] then finishCount+=1 end
+		for _,entry in ipairs(Config.Variants) do if history[spec.id][entry.id] then allFinishes+=1 end end
 	end
-	local progress=card(body,82)
+	local progress=card(body,105)
 	label(progress,total.." / "..#Config.Creatures.." discovered",20,C.text,{Position=UDim2.fromOffset(16,10),Size=UDim2.new(1,-32,0,28),Font=Enum.Font.BuilderSansBold})
-	local track=make("Frame",{Position=UDim2.fromOffset(16,52),Size=UDim2.new(1,-32,0,8),BackgroundColor3=C.light,BorderSizePixel=0},progress)
+	label(progress,allFinishes.." / "..(#Config.Creatures*#Config.Variants).." species finishes found",13,C.muted,{Name="VariantDiscoveryProgress",Position=UDim2.fromOffset(16,42),Size=UDim2.new(1,-32,0,22)})
+	local track=make("Frame",{Position=UDim2.fromOffset(16,77),Size=UDim2.new(1,-32,0,8),BackgroundColor3=C.light,BorderSizePixel=0},progress)
 	corner(track,4)
 	local fill=make("Frame",{Size=UDim2.new(total/#Config.Creatures,0,1,0),BackgroundColor3=C.green,BorderSizePixel=0},track);corner(fill,4)
+	local finishes=make("ScrollingFrame",{Name="IndexFinishSelector",Size=UDim2.new(1,0,0,48),BackgroundTransparency=1,BorderSizePixel=0,
+		AutomaticCanvasSize=Enum.AutomaticSize.X,CanvasSize=UDim2.new(),ScrollBarThickness=0,ScrollingDirection=Enum.ScrollingDirection.X},body)
+	make("UIListLayout",{FillDirection=Enum.FillDirection.Horizontal,Padding=UDim.new(0,6),SortOrder=Enum.SortOrder.LayoutOrder},finishes)
+	for order,entry in ipairs(Config.Variants) do
+		local target=button(finishes,entry.name.." "..entry.multiplier.."x",function() indexVariant=entry.id;renderPage() end,
+			{Name="IndexFinish"..entry.id,Size=UDim2.fromOffset(118,44),LayoutOrder=order,BackgroundColor3=finish.id==entry.id and entry.color:Lerp(C.paper,0.55) or C.light,TextColor3=readable(entry.color)})
+		target:SetAttribute("Variant",entry.id)
+	end
+	local odds=card(body,88)
+	label(odds,variantCaption(finish.id),16,readable(finish.color),{Position=UDim2.fromOffset(16,10),Size=UDim2.new(1,-32,0,24),Font=Enum.Font.BuilderSansBold})
+	label(odds,string.format("%g%% of found signals · %d / %d discovered",finish.weight/totalWeight*100,finishCount,#Config.Creatures),13,C.muted,
+		{Name="VariantOdds",Position=UDim2.fromOffset(16,38),Size=UDim2.new(1,-32,0,40),TextWrapped=true})
 	local chapters=make("ScrollingFrame",{Size=UDim2.new(1,0,0,48),BackgroundTransparency=1,BorderSizePixel=0,
 		AutomaticCanvasSize=Enum.AutomaticSize.X,CanvasSize=UDim2.new(),ScrollBarThickness=0,ScrollingDirection=Enum.ScrollingDirection.X},body)
 	make("UIListLayout",{FillDirection=Enum.FillDirection.Horizontal,Padding=UDim.new(0,6),SortOrder=Enum.SortOrder.LayoutOrder},chapters)
@@ -4187,17 +4371,17 @@ local function indexPage()
 	grid.Name="IndexGrid";grid:SetAttribute("CardColumns",columns)
 	make("UIGridLayout",{CellSize=UDim2.new(1/columns,-gap*(columns-1)/columns,0,tileHeight),CellPadding=UDim2.fromOffset(gap,gap),SortOrder=Enum.SortOrder.LayoutOrder},grid)
 	for order,spec in ipairs(entries) do
-		local known=discovered[spec.id]==true
+		local known=history[spec.id][finish.id]==true
 		local r=rarity(spec.rarity)
 		local tile=card(grid,tileHeight);tile.LayoutOrder=order
-		tile:SetAttribute("IndexSpecies",spec.id)
+		tile:SetAttribute("IndexSpecies",spec.id);tile:SetAttribute("IndexVariant",finish.id)
 		tile:SetAttribute("Discovered",known)
-		previewStage(tile,known and r.color or C.line,UDim2.fromOffset(10,10),UDim2.new(1,-20,0,stageHeight))
-		viewport(tile,spec.id,UDim2.new(1,-12,0,stageHeight),UDim2.fromOffset(6,8),{silhouette=not known,static=true})
-		label(tile,known and spec.name or "???",15,known and C.text or C.muted,{Position=UDim2.fromOffset(12,129+shift),Size=UDim2.new(1,-24,0,38),TextWrapped=true,TextTruncate=Enum.TextTruncate.AtEnd,Font=Enum.Font.BuilderSansBold})
-		label(tile,known and r.name or (r.name.." · Undiscovered"),12,readable(r.color),{Position=UDim2.fromOffset(12,169+shift),Size=UDim2.new(1,-24,0,20),TextTruncate=Enum.TextTruncate.AtEnd})
+		previewStage(tile,known and variantTint(finish.id,spec.rarity) or C.line,UDim2.fromOffset(10,10),UDim2.new(1,-20,0,stageHeight))
+		viewport(tile,spec.id,UDim2.new(1,-12,0,stageHeight),UDim2.fromOffset(6,8),{silhouette=not known,static=true,variant=finish.id})
+		label(tile,discovered[spec.id] and spec.name or "???",15,discovered[spec.id] and C.text or C.muted,{Position=UDim2.fromOffset(12,129+shift),Size=UDim2.new(1,-24,0,38),TextWrapped=true,TextTruncate=Enum.TextTruncate.AtEnd,Font=Enum.Font.BuilderSansBold})
+		label(tile,r.name.." · "..finish.name..(known and "" or " missing"),12,readable(known and variantTint(finish.id,spec.rarity) or r.color),{Position=UDim2.fromOffset(12,169+shift),Size=UDim2.new(1,-24,0,20),TextTruncate=Enum.TextTruncate.AtEnd})
 		label(tile,discoveryHint(spec),12,C.muted,{Position=UDim2.fromOffset(12,192+shift),Size=UDim2.new(1,-24,0,36),TextWrapped=true})
-		label(tile,known and ("$"..money(Config.income(spec.id,1)).." / sec base · Own "..(ownedCounts[spec.id] or 0)) or "Catch to reveal",12,known and C.gold or C.muted,
+		label(tile,known and ("$"..money(Config.income(spec.id,1,finish.id)).." / sec base · Own "..(ownedCounts[spec.id] or 0)) or "Catch this finish to reveal",12,known and C.gold or C.muted,
 			{Position=UDim2.fromOffset(12,234+shift),Size=UDim2.new(1,-24,0,20),TextTruncate=Enum.TextTruncate.AtEnd})
 	end
 end
@@ -4234,14 +4418,15 @@ local function gardenPage()
 	end
 	local displayed=byUid[slots[selectedGardenSlot]]
 	local stacked=body.AbsoluteSize.X<440
-	local hero=card(body,displayed and stacked and 310 or 170)
+	local hero=card(body,displayed and stacked and 326 or 170)
 	hero.Name="GardenHero";hero:SetAttribute("Stacked",displayed~=nil and stacked)
 	if displayed then
-		previewStage(hero,rarity(displayed.rarity).color,UDim2.fromOffset(12,12),stacked and UDim2.new(1,-24,0,140) or UDim2.new(0.48,-12,1,-24))
-		viewport(hero,displayed.specId,stacked and UDim2.new(1,-16,0,140) or UDim2.new(0.48,-8,1,-16),UDim2.fromOffset(8,8))
+		previewStage(hero,variantTint(displayed.variant,displayed.rarity),UDim2.fromOffset(12,12),stacked and UDim2.new(1,-24,0,140) or UDim2.new(0.48,-12,1,-24))
+		viewport(hero,displayed.specId,stacked and UDim2.new(1,-16,0,140) or UDim2.new(0.48,-8,1,-16),UDim2.fromOffset(8,8),{variant=displayed.variant})
 		local sx,ox,sw,ow,top=stacked and 0 or 0.5,stacked and 16 or 8,stacked and 1 or 0.5,stacked and -32 or -24,stacked and 164 or 15
-		label(hero,displayed.name,16,C.text,{Name="GardenHeroTitle",Position=UDim2.new(sx,ox,0,top),Size=UDim2.new(sw,ow,0,48),TextWrapped=true,Font=Enum.Font.BuilderSansMedium})
-		label(hero,"Level "..displayed.level.." · $"..money(displayed.income).." / sec",13,C.gold,{Name="GardenHeroIncome",Position=UDim2.new(sx,ox,0,top+51),Size=UDim2.new(sw,ow,0,stacked and 30 or 42),TextWrapped=true})
+		local gardenTitle=label(hero,brainrotName(displayed),16,C.text,{Name="GardenHeroTitle",Position=UDim2.new(sx,ox,0,top),Size=UDim2.new(sw,ow,0,48),TextWrapped=true,TextScaled=true,TextTruncate=Enum.TextTruncate.AtEnd,Font=Enum.Font.BuilderSansMedium})
+		make("UITextSizeConstraint",{MinTextSize=14,MaxTextSize=16},gardenTitle)
+		label(hero,variantCaption(displayed.variant).."\nLv "..displayed.level.." · $"..money(displayed.income).." / sec",13,C.gold,{Name="GardenHeroIncome",Position=UDim2.new(sx,ox,0,top+51),Size=UDim2.new(sw,ow,0,stacked and 38 or 42),TextWrapped=true})
 		button(hero,"Clear slot",function() perform("GardenClear",{slot=selectedGardenSlot}) end,
 			{Position=UDim2.new(sx,ox,1,-56),Size=UDim2.new(sw,ow,0,44),TextSize=13})
 	else
@@ -4254,8 +4439,8 @@ local function gardenPage()
 		local currentSlot=table.find(slots,brainrot.uid)
 		local f=card(body,112)
 		if selectedGardenUid==brainrot.uid then stroke(f,C.green,0.1) end
-		label(f,brainrot.name,15,C.text,{Position=UDim2.fromOffset(14,10),Size=UDim2.new(1,-154,0,42),TextWrapped=true,TextTruncate=Enum.TextTruncate.AtEnd,Font=Enum.Font.BuilderSansMedium})
-		label(f,"Lv "..brainrot.level.." · $"..money(brainrot.income).." / sec",13,C.gold,{Position=UDim2.fromOffset(14,57),Size=UDim2.new(1,-154,0,20),TextTruncate=Enum.TextTruncate.AtEnd})
+		label(f,brainrotName(brainrot),15,C.text,{Position=UDim2.fromOffset(14,10),Size=UDim2.new(1,-154,0,42),TextWrapped=true,TextTruncate=Enum.TextTruncate.AtEnd,Font=Enum.Font.BuilderSansMedium})
+		label(f,Config.variant(brainrot.variant).multiplier.."x · Lv "..brainrot.level.." · $"..money(brainrot.income).." / sec",13,C.gold,{Position=UDim2.fromOffset(14,57),Size=UDim2.new(1,-154,0,20),TextTruncate=Enum.TextTruncate.AtEnd})
 		label(f,currentSlot and ("Displayed in slot "..currentSlot) or "Ready for your garden",12,C.muted,{Position=UDim2.fromOffset(14,82),Size=UDim2.new(1,-154,0,18),TextTruncate=Enum.TextTruncate.AtEnd})
 		local here=currentSlot==selectedGardenSlot
 		button(f,here and "Already here" or (currentSlot and "Move here" or "Place here"),function()
@@ -4274,13 +4459,14 @@ local function helpPage()
 	for _,entry in ipairs({
 		{"Find & collect","Stand on the sand and choose Dig (E). A scan takes one second, with a 50% chance to find a signal. Tap or press Space to capture it."},
 		{"Feed & grow","Open Collection, choose a brainrot, and feed it from your pantry. Every creature earns coins while you play."},
+		{"Rare finishes","Every found signal rolls a finish independently of species rarity: Bronze 12% (1.5x), Silver 5% (2x), Gold 2.5% (3x), Diamond 0.5% (5x). Others are Normal. Finishes improve income and sale value."},
 		{"Upgrade your kit","Food, Sell, and Gear take you straight to their shops. Stronger detectors uncover higher rarities; boosts last five minutes."},
 		{"Explore further","Use the glowing portal near each world’s entrance to travel or unlock new worlds. Hold Shift, click the left stick, or use Sprint on touch to move faster."},
 		{"Make it yours","Use Index (I) to track all "..#Config.Creatures.." species. Garden (G) opens your six displays and teleports you home. Display choices and discoveries save with your collection."},
 	}) do
-		local f=card(body,112)
+		local f=card(body,entry[1]=="Rare finishes" and (body.AbsoluteSize.X<440 and 178 or 142) or 112)
 		label(f,entry[1],16,C.text,{Position=UDim2.fromOffset(16,10),Size=UDim2.new(1,-32,0,24),Font=Enum.Font.BuilderSansMedium})
-		label(f,entry[2],14,C.muted,{Position=UDim2.fromOffset(16,39),Size=UDim2.new(1,-32,0,65),TextWrapped=true,TextYAlignment=Enum.TextYAlignment.Top})
+		label(f,entry[2],14,C.muted,{Position=UDim2.fromOffset(16,39),Size=UDim2.new(1,-32,1,-47),TextWrapped=true,TextYAlignment=Enum.TextYAlignment.Top})
 	end
 end
 
@@ -4338,8 +4524,10 @@ stroke(capturePanel, C.lime, 0.2)
 label(capturePanel, "You found a signal", 12, C.green, {Position = UDim2.new(0, 20, 0, 16), Size = UDim2.new(1, -40, 0, 22), TextXAlignment = Enum.TextXAlignment.Center})
 local captureName = label(capturePanel, "A brainrot!", 26, C.text, {Position = UDim2.new(0, 20, 0, 43), Size = UDim2.new(1, -40, 0, 32), TextXAlignment = Enum.TextXAlignment.Center, Font = Enum.Font.BuilderSansBold, TextScaled = true})
 make("UITextSizeConstraint", {MaxTextSize = 26, MinTextSize = 15}, captureName)
-local captureRarity = label(capturePanel, "COMMON", 13, C.muted, {AnchorPoint=Vector2.new(0.5,0),Position = UDim2.new(0.5, 0, 0, 79), Size = UDim2.fromOffset(142,24),BackgroundColor3=C.light,TextXAlignment = Enum.TextXAlignment.Center,Font=Enum.Font.BuilderSansMedium})
+local captureRarity = label(capturePanel, "COMMON", 13, C.muted, {AnchorPoint=Vector2.new(0.5,0),Position = UDim2.new(0.5, 0, 0, 79), Size = UDim2.new(1,-40,0,24),BackgroundColor3=C.light,TextXAlignment = Enum.TextXAlignment.Center,Font=Enum.Font.BuilderSansMedium})
 corner(captureRarity,12)
+captureRarity.TextScaled=true
+make("UITextSizeConstraint",{MinTextSize=12,MaxTextSize=13},captureRarity)
 local timerLabel = label(capturePanel, "0:10", 24, C.gold, {Name="CaptureTimer",AnchorPoint=Vector2.new(0.5,0),Position = UDim2.new(0.5, 0, 0, 232), Size = UDim2.fromOffset(112,36),BackgroundColor3=C.light,TextXAlignment = Enum.TextXAlignment.Center, Font = Enum.Font.BuilderSansBold})
 corner(timerLabel,14)
 local progressTrack = make("Frame", {Name="CaptureProgressTrack",Position = UDim2.new(0, 28, 0, 278), Size = UDim2.new(1, -56, 0, 10), BackgroundColor3 = C.line, BorderSizePixel = 0}, capturePanel)
@@ -4391,8 +4579,8 @@ tapDig = function()
 	captureProgress.Text = session.taps .. " / " .. session.required .. " taps"
 	TweenService:Create(progressFill, TweenInfo.new(0.08), {Size = UDim2.fromScale(math.clamp(session.taps / session.required, 0, 1), 1)}):Play()
 	if result.complete then
-		endCapture(result.message or ("Captured " .. session.name .. "! Open your collection to feed it."), "success")
-		celebrate(rarity(session.rarity).color)
+		endCapture(result.message or ("Captured " .. brainrotName(session) .. "! Open your collection to feed it."), "success")
+		celebrate(variantTint(session.variant,session.rarity))
 	end
 end
 startDig = function()
@@ -4411,20 +4599,21 @@ startDig = function()
 	digButton.TextColor3=C.paper
 	if not result or not result.ok or not result.dig then return end
 	local dig = result.dig
-	capture = {id = dig.id, required = dig.required, duration = dig.duration, deadline = os.clock() + dig.duration, taps = 0, name = dig.name or "brainrot", rarity = dig.rarity}
+	capture = {id = dig.id, required = dig.required, duration = dig.duration, deadline = os.clock() + dig.duration, taps = 0, name = dig.name or "brainrot", rarity = dig.rarity,variant=Config.variant(dig.variant).id}
 	syncDetectorUI()
 	screen:SetAttribute("Capturing", true)
-	captureName.Text = capture.name
+	captureName.Text = brainrotName(capture)
 	local r = rarity(dig.rarity)
-	captureRarity.Text = r.name
-	captureRarity.TextColor3 = readable(r.color)
-	captureRarity.BackgroundColor3 = r.color:Lerp(C.paper,0.84)
-	progressFill.BackgroundColor3 = readable(r.color)
+	local tint=variantTint(dig.variant,dig.rarity)
+	captureRarity.Text = r.name.." · "..variantCaption(dig.variant)
+	captureRarity.TextColor3 = readable(tint)
+	captureRarity.BackgroundColor3 = tint:Lerp(C.paper,0.84)
+	progressFill.BackgroundColor3 = readable(tint)
 	progressFill.Size = UDim2.fromScale(0, 1)
 	captureProgress.Text = "0 / " .. capture.required .. " taps"
 	for _,child in capturePreview:GetChildren() do child:Destroy() end
-	previewStage(capturePreview,r.color,UDim2.new(),UDim2.fromScale(1,1))
-	viewport(capturePreview,dig.specId,UDim2.fromScale(1,1))
+	previewStage(capturePreview,tint,UDim2.new(),UDim2.fromScale(1,1))
+	viewport(capturePreview,dig.specId,UDim2.fromScale(1,1),nil,{variant=dig.variant})
 	captureShade.Visible = true
 	capturePanel.Position=UDim2.new(0.5,0,0.5,6)
 	TweenService:Create(capturePanel,TweenInfo.new(0.16,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),{Position=UDim2.fromScale(0.5,0.5)}):Play()

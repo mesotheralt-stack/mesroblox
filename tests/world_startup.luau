@@ -247,7 +247,7 @@ local function verifyWorld(World)
 	end
 	-- Real GardenService manager: no mocked ownership/cache implementation.
 	local created=0
-	local factory={create=function(spec,scale) created+=1;local model=node("Model",spec.name);model.AppliedScale=scale;return model end}
+	local factory={create=function(spec,scale,variant) created+=1;local model=node("Model",spec.name);model.AppliedScale=scale;model.RenderedVariant=variant;return model end}
 	local manager=ActualGardenService.new(built.gardens,Config,factory)
 	local owners={}
 	for id=1,6 do owners[id]=makePlayer(20000+id);assert(manager:claim(owners[id])==id,"Garden allocator must issue unique plots") end
@@ -258,6 +258,7 @@ local function verifyWorld(World)
 	local plot=manager:getPlot(owners[1])
 	assert(created==1 and #plot.displays:GetChildren()==1,"Duplicate/foreign placement IDs must not render duplicate creatures")
 	local first=plot.displays:GetChildren()[1]
+	assert(first.RenderedVariant=="Normal" and first:GetAttribute("Variant")=="Normal","Legacy garden displays must propagate the Normal finish")
 	assert(first:GetAttribute("OwnerUserId")==owners[1].UserId and first:GetAttribute("BrainrotUID")=="alpha","Display models must be tied to their real owner and creature")
 	manager:sync(owners[1],collection,{"alpha"})
 	assert(created==1 and plot.displays:GetChildren()[1]==first,"Unchanged snapshots must retain cached models")
@@ -266,6 +267,23 @@ local function verifyWorld(World)
 	local grown=plot.displays:GetChildren()[1]
 	assert(created==2 and first.Destroyed and grown.AppliedScale>first.AppliedScale,"Feeding must replace the cached model at a larger scale")
 	assert(string.find(plot.slotSigns[1].Text,"20",1,true),"Garden plaques must reflect the updated level")
+	for _,variant in Config.Variants do
+		collection[1].variant=variant.id
+		local previous=plot.displays:GetChildren()[1]
+		local count=created
+		manager:sync(owners[1],collection,{"alpha"})
+		local current=plot.displays:GetChildren()[1]
+		assert(current.RenderedVariant==variant.id and current:GetAttribute("Variant")==variant.id,"Every finish must reach the garden factory and display identity")
+		if variant.id=="Normal" then
+			assert(current==previous and count==created,"Normal migration must not replace an unchanged legacy display")
+		else
+			assert(previous.Destroyed and current~=previous and created==count+1,"Changing only the finish must invalidate a garden's cached model")
+			assert(string.find(current.Name,variant.name,1,true)==1 and string.find(plot.slotSigns[1].Text,variant.name,1,true)==1,"Rare finish labels must identify the garden specimen")
+			assert(plot.slotSigns[1].TextColor3==variant.accent,"Garden finish labels should use the shared finish palette")
+		end
+		manager:sync(owners[1],collection,{"alpha"})
+		assert(plot.displays:GetChildren()[1]==current,"Repeated finish snapshots must retain their cached model")
+	end
 	manager:release(owners[1])
 	assert(manager:getPlotId(owners[1])==nil and manager:getSpawnCFrame(owners[1])==nil,"Released owners must lose plot and teleport access")
 	assert(#plot.displays:GetChildren()==0 and plot.model:GetAttribute("OwnerUserId")==0,"Released gardens must clear models and ownership")

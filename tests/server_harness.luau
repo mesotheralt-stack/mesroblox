@@ -138,7 +138,7 @@ local require=function(module)
 	if module.Name=="PortalFactory" then return assert(ActualPortalFactory,"Real PortalFactory must be loaded by test runner") end
 	if module.Name=="StationKeeper" then return assert(ActualStationKeeper,"Real StationKeeper must be loaded by test runner") end
 	if module.Name=="World" then return {build=function() return map end} end
-	if module.Name=="CreatureFactory" then return {create=function(spec,scale) local model=node("Model",spec.name);model.AppliedScale=scale;return model end} end
+	if module.Name=="CreatureFactory" then return {create=function(spec,scale,variant) local model=node("Model",spec.name);model.AppliedScale=scale;model.AppliedVariant=variant;return model end} end
 	if module.Name=="DetectorTool" then return setmetatable({},{__index=function() return function() end end}) end
 	error("Unknown mocked module: "..module.Name)
 end

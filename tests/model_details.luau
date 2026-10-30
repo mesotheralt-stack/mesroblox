@@ -13,7 +13,12 @@ Instance.new=function(class)
 end
 local function verifyModels(Factory, content)
 	local checks=0
+	local finishedModels=0
+	local function sameColor(a,b)
+		return math.abs(a.R-b.R)<1e-7 and math.abs(a.G-b.G)<1e-7 and math.abs(a.B-b.B)<1e-7
+	end
 	for _,spec in content.Creatures do
+		local originalColor,originalAccent=table.clone(spec.color),table.clone(spec.accent)
 		local model=Factory.create(spec,1.2)
 		assert(model.PrimaryPart and model.PrimaryPart.Name=="Root",spec.id.." needs a root")
 		assert(model.Name==spec.name,spec.id.." name changed")
@@ -91,7 +96,42 @@ local function verifyModels(Factory, content)
 			assert(model:FindFirstChild("SweptRayWing") and model:FindFirstChild("CephalicFin") and model:FindFirstChild("CometRayTail") and model:FindFirstChild("RayConstellationStar"),"Manta needs broad ray wings, forward fins and celestial details")
 			assert(model:FindFirstChild("RayWingShoulder"),"Ray wings need a smooth shoulder transition into their body")
 		end
+		assert(model:GetAttribute("Variant")=="Normal" and model.PrimaryPart:GetAttribute("Variant")=="Normal","Legacy creatures must retain the Normal finish")
+		local normalChildren=model:GetChildren()
+		for _,variant in content.Variants do
+			local finished=Factory.create(spec,1.2,variant.id)
+			assert(finished:GetAttribute("Variant")==variant.id and finished.PrimaryPart:GetAttribute("Variant")==variant.id,"Finish identity must follow the complete model and its root")
+			assert(finished.AppliedScale==1.2 and finished.PrimaryPart.Name=="Root","Every finish must support the same growth and pivot API")
+			local variantParts,finishedParts,facets=0,0,0
+			for index,piece in finished:GetChildren() do
+				if piece:IsA("BasePart") then
+					variantParts+=1
+					assert(piece.Anchored and not piece.CanCollide and not piece.CanTouch and not piece.CanQuery,"Variant geometry must remain safe in companions, gardens and viewports")
+					assert(piece.Size.X>0 and piece.Size.Y>0 and piece.Size.Z>0,"Finish accents must not create zero-size geometry")
+					if piece.Name=="DiamondFacet" then facets+=1 end
+					if variant.id~="Normal" and piece~=finished.PrimaryPart then
+						if piece.Material==(variant.id=="Diamond" and Enum.Material.Glass or Enum.Material.Metal) then finishedParts+=1 end
+					end
+					local original=normalChildren[index]
+					if original and original:IsA("BasePart") then
+						if variant.id=="Normal" then
+							assert(piece.Name==original.Name and sameColor(piece.Color,original.Color) and piece.Material==original.Material,"Explicit Normal must preserve the authored species palette and material hierarchy")
+						elseif string.match(piece.Name,"White$") or string.match(piece.Name,"Pupil$") or string.match(piece.Name,"Catchlight$") or string.match(piece.Name,"SoftReflection$")
+							or string.find(piece.Name,"Smile",1,true) or piece.Name=="HappyMouth" then
+							assert(sameColor(piece.Color,original.Color),"Finish recoloring must preserve readable painted eye and mouth layers")
+						end
+					end
+				end
+			end
+			assert(variantParts<=150 and variantParts==parts+(variant.id=="Diamond" and 4 or 0),spec.id.." "..variant.id.." must preserve species anatomy within the detail budget ("..variantParts.." vs "..parts..")")
+			if variant.id~="Normal" then assert(finishedParts>parts/3,"Every species needs an obvious all-over rare finish") end
+			assert(facets==(variant.id=="Diamond" and 4 or 0),"Only Diamond receives two small cut-stone accents")
+			assert(sameColor(spec.color,originalColor) and sameColor(spec.accent,originalAccent),"Creating finish models must never mutate the shared species palette")
+			finishedModels+=1
+		end
 		checks+=4
 	end
-	print("PASS all "..#content.Creatures.." detailed creature factories ("..checks.." model assertions plus per-part safety checks)")
+	local fallback=Factory.create(content.Creatures[1],1,"Unknown")
+	assert(fallback:GetAttribute("Variant")=="Normal","Unknown finish IDs must safely render as Normal")
+	print("PASS all "..#content.Creatures.." detailed creature factories and "..finishedModels.." species/finish combinations ("..checks.." model assertions plus per-part safety and facial contrast checks)")
 end

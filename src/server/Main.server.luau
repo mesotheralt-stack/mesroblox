@@ -80,8 +80,22 @@ local function newData()
 		activeBrainrot = nil,
 		discoveryCount = 0,
 		discovered = {},
+		discoveredVariants = {},
 		gardenSlots = emptyGardenSlots(),
 	}
+end
+
+local function rememberDiscovery(data, specId, variantId)
+	data.discovered[specId] = true
+	local finishes = data.discoveredVariants[specId] or {}
+	finishes[Config.variant(variantId).id] = true
+	data.discoveredVariants[specId] = finishes
+end
+
+local function copyVariantDiscoveries(discovered)
+	local copy = {}
+	for specId, finishes in discovered do copy[specId] = table.clone(finishes) end
+	return copy
 end
 
 local function sanitize(raw)
@@ -114,7 +128,7 @@ local function sanitize(raw)
 					seen[uid] = true
 					local level = integer(saved.level, 1, Config.MaxLevel, 1)
 					table.insert(data.brainrots, {
-						uid = uid, specId = saved.specId, level = level,
+						uid = uid, specId = saved.specId, variant = Config.variant(saved.variant).id, level = level,
 						xp = level < Config.MaxLevel and integer(saved.xp, 0, Config.xpNeeded(level) - 1, 0) or 0,
 						growthBoostUntil = integer(saved.growthBoostUntil, 0, os.time() + Config.Boosts.Growth.duration, 0),
 						incomeBoostUntil = integer(saved.incomeBoostUntil, 0, os.time() + Config.Boosts.Income.duration, 0),
@@ -123,12 +137,21 @@ local function sanitize(raw)
 			end
 		end
 	end
-	-- Discovery history is independent of the currently owned collection. Old
-	-- saves seed the new book from owned species; past sales cannot be inferred.
+	-- Discovery history survives sales. Saves made before finishes existed only
+	-- knew Normal creatures; newer saves retain the exact finishes discovered.
 	for _, spec in Config.Creatures do
-		if type(raw.discovered) == "table" and raw.discovered[spec.id] == true then data.discovered[spec.id] = true end
+		if type(raw.discovered) == "table" and raw.discovered[spec.id] == true then
+			data.discovered[spec.id] = true
+			if type(raw.discoveredVariants) ~= "table" then rememberDiscovery(data, spec.id, "Normal") end
+		end
+		local finishes = type(raw.discoveredVariants) == "table" and raw.discoveredVariants[spec.id]
+		if type(finishes) == "table" then
+			for _, variant in Config.Variants do
+				if finishes[variant.id] == true then rememberDiscovery(data, spec.id, variant.id) end
+			end
+		end
 	end
-	for _, brainrot in data.brainrots do data.discovered[brainrot.specId] = true end
+	for _, brainrot in data.brainrots do rememberDiscovery(data, brainrot.specId, brainrot.variant) end
 	if type(raw.gardenSlots) == "table" then
 		local placed = {}
 		for slot = 1, Config.GardenSlots do
@@ -157,7 +180,7 @@ end
 
 local function brainrotIncome(brainrot)
 	local boost = brainrot.incomeBoostUntil > os.time() and 2 or 1
-	return Config.income(brainrot.specId, brainrot.level) * boost
+	return Config.income(brainrot.specId, brainrot.level, brainrot.variant) * boost
 end
 
 local function totalIncome(profile)
@@ -197,8 +220,11 @@ local function publicState(profile)
 	local brainrots = {}
 	for _, brainrot in profile.data.brainrots do
 		local spec = lookup(Config.Creatures, brainrot.specId)
+		local variant = Config.variant(brainrot.variant)
 		table.insert(brainrots, {
 			uid = brainrot.uid, specId = brainrot.specId, name = spec.name, rarity = spec.rarity,
+			variant = variant.id, variantMultiplier = variant.multiplier,
+			sellValue = Config.sellValue(brainrot.specId, brainrot.level, variant.id),
 			level = brainrot.level, xp = brainrot.xp, xpNeeded = Config.xpNeeded(brainrot.level),
 			income = brainrotIncome(brainrot), growthBoostUntil = brainrot.growthBoostUntil,
 			incomeBoostUntil = brainrot.incomeBoostUntil,
@@ -220,6 +246,7 @@ local function publicState(profile)
 		rotationEnds = (cachedEpoch + 1) * Config.RotationSeconds, discoveryCount = profile.data.discoveryCount,
 		serverTime = os.time(), persistenceEnabled = profile.persistent,
 		discoveredIds = discoveredIds, uniqueDiscovered = #discoveredIds,
+		discoveredVariants = copyVariantDiscoveries(profile.data.discoveredVariants),
 		garden = {id = gardens:getPlotId(profile.player), slots = table.clone(profile.data.gardenSlots), capacity = Config.GardenSlots},
 	}
 end
@@ -233,8 +260,10 @@ local function updateCompanion(profile)
 	local brainrot = findBrainrot(profile, profile.data.activeBrainrot)
 	if not brainrot then return end
 	local spec = lookup(Config.Creatures, brainrot.specId)
-	local model = CreatureFactory.create(spec, 0.7 + (brainrot.level - 1) * 0.015)
-	model.Name = profile.player.Name .. "'s " .. spec.name
+	local variant = Config.variant(brainrot.variant)
+	local displayName = (variant.id ~= "Normal" and variant.name .. " " or "") .. spec.name
+	local model = CreatureFactory.create(spec, 0.7 + (brainrot.level - 1) * 0.015, variant.id)
+	model.Name = profile.player.Name .. "'s " .. displayName
 	model.Parent = workspace
 	local primary = model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart", true)
 	if primary then
@@ -251,9 +280,9 @@ local function updateCompanion(profile)
 		text.BackgroundTransparency = 1
 		text.Font = Enum.Font.BuilderSansMedium
 		text.TextSize = 12
-		text.TextColor3 = Color3.new(1, 1, 1)
+		text.TextColor3 = variant.id ~= "Normal" and variant.accent or Color3.new(1, 1, 1)
 		text.TextStrokeTransparency = 0.3
-		text.Text = string.format("%s  •  Lv.%d\n$%s / sec", spec.name, brainrot.level, tostring(brainrotIncome(brainrot)))
+		text.Text = string.format("%s  •  Lv.%d\n$%s / sec", displayName, brainrot.level, tostring(brainrotIncome(brainrot)))
 		text.Parent = label
 	end
 	profile.companion = model
@@ -266,6 +295,7 @@ local function snapshot(profile)
 		ownedDetectors = table.clone(profile.data.ownedDetectors), unlockedWorlds = table.clone(profile.data.unlockedWorlds),
 		activeBrainrot = profile.data.activeBrainrot, brainrots = {},
 		discovered = table.clone(profile.data.discovered), gardenSlots = table.clone(profile.data.gardenSlots),
+		discoveredVariants = copyVariantDiscoveries(profile.data.discoveredVariants),
 	}
 	for _, brainrot in profile.data.brainrots do table.insert(copy.brainrots, table.clone(brainrot)) end
 	return copy
@@ -495,7 +525,7 @@ end
 function handlers.Sell(_player, profile, payload)
 	local brainrot, index = findBrainrot(profile, payload.uid)
 	if not brainrot then return fail("Choose a brainrot to sell.") end
-	local value = Config.sellValue(brainrot.specId, brainrot.level)
+	local value = Config.sellValue(brainrot.specId, brainrot.level, brainrot.variant)
 	table.remove(profile.data.brainrots, index)
 	profile.data.coins = math.min(MAX_COINS, profile.data.coins + value)
 	for slot = 1, Config.GardenSlots do
@@ -603,12 +633,13 @@ function handlers.StartDig(player, profile, _payload)
 	end
 
 	local spec, rarity = rollCreature(world, detector)
+	local variant = Config.rollVariant(rng:NextNumber(0, 1))
 	local duration = Config.DigDuration
 	profile.dig = {
-		id = HttpService:GenerateGUID(false), specId = spec.id, required = rarity.taps,
+		id = HttpService:GenerateGUID(false), specId = spec.id, variant = variant.id, required = rarity.taps,
 		count = 0, deadline = os.clock() + duration, lastTap = 0, world = world.id,
 	}
-	return { ok = true, found = true, dig = { id = profile.dig.id, required = rarity.taps, duration = duration, specId = spec.id, rarity = rarity.id, name = spec.name } }
+	return { ok = true, found = true, dig = { id = profile.dig.id, required = rarity.taps, duration = duration, specId = spec.id, rarity = rarity.id, name = spec.name, variant = variant.id, variantMultiplier = variant.multiplier } }
 end
 
 function handlers.TapDig(player, profile, payload)
@@ -624,17 +655,19 @@ function handlers.TapDig(player, profile, payload)
 	if dig.count < dig.required then return { ok = true, count = dig.count, taps = dig.count } end
 	profile.dig = nil -- Clear the session before awarding; replayed requests cannot grant another creature.
 	if #profile.data.brainrots >= Config.MaxBrainrots then return fail("Your collection is full.") end
-	local brainrot = { uid = HttpService:GenerateGUID(false), specId = dig.specId, level = 1, xp = 0, growthBoostUntil = 0, incomeBoostUntil = 0 }
+	local brainrot = { uid = HttpService:GenerateGUID(false), specId = dig.specId, variant = dig.variant, level = 1, xp = 0, growthBoostUntil = 0, incomeBoostUntil = 0 }
 	table.insert(profile.data.brainrots, brainrot)
 	profile.data.discoveryCount += 1
-	profile.data.discovered[brainrot.specId] = true
+	rememberDiscovery(profile.data, brainrot.specId, brainrot.variant)
 	for slot = 1, Config.GardenSlots do
 		if profile.data.gardenSlots[slot] == "" then profile.data.gardenSlots[slot] = brainrot.uid; break end
 	end
 	gardens:sync(player, profile.data.brainrots, profile.data.gardenSlots)
 	if not profile.data.activeBrainrot then profile.data.activeBrainrot = brainrot.uid; updateCompanion(profile) end
 	local spec = lookup(Config.Creatures, brainrot.specId)
-	return { ok = true, complete = true, message = "Captured " .. spec.name .. "! It now earns coins every second." }
+	local variant = Config.variant(brainrot.variant)
+	local displayName = (variant.id ~= "Normal" and variant.name .. " " or "") .. spec.name
+	return { ok = true, complete = true, message = "Captured " .. displayName .. "! It now earns coins every second." }
 end
 
 Action.OnServerInvoke = function(player, action, payload)
@@ -758,7 +791,9 @@ task.spawn(function()
 				local text = label and label:FindFirstChild("Text")
 				if brainrot and text then
 					local spec = lookup(Config.Creatures, brainrot.specId)
-					text.Text = string.format("%s  •  Lv.%d\n$%s / sec", spec.name, brainrot.level, tostring(brainrotIncome(brainrot)))
+					local variant = Config.variant(brainrot.variant)
+					local displayName = (variant.id ~= "Normal" and variant.name .. " " or "") .. spec.name
+					text.Text = string.format("%s  •  Lv.%d\n$%s / sec", displayName, brainrot.level, tostring(brainrotIncome(brainrot)))
 				end
 			end
 		end

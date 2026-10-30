@@ -11,6 +11,16 @@ Config.DigDuration = 10
 Config.SearchSeconds = 1
 Config.FindChance = 0.5
 
+-- Finishes roll independently of species rarity, after a successful signal.
+-- The weights total 10,000: 80%, 12%, 5%, 2.5%, and 0.5% respectively.
+Config.Variants = {
+	{id = "Normal", name = "Normal", weight = 8000, multiplier = 1, color = Color3.fromRGB(177, 191, 180), accent = Color3.fromRGB(239, 229, 201)},
+	{id = "Bronze", name = "Bronze", weight = 1200, multiplier = 1.5, color = Color3.fromRGB(191, 122, 71), accent = Color3.fromRGB(245, 185, 124)},
+	{id = "Silver", name = "Silver", weight = 500, multiplier = 2, color = Color3.fromRGB(184, 201, 215), accent = Color3.fromRGB(241, 249, 255)},
+	{id = "Gold", name = "Gold", weight = 250, multiplier = 3, color = Color3.fromRGB(237, 184, 60), accent = Color3.fromRGB(255, 232, 155)},
+	{id = "Diamond", name = "Diamond", weight = 50, multiplier = 5, color = Color3.fromRGB(119, 220, 244), accent = Color3.fromRGB(222, 251, 255)},
+}
+
 Config.Rarities = {
 	{id = "Common", name = "Common", color = Color3.fromRGB(177, 191, 180), weight = 5800, multiplier = 1, taps = 6},
 	{id = "Uncommon", name = "Uncommon", color = Color3.fromRGB(131, 227, 108), weight = 2600, multiplier = 2.5, taps = 9},
@@ -103,16 +113,33 @@ function Config.xpNeeded(level: number): number
 	return math.floor(40 + 18 * level ^ 1.2)
 end
 
-function Config.income(specId: string, level: number): number
+function Config.variant(id)
+	return Config.get(Config.Variants, id) or Config.Variants[1]
+end
+
+function Config.rollVariant(unitRoll: number)
+	local total = 0
+	for _, variant in Config.Variants do total += variant.weight end
+	local roll = math.clamp(unitRoll, 0, 1) * total
+	local threshold = 0
+	for _, variant in Config.Variants do
+		threshold += variant.weight
+		if roll < threshold then return variant end
+	end
+	return Config.Variants[#Config.Variants]
+end
+
+function Config.income(specId: string, level: number, variantId: string?): number
 	local spec = Config.get(Config.Creatures, specId)
 	if not spec then return 0 end
 	local rarity = Config.get(Config.Rarities, spec.rarity)
 	local growth = math.clamp(level, 1, Config.MaxLevel) - 1
-	return math.floor(2 * rarity.multiplier * (1 + growth * 0.24) ^ 1.15) + growth
+	local base = math.floor(2 * rarity.multiplier * (1 + growth * 0.24) ^ 1.15) + growth
+	return math.floor(base * Config.variant(variantId).multiplier)
 end
 
-function Config.sellValue(specId: string, level: number): number
-	return Config.income(specId, level) * 45
+function Config.sellValue(specId: string, level: number, variantId: string?): number
+	return Config.income(specId, level, variantId) * 45
 end
 
 return Config
