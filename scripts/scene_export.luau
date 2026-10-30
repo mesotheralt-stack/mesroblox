@@ -54,6 +54,12 @@ end
 local shared=game:GetService("ReplicatedStorage"):WaitForChild("BrainrotShared")
 local config=environment.require(shared:WaitForChild("Config"))
 local factory=environment.require(shared:WaitForChild("CreatureFactory"))
+local detectorFactory=environment.require(game:GetService("ServerScriptService"):WaitForChild("BrainrotServer"):WaitForChild("DetectorTool"))
+r.implementMethod("Humanoid","EquipTool",function(humanoid,tool) tool.Parent=humanoid.Parent end)
+local heldCharacter=r.Instance.new("Model")
+local heldHumanoid=r.Instance.new("Humanoid");heldHumanoid.Health=100;heldHumanoid.Parent=heldCharacter
+local heldBackpack=r.Instance.new("Backpack")
+local previewPlayer={Character=heldCharacter,FindFirstChildOfClass=function(_,name) return name=="Backpack" and heldBackpack or nil end}
 local world=environment.require(game:GetService("ServerScriptService"):WaitForChild("BrainrotServer"):WaitForChild("World"))
 local built=world.build(config)
 assert(built.pits.Meadow and built.pits.Dunes and built.pits.Cosmic,"Scene is incomplete")
@@ -177,6 +183,21 @@ for _,spec in config.Creatures do
 	model:Destroy()
 end
 print("Validated all "..#config.Creatures.." sculptures and "..mapParts.." map pieces using native Roblox datatypes")
+for _,spec in config.Detectors do
+	local tool=detectorFactory.equip(previewPlayer,spec)
+	assert(validate(tool)<=45,"Held detector exceeds its geometry budget")
+	local handle=tool:WaitForChild("Handle")
+	for _,p in tool:GetChildren() do
+		if p:IsA("BasePart") then
+			assert(not p.Anchored and p.Massless and not p.CanCollide,"Held detector must not interfere with the character")
+			if p~=handle then
+				local weld=p:FindFirstChildOfClass("WeldConstraint")
+				assert(weld and weld.Part0==handle and weld.Part1==p,"Held detector detail is not attached to its handle")
+			end
+		end
+	end
+end
+print("Validated all seven welded detector models using native Roblox datatypes")
 -- Save the assembled map into the place so Studio's edit view is useful too.
 local output=process.args[1] or "BrainrotBloom.rbxlx"
 local editorCamera=environment.workspace:FindFirstChildOfClass("Camera") or r.Instance.new("Camera")
@@ -219,11 +240,15 @@ local function parts(model)
 	end
 	return result
 end
-local geometry={creatures={},worlds={},details={}}
+local geometry={creatures={},worlds={},details={},detectors={}}
 for _,spec in config.Creatures do
 	local model=factory.create(spec,1)
 	table.insert(geometry.creatures,{id=spec.id,name=spec.name,rarity=spec.rarity,parts=parts(model)})
 	model:Destroy()
+end
+for _,spec in config.Detectors do
+	local tool=detectorFactory.equip(previewPlayer,spec)
+	table.insert(geometry.detectors,{id=spec.id,name=spec.name,parts=parts(tool)})
 end
 for index,id in {"Meadow","Dunes","Cosmic"} do
 	local root=environment.workspace:WaitForChild("BrainrotWorld")

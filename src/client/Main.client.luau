@@ -95,9 +95,16 @@ local function button(parent, text, onClick, props)
 	if p.Size.Y.Scale==0 and p.Size.Y.Offset<44 then p.Size=UDim2.new(p.Size.X.Scale,p.Size.X.Offset,0,44) end
 	local b = make("TextButton", p, parent)
 	corner(b, 12)
-	local border=stroke(b,C.bg,0.94)
-	b.MouseEnter:Connect(function() TweenService:Create(border,TweenInfo.new(0.12),{Transparency=0.76}):Play() end)
-	b.MouseLeave:Connect(function() TweenService:Create(border,TweenInfo.new(0.12),{Transparency=0.94}):Play() end)
+	local border=stroke(b,C.green,0.9)
+	border.Name="InteractionBorder"
+	local hovering=false
+	local function outline(alpha)
+		TweenService:Create(border,TweenInfo.new(0.12),{Transparency=alpha}):Play()
+	end
+	b.MouseEnter:Connect(function() hovering=true;outline(0.52) end)
+	b.MouseLeave:Connect(function() hovering=false;outline(0.9) end)
+	b.MouseButton1Down:Connect(function() outline(0.15) end)
+	b.MouseButton1Up:Connect(function() outline(hovering and 0.52 or 0.9) end)
 	if onClick then b.Activated:Connect(onClick) end
 	return b
 end
@@ -112,10 +119,16 @@ local function row(parent, height)
 	return make("Frame", {Size = UDim2.new(1, 0, 0, height), BackgroundTransparency = 1}, parent)
 end
 local function card(parent, height)
-	local frame = make("Frame", {Size = UDim2.new(1, 0, 0, height), BackgroundColor3 = C.card, BorderSizePixel = 0}, parent)
+	local frame = make("Frame", {Name="ContentCard",Size = UDim2.new(1, 0, 0, height), BackgroundColor3 = C.card, BorderSizePixel = 0}, parent)
 	corner(frame, 14)
-	stroke(frame,C.line,0.5)
+	local border=stroke(frame,C.line,0.35)
+	border.Name="CardBorder"
 	return frame
+end
+local function cardColumns()
+	-- Comfortable name/stat widths matter more than squeezing tiny cards onto
+	-- portrait phones. Larger viewports still show two or three at a time.
+	return math.clamp(math.floor((screen.AbsoluteSize.X*0.94-28)/190),1,3)
 end
 local function readable(tint)
 	return tint:Lerp(C.text,0.64)
@@ -156,9 +169,10 @@ local function icon(parent, kind, tint, position, size)
 	return root
 end
 local function previewStage(parent,tint,position,size)
-	local stage=make("Frame",{Position=position,Size=size,BackgroundColor3=tint:Lerp(C.paper,0.86),BorderSizePixel=0,ClipsDescendants=true},parent)
+	local stage=make("Frame",{Name="SculptureStage",Position=position,Size=size,BackgroundColor3=tint:Lerp(C.paper,0.9),BorderSizePixel=0,ClipsDescendants=true},parent)
 	corner(stage,12)
-	local halo=make("Frame",{AnchorPoint=Vector2.new(0.5,0.5),Position=UDim2.fromScale(0.5,0.5),Size=UDim2.fromScale(0.62,0.86),BackgroundColor3=tint,BackgroundTransparency=0.8,BorderSizePixel=0},stage)
+	stroke(stage,tint:Lerp(C.line,0.65),0.65)
+	local halo=make("Frame",{AnchorPoint=Vector2.new(0.5,0.5),Position=UDim2.fromScale(0.5,0.46),Size=UDim2.fromScale(0.78,0.82),BackgroundColor3=tint,BackgroundTransparency=0.87,BorderSizePixel=0},stage)
 	corner(halo,200)
 	local ground=make("Frame",{AnchorPoint=Vector2.new(0.5,0.5),Position=UDim2.fromScale(0.5,0.86),Size=UDim2.fromScale(0.48,0.07),BackgroundColor3=C.bg,BackgroundTransparency=0.9,BorderSizePixel=0},stage)
 	corner(ground,100)
@@ -254,8 +268,10 @@ stroke(hud, C.line, 0.2)
 label(hud, "Brainrot Bloom", 12, C.green, {Position = UDim2.fromOffset(18, 11), Size = UDim2.new(1, -98, 0, 18), Font=Enum.Font.BuilderSansMedium})
 local coinSeal=make("Frame",{Position=UDim2.fromOffset(17,35),Size=UDim2.fromOffset(28,28),BackgroundColor3=C.honey,BorderSizePixel=0},hud)
 corner(coinSeal,14)
+stroke(coinSeal,C.gold,0.6)
 icon(coinSeal,"Sell",C.gold,UDim2.fromOffset(7,6),UDim2.fromOffset(14,16))
-local coinsLabel = label(hud, "Loading…", 27, C.text, {Position = UDim2.fromOffset(54, 31), Size = UDim2.new(1, -132, 0, 34), Font = Enum.Font.BuilderSansBold})
+local coinsLabel = label(hud, "Loading…", 27, C.text, {Name="WalletValue",Position = UDim2.fromOffset(54, 31), Size = UDim2.new(1, -132, 0, 34), Font = Enum.Font.BuilderSansBold,TextTruncate=Enum.TextTruncate.AtEnd})
+make("Frame",{Position=UDim2.fromOffset(18,66),Size=UDim2.new(1,-36,0,1),BackgroundColor3=C.line,BackgroundTransparency=0.35,BorderSizePixel=0},hud)
 local incomeLabel = label(hud, "Your garden is growing", 13, C.green, {Position = UDim2.fromOffset(18, 69), Size = UDim2.new(1, -32, 0, 18), TextTruncate=Enum.TextTruncate.AtEnd})
 button(hud, "Home", function() request("Teleport", {destination = "Home"}) end,
 	{Position = UDim2.new(1, -70, 0, 28), Size = UDim2.fromOffset(54,44), TextSize = 13, BackgroundColor3=C.light})
@@ -369,8 +385,9 @@ make("UISizeConstraint", {MaxSize = Vector2.new(900, 720)}, panel)
 corner(panel, 20)
 stroke(panel, C.line,0.2)
 label(panel,"FIELD JOURNAL",11,C.green,{Position=UDim2.fromOffset(22,12),Size=UDim2.new(1,-100,0,18),Font=Enum.Font.BuilderSansMedium})
-local title = label(panel, "Collection", 24, C.text,
-	{Position = UDim2.new(0, 22, 0, 31), Size = UDim2.new(1, -100, 0, 30), Font = Enum.Font.BuilderSansBold, TextTruncate = Enum.TextTruncate.AtEnd})
+local title = label(panel, "Collection", 26, C.text,
+	{Name="JournalTitle",Position = UDim2.new(0, 22, 0, 31), Size = UDim2.new(1, -100, 0, 30), Font = Enum.Font.BuilderSansBold, TextScaled=true,TextTruncate = Enum.TextTruncate.AtEnd})
+make("UITextSizeConstraint",{MinTextSize=18,MaxTextSize=26},title)
 local subtitle = label(panel, "", 13, C.muted,
 	{Position = UDim2.new(0, 22, 0, 64), Size = UDim2.new(1, -44, 0, 22), TextTruncate = Enum.TextTruncate.AtEnd})
 button(panel, "×", function() openPage(nil) end,
@@ -553,23 +570,31 @@ local function collectionPage(sellMode)
 	local first=(collectionPageIndex-1)*collectionPageSize+1
 	local last=math.min(#list,first+collectionPageSize-1)
 	label(body,string.format("%d brainrots  ·  %d/%d collected",#list,#state.brainrots,Config.MaxBrainrots),13,C.muted)
-	local columns=body.AbsoluteSize.X>=660 and 3 or 2
+	local columns=cardColumns()
 	local gap=12
-	local grid=row(body,math.ceil((last-first+1)/columns)*296-gap)
-	make("UIGridLayout",{CellSize=UDim2.new(1/columns,-gap*(columns-1)/columns,0,284),CellPadding=UDim2.fromOffset(gap,gap),SortOrder=Enum.SortOrder.LayoutOrder},grid)
+	local stageHeight=columns==1 and 168 or 126
+	local shift=stageHeight-126
+	local tileHeight=284+shift
+	local grid=row(body,math.ceil((last-first+1)/columns)*(tileHeight+gap)-gap)
+	grid.Name="CollectionGrid";grid:SetAttribute("CardColumns",columns)
+	make("UIGridLayout",{CellSize=UDim2.new(1/columns,-gap*(columns-1)/columns,0,tileHeight),CellPadding=UDim2.fromOffset(gap,gap),SortOrder=Enum.SortOrder.LayoutOrder},grid)
 	for index=first,last do
 		local b=list[index]
 		local r=rarity(b.rarity)
-		local tile=card(grid,284)
+		local tile=card(grid,tileHeight)
 		tile.LayoutOrder=index
-		previewStage(tile,r.color,UDim2.fromOffset(10,10),UDim2.new(1,-20,0,126))
-		viewport(tile,b.specId,UDim2.new(1,-12,0,126),UDim2.fromOffset(6,8))
-		label(tile,b.name,15,C.text,{Position=UDim2.fromOffset(12,143),Size=UDim2.new(1,-24,0,38),TextWrapped=true,TextTruncate=Enum.TextTruncate.AtEnd,Font=Enum.Font.BuilderSansBold})
-		label(tile,r.name.." · Lv "..b.level,12,readable(r.color),{Position=UDim2.fromOffset(12,183),Size=UDim2.new(1,-24,0,18)})
-		label(tile,"+$"..money(b.income).." / sec",14,C.gold,{Position=UDim2.fromOffset(12,207),Size=UDim2.new(1,-24,0,20),Font=Enum.Font.BuilderSansMedium})
+		tile:SetAttribute("CollectionUID",b.uid)
+		previewStage(tile,r.color,UDim2.fromOffset(10,10),UDim2.new(1,-20,0,stageHeight))
+		viewport(tile,b.specId,UDim2.new(1,-12,0,stageHeight),UDim2.fromOffset(6,8))
+		label(tile,b.name,15,C.text,{Position=UDim2.fromOffset(12,143+shift),Size=UDim2.new(1,-24,0,38),TextWrapped=true,TextTruncate=Enum.TextTruncate.AtEnd,Font=Enum.Font.BuilderSansBold})
+		label(tile,r.name.." · Lv "..b.level,12,readable(r.color),{Position=UDim2.fromOffset(12,183+shift),Size=UDim2.new(1,-24,0,18),TextTruncate=Enum.TextTruncate.AtEnd})
+		label(tile,"+$"..money(b.income).." / sec",15,C.gold,{Name="IncomeStat",Position=UDim2.fromOffset(12,207+shift),Size=UDim2.new(1,-24,0,20),Font=Enum.Font.BuilderSansMedium,TextTruncate=Enum.TextTruncate.AtEnd})
 		button(tile,sellMode and "Review sale" or "Feed & grow",function() selectedUid=b.uid; openPage(sellMode and "SellDetail" or "Detail") end,
 			{Position=UDim2.new(0,10,1,-52),Size=UDim2.new(1,-20,0,44),TextSize=13,BackgroundColor3=C.light})
-		if state.activeBrainrot==b.uid then smallTag(tile,"Following",C.green,UDim2.fromOffset(16,16),76) end
+		if state.activeBrainrot==b.uid then
+			local border=tile:FindFirstChild("CardBorder");border.Color=C.green;border.Transparency=0.15
+			smallTag(tile,"Following",C.green,UDim2.fromOffset(16,16),82)
+		end
 	end
 	if pages>1 then
 		local paging=row(body,44)
@@ -588,23 +613,26 @@ local function detailPage(sellMode)
 	title.Text = brainrot.name
 	subtitle.Text = r.name .. "  ·  Level " .. brainrot.level .. "  /  +$" .. money(brainrot.income) .. " per second"
 	button(body, "‹ Back to collection", function() openPage(sellMode and "Sell" or "Collection") end, {Size = UDim2.new(1, 0, 0, 32), TextSize = 13})
-	local hero = card(body, 204)
-	previewStage(hero,r.color,UDim2.fromOffset(12,12),UDim2.new(0.48,-12,1,-24))
-	viewport(hero,brainrot.specId,UDim2.new(0.48,-8,1,-16),UDim2.fromOffset(8,8))
-	label(hero,"Level "..brainrot.level.." / "..Config.MaxLevel,18,C.text,{Position=UDim2.new(0.5,8,0,17),Size=UDim2.new(0.5,-24,0,28),Font=Enum.Font.BuilderSansBold})
+	local stacked=body.AbsoluteSize.X<440
+	local hero = card(body, stacked and 360 or 204)
+	hero.Name="CreatureHero";hero:SetAttribute("Stacked",stacked)
+	previewStage(hero,r.color,UDim2.fromOffset(12,12),stacked and UDim2.new(1,-24,0,150) or UDim2.new(0.48,-12,1,-24))
+	viewport(hero,brainrot.specId,stacked and UDim2.new(1,-16,0,150) or UDim2.new(0.48,-8,1,-16),UDim2.fromOffset(8,8))
+	local sx,ox,sw,ow,top=stacked and 0 or 0.5,stacked and 16 or 8,stacked and 1 or 0.5,stacked and -32 or -24,stacked and 176 or 17
+	label(hero,"Level "..brainrot.level.." / "..Config.MaxLevel,18,C.text,{Name="HeroLevel",Position=UDim2.new(sx,ox,0,top),Size=UDim2.new(sw,ow,0,28),Font=Enum.Font.BuilderSansBold})
 	local maxed=brainrot.level>=Config.MaxLevel
 	label(hero,maxed and "Fully grown" or (tostring(math.floor(brainrot.xp or 0)).." / "..tostring(brainrot.xpNeeded or Config.xpNeeded(brainrot.level)).." XP"),13,C.muted,
-		{Position=UDim2.new(0.5,8,0,49),Size=UDim2.new(0.5,-24,0,21)})
-	local track=make("Frame",{Position=UDim2.new(0.5,8,0,79),Size=UDim2.new(0.5,-24,0,7),BackgroundColor3=C.light,BorderSizePixel=0},hero)
+		{Position=UDim2.new(sx,ox,0,top+32),Size=UDim2.new(sw,ow,0,21)})
+	local track=make("Frame",{Name="GrowthTrack",Position=UDim2.new(sx,ox,0,top+62),Size=UDim2.new(sw,ow,0,7),BackgroundColor3=C.light,BorderSizePixel=0},hero)
 	corner(track,4)
 	local fill=make("Frame",{Size=UDim2.new(maxed and 1 or math.clamp((brainrot.xp or 0)/math.max(1,brainrot.xpNeeded or Config.xpNeeded(brainrot.level)),0,1),0,1,0),BackgroundColor3=readable(r.color),BorderSizePixel=0},track)
 	corner(fill,4)
 	local incomeFactor=(brainrot.incomeBoostUntil or 0)>now() and 2 or 1
 	local nextIncome=Config.income(brainrot.specId,math.min(Config.MaxLevel,brainrot.level+1))*incomeFactor
 	label(hero,maxed and "A perfect little earner." or ("Next level: $"..money(nextIncome).." / sec"),13,C.gold,
-		{Position=UDim2.new(0.5,8,0,98),Size=UDim2.new(0.5,-24,0,34),TextWrapped=true})
+		{Position=UDim2.new(sx,ox,0,top+81),Size=UDim2.new(sw,ow,0,34),TextWrapped=true})
 	button(hero,state.activeBrainrot==brainrot.uid and "Following you" or "Set as companion",function() perform("EquipBrainrot",{uid=brainrot.uid}) end,
-		{Position=UDim2.new(0.5,8,0,145),Size=UDim2.new(0.5,-24,0,44),TextSize=13,BackgroundColor3=C.light})
+		{Position=UDim2.new(sx,ox,0,top+126),Size=UDim2.new(sw,ow,0,44),TextSize=13,BackgroundColor3=C.light})
 	if not sellMode then
 		button(body,"Place in garden",function()
 			selectedGardenUid=brainrot.uid
@@ -839,23 +867,27 @@ local function indexPage()
 	end
 	local entries={}
 	for _,spec in ipairs(Config.Creatures) do if indexRarityFilter=="All" or spec.rarity==indexRarityFilter then table.insert(entries,spec) end end
-	local columns=body.AbsoluteSize.X>=660 and 3 or 2
+	local columns=cardColumns()
 	local gap=12
-	local grid=row(body,math.ceil(#entries/columns)*276-gap)
-	make("UIGridLayout",{CellSize=UDim2.new(1/columns,-gap*(columns-1)/columns,0,264),CellPadding=UDim2.fromOffset(gap,gap),SortOrder=Enum.SortOrder.LayoutOrder},grid)
+	local stageHeight=columns==1 and 156 or 112
+	local shift=stageHeight-112
+	local tileHeight=264+shift
+	local grid=row(body,math.ceil(#entries/columns)*(tileHeight+gap)-gap)
+	grid.Name="IndexGrid";grid:SetAttribute("CardColumns",columns)
+	make("UIGridLayout",{CellSize=UDim2.new(1/columns,-gap*(columns-1)/columns,0,tileHeight),CellPadding=UDim2.fromOffset(gap,gap),SortOrder=Enum.SortOrder.LayoutOrder},grid)
 	for order,spec in ipairs(entries) do
 		local known=discovered[spec.id]==true
 		local r=rarity(spec.rarity)
-		local tile=card(grid,264);tile.LayoutOrder=order
+		local tile=card(grid,tileHeight);tile.LayoutOrder=order
 		tile:SetAttribute("IndexSpecies",spec.id)
 		tile:SetAttribute("Discovered",known)
-		previewStage(tile,known and r.color or C.line,UDim2.fromOffset(10,10),UDim2.new(1,-20,0,112))
-		viewport(tile,spec.id,UDim2.new(1,-12,0,112),UDim2.fromOffset(6,8),{silhouette=not known,static=true})
-		label(tile,known and spec.name or "???",15,known and C.text or C.muted,{Position=UDim2.fromOffset(12,129),Size=UDim2.new(1,-24,0,38),TextWrapped=true,TextTruncate=Enum.TextTruncate.AtEnd,Font=Enum.Font.BuilderSansBold})
-		label(tile,known and r.name or (r.name.." · Undiscovered"),12,readable(r.color),{Position=UDim2.fromOffset(12,169),Size=UDim2.new(1,-24,0,20),TextTruncate=Enum.TextTruncate.AtEnd})
-		label(tile,discoveryHint(spec),12,C.muted,{Position=UDim2.fromOffset(12,192),Size=UDim2.new(1,-24,0,36),TextWrapped=true})
+		previewStage(tile,known and r.color or C.line,UDim2.fromOffset(10,10),UDim2.new(1,-20,0,stageHeight))
+		viewport(tile,spec.id,UDim2.new(1,-12,0,stageHeight),UDim2.fromOffset(6,8),{silhouette=not known,static=true})
+		label(tile,known and spec.name or "???",15,known and C.text or C.muted,{Position=UDim2.fromOffset(12,129+shift),Size=UDim2.new(1,-24,0,38),TextWrapped=true,TextTruncate=Enum.TextTruncate.AtEnd,Font=Enum.Font.BuilderSansBold})
+		label(tile,known and r.name or (r.name.." · Undiscovered"),12,readable(r.color),{Position=UDim2.fromOffset(12,169+shift),Size=UDim2.new(1,-24,0,20),TextTruncate=Enum.TextTruncate.AtEnd})
+		label(tile,discoveryHint(spec),12,C.muted,{Position=UDim2.fromOffset(12,192+shift),Size=UDim2.new(1,-24,0,36),TextWrapped=true})
 		label(tile,known and ("$"..money(Config.income(spec.id,1)).." / sec base · Own "..(ownedCounts[spec.id] or 0)) or "Catch to reveal",12,known and C.gold or C.muted,
-			{Position=UDim2.fromOffset(12,234),Size=UDim2.new(1,-24,0,20),TextTruncate=Enum.TextTruncate.AtEnd})
+			{Position=UDim2.fromOffset(12,234+shift),Size=UDim2.new(1,-24,0,20),TextTruncate=Enum.TextTruncate.AtEnd})
 	end
 end
 
@@ -890,14 +922,17 @@ local function gardenPage()
 		b:SetAttribute("Occupied",current~=nil)
 	end
 	local displayed=byUid[slots[selectedGardenSlot]]
-	local hero=card(body,170)
+	local stacked=body.AbsoluteSize.X<440
+	local hero=card(body,displayed and stacked and 310 or 170)
+	hero.Name="GardenHero";hero:SetAttribute("Stacked",displayed~=nil and stacked)
 	if displayed then
-		previewStage(hero,rarity(displayed.rarity).color,UDim2.fromOffset(12,12),UDim2.new(0.48,-12,1,-24))
-		viewport(hero,displayed.specId,UDim2.new(0.48,-8,1,-16),UDim2.fromOffset(8,8))
-		label(hero,displayed.name,16,C.text,{Position=UDim2.new(0.5,8,0,15),Size=UDim2.new(0.5,-24,0,48),TextWrapped=true,Font=Enum.Font.BuilderSansMedium})
-		label(hero,"Level "..displayed.level.." · $"..money(displayed.income).." / sec",13,C.gold,{Position=UDim2.new(0.5,8,0,66),Size=UDim2.new(0.5,-24,0,42),TextWrapped=true})
+		previewStage(hero,rarity(displayed.rarity).color,UDim2.fromOffset(12,12),stacked and UDim2.new(1,-24,0,140) or UDim2.new(0.48,-12,1,-24))
+		viewport(hero,displayed.specId,stacked and UDim2.new(1,-16,0,140) or UDim2.new(0.48,-8,1,-16),UDim2.fromOffset(8,8))
+		local sx,ox,sw,ow,top=stacked and 0 or 0.5,stacked and 16 or 8,stacked and 1 or 0.5,stacked and -32 or -24,stacked and 164 or 15
+		label(hero,displayed.name,16,C.text,{Name="GardenHeroTitle",Position=UDim2.new(sx,ox,0,top),Size=UDim2.new(sw,ow,0,48),TextWrapped=true,Font=Enum.Font.BuilderSansMedium})
+		label(hero,"Level "..displayed.level.." · $"..money(displayed.income).." / sec",13,C.gold,{Name="GardenHeroIncome",Position=UDim2.new(sx,ox,0,top+51),Size=UDim2.new(sw,ow,0,stacked and 30 or 42),TextWrapped=true})
 		button(hero,"Clear slot",function() perform("GardenClear",{slot=selectedGardenSlot}) end,
-			{Position=UDim2.new(0.5,8,1,-56),Size=UDim2.new(0.5,-24,0,44),TextSize=13})
+			{Position=UDim2.new(sx,ox,1,-56),Size=UDim2.new(sw,ow,0,44),TextSize=13})
 	else
 		label(hero,"Slot "..selectedGardenSlot.." is empty",19,C.text,{Position=UDim2.fromOffset(16,20),Size=UDim2.new(1,-32,0,32),Font=Enum.Font.BuilderSansMedium})
 		label(hero,"Choose one of your brainrots below to make this display its home.",14,C.muted,{Position=UDim2.fromOffset(16,65),Size=UDim2.new(1,-32,0,72),TextWrapped=true,TextYAlignment=Enum.TextYAlignment.Top})
@@ -992,13 +1027,15 @@ stroke(capturePanel, C.lime, 0.2)
 label(capturePanel, "You found a signal", 12, C.green, {Position = UDim2.new(0, 20, 0, 16), Size = UDim2.new(1, -40, 0, 22), TextXAlignment = Enum.TextXAlignment.Center})
 local captureName = label(capturePanel, "A brainrot!", 26, C.text, {Position = UDim2.new(0, 20, 0, 43), Size = UDim2.new(1, -40, 0, 32), TextXAlignment = Enum.TextXAlignment.Center, Font = Enum.Font.BuilderSansBold, TextScaled = true})
 make("UITextSizeConstraint", {MaxTextSize = 26, MinTextSize = 15}, captureName)
-local captureRarity = label(capturePanel, "COMMON", 13, C.muted, {Position = UDim2.new(0, 20, 0, 79), Size = UDim2.new(1, -40, 0, 24), TextXAlignment = Enum.TextXAlignment.Center})
-local timerLabel = label(capturePanel, "0:10", 24, C.gold, {Position = UDim2.new(0, 20, 0, 234), Size = UDim2.new(1, -40, 0, 30), TextXAlignment = Enum.TextXAlignment.Center, Font = Enum.Font.BuilderSansBold})
-local progressTrack = make("Frame", {Position = UDim2.new(0, 28, 0, 274), Size = UDim2.new(1, -56, 0, 8), BackgroundColor3 = C.bg, BorderSizePixel = 0}, capturePanel)
+local captureRarity = label(capturePanel, "COMMON", 13, C.muted, {AnchorPoint=Vector2.new(0.5,0),Position = UDim2.new(0.5, 0, 0, 79), Size = UDim2.fromOffset(142,24),BackgroundColor3=C.light,TextXAlignment = Enum.TextXAlignment.Center,Font=Enum.Font.BuilderSansMedium})
+corner(captureRarity,12)
+local timerLabel = label(capturePanel, "0:10", 24, C.gold, {Name="CaptureTimer",AnchorPoint=Vector2.new(0.5,0),Position = UDim2.new(0.5, 0, 0, 232), Size = UDim2.fromOffset(112,36),BackgroundColor3=C.light,TextXAlignment = Enum.TextXAlignment.Center, Font = Enum.Font.BuilderSansBold})
+corner(timerLabel,14)
+local progressTrack = make("Frame", {Name="CaptureProgressTrack",Position = UDim2.new(0, 28, 0, 278), Size = UDim2.new(1, -56, 0, 10), BackgroundColor3 = C.line, BorderSizePixel = 0}, capturePanel)
 corner(progressTrack, 6)
 local progressFill = make("Frame", {Size = UDim2.fromScale(0, 1), BackgroundColor3 = C.lime, BorderSizePixel = 0}, progressTrack)
 corner(progressFill, 6)
-local captureProgress = label(capturePanel, "0 / 0 taps", 14, C.text, {Position = UDim2.new(0, 20, 0, 289), Size = UDim2.new(1, -40, 0, 26), TextXAlignment = Enum.TextXAlignment.Center})
+local captureProgress = label(capturePanel, "0 / 0 taps", 14, C.text, {Position = UDim2.new(0, 20, 0, 292), Size = UDim2.new(1, -40, 0, 22), TextXAlignment = Enum.TextXAlignment.Center})
 local tapButton = button(capturePanel, "Tap to collect", function() tapDig() end,
 	{Position = UDim2.new(0, 24, 0, 326), Size = UDim2.new(1, -48, 0, 48), BackgroundColor3 = C.lime, TextColor3 = C.bg, TextSize = 17})
 label(capturePanel, "Tap the button or press Space", 12, C.muted, {Position = UDim2.new(0, 20, 0, 380), Size = UDim2.new(1, -40, 0, 24), TextXAlignment = Enum.TextXAlignment.Center})
@@ -1070,7 +1107,8 @@ startDig = function()
 	local r = rarity(dig.rarity)
 	captureRarity.Text = r.name
 	captureRarity.TextColor3 = readable(r.color)
-	progressFill.BackgroundColor3 = r.color
+	captureRarity.BackgroundColor3 = r.color:Lerp(C.paper,0.84)
+	progressFill.BackgroundColor3 = readable(r.color)
 	progressFill.Size = UDim2.fromScale(0, 1)
 	captureProgress.Text = "0 / " .. capture.required .. " taps"
 	for _,child in capturePreview:GetChildren() do child:Destroy() end
@@ -1210,7 +1248,7 @@ resize = function(skipPageRender)
 		toast.Size=UDim2.new(0.88,0,0,52)
 		toast.Position=UDim2.new(0.5,0,0,118)
 	end
-	if not skipPageRender and (activePage=="Collection" or activePage=="Sell" or activePage=="Index" or activePage=="Garden") then renderPage() end
+	if not skipPageRender and activePage then renderPage() end
 	capturePanel.Size = UDim2.new(0.9, 0, 0, math.min(410, size.Y - 24))
 	if size.Y < 450 then
 		capturePanel.Size = UDim2.new(0.9, 0, 0, 410)

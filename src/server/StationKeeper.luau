@@ -38,22 +38,30 @@ function StationKeeper.create(parent,frame,role)
 	local root=piece("Root",V(0.15,0.15,0.15),Vector3.zero,INK)
 	root.Transparency=1;model.PrimaryPart=root
 	piece("Torso",V(2.05,2.2,1.1),V(0,3.65,0),spec.coat,Enum.Material.Fabric)
+	piece("CoatHem",V(2.09,0.18,1.13),V(0,2.64,0),spec.coat:Lerp(INK,0.12),Enum.Material.Fabric)
+	piece("Neck",V(1.04,0.45,0.85),V(0,4.86,0),SKIN)
 	piece("Head",V(1.9,1.85,1.65),V(0,5.67,0),SKIN)
 	for _,side in {-1,1} do
 		piece(side<0 and "LeftLeg" or "RightLeg",V(0.85,1.75,0.88),V(side*0.52,1.38,0),spec.trousers,Enum.Material.Fabric)
 		piece("Boot",V(1.0,0.55,1.22),V(side*0.52,0.29,-0.17),INK)
-		piece("BootSole",V(1.02,0.12,1.25),V(side*0.52,0.09,-0.17),rgb(67,69,59))
+		orb("BootToe",V(0.98,0.45,0.70),V(side*0.52,0.30,-0.59),INK)
+		piece("BootSole",V(1.02,0.12,1.48),V(side*0.52,0.09,-0.21),rgb(67,69,59))
 		piece(side<0 and "LeftArm" or "RightArm",V(0.72,1.85,0.86),V(side*1.42,3.66,0),spec.coat,Enum.Material.Fabric,nil,A(0,0,side*0.1))
+		orb("SleeveShoulder",V(0.81,0.91,0.95),V(side*1.32,4.31,0.015),spec.coat,Enum.Material.Fabric)
 		orb("Hand",V(0.74,0.72,0.78),V(side*1.52,2.54,-0.03),SKIN)
+		orb("Thumb",V(0.29,0.42,0.35),V(side*1.23,2.49,-0.25),SKIN)
 		piece("Cuff",V(0.76,0.25,0.9),V(side*1.5,2.99,0),spec.accent,Enum.Material.Fabric,nil,A(0,0,side*0.1))
 		orb("Ear",V(0.3,0.55,0.5),V(side*0.99,5.64,0),SKIN)
+		orb("InnerEar",V(0.09,0.30,0.27),V(side*1.115,5.64,-0.04),SKIN:Lerp(rgb(199,122,104),0.28))
 		piece("ShirtCollar",V(0.47,0.48,0.12),V(side*0.28,4.54,-0.6),IVORY,Enum.Material.Fabric,nil,A(0,0,side*0.37))
 		orb("EyeWhite",V(0.3,0.36,0.12),V(side*0.42,5.86,-0.85),IVORY)
-		orb("EyePupil",V(0.15,0.23,0.09),V(side*0.42,5.85,-0.928),INK)
-		orb("EyeGlint",V(0.052,0.062,0.04),V(side*0.42-0.036,5.92,-0.98),IVORY)
+		orb("EyeIris",V(0.215,0.275,0.07),V(side*0.42,5.85,-0.93),spec.coat:Lerp(INK,0.48))
+		orb("EyePupil",V(0.115,0.20,0.07),V(side*0.42,5.85,-0.979),INK)
+		orb("EyeGlint",V(0.052,0.062,0.04),V(side*0.42-0.036,5.92,-1.022),IVORY)
 		piece("Eyebrow",V(0.35,0.08,0.08),V(side*0.42,6.15,-0.88),HAIR,nil,nil,A(0,0,side*-0.1))
 		orb("Cheek",V(0.25,0.13,0.06),V(side*0.59,5.56,-0.85),rgb(234,147,126))
 		piece("SmileCorner",V(0.16,0.055,0.065),V(side*0.12,5.32,-0.88),INK,nil,nil,A(0,0,side*0.35))
+		piece("Sideburn",V(0.18,0.65,0.42),V(side*0.92,6.08,-0.13),HAIR,nil,nil,A(0,0,side*-0.06))
 	end
 	orb("Nose",V(0.22,0.24,0.19),V(0,5.62,-0.9),SKIN:Lerp(IVORY,0.13))
 	piece("Smile",V(0.16,0.055,0.065),V(0,5.295,-0.88),INK)
@@ -65,14 +73,17 @@ function StationKeeper.create(parent,frame,role)
 		piece("ApronWaistTie",V(2.12,0.15,1.14),V(0,3.56,0),IVORY,Enum.Material.Fabric)
 		piece("ChefHatBand",V(1.99,0.36,1.76),V(0,6.69,0.02),IVORY,Enum.Material.Fabric)
 		for j=1,3 do orb("ChefHatPuff",V(1.03,0.97,1.72),V((j-2)*0.59,7.19+(j==2 and 0.12 or 0),0.02),IVORY,Enum.Material.Fabric) end
+		for j=1,3 do piece("ChefHatPleat",V(0.055,0.48,0.045),V((j-2)*0.59,7.23,-0.841),IVORY:Lerp(BRASS,0.13),Enum.Material.Fabric) end
 	elseif role=="Gear" then
 		piece("WorkshopCap",V(2.12,0.32,1.85),V(0,6.66,0.03),spec.coat,Enum.Material.Fabric)
 		piece("CapVisor",V(2.08,0.13,0.75),V(0,6.52,-0.86),spec.accent,Enum.Material.Fabric)
 		piece("GoggleStrap",V(1.9,0.18,0.11),V(0,6.35,-0.87),INK,Enum.Material.Fabric)
 		for _,side in {-1,1} do
-			piece("GoggleRim",V(0.62,0.45,0.2),V(side*0.41,6.36,-0.96),BRASS,Enum.Material.Metal)
-			local lens=piece("GoggleLens",V(0.43,0.27,0.07),V(side*0.41,6.36,-1.08),rgb(159,211,209),Enum.Material.Glass)
+			orb("GoggleRim",V(0.64,0.47,0.22),V(side*0.41,6.36,-0.96),BRASS,Enum.Material.Metal)
+			local lens=orb("GoggleLens",V(0.45,0.29,0.08),V(side*0.41,6.36,-1.08),rgb(159,211,209),Enum.Material.Glass)
 			lens.Transparency=0.2
+			local shine=orb("GoggleReflection",V(0.07,0.14,0.025),V(side*0.41-0.10,6.40,-1.13),IVORY)
+			shine.Transparency=0.24
 		end
 		piece("ToolBelt",V(2.14,0.28,1.18),V(0,2.8,0),HAIR,Enum.Material.Fabric)
 		piece("ToolBuckle",V(0.4,0.3,0.1),V(0,2.8,-0.66),BRASS,Enum.Material.Metal)
@@ -80,15 +91,22 @@ function StationKeeper.create(parent,frame,role)
 		piece("SpannerHandle",V(0.15,0.63,0.13),V(0.69,3.07,-0.8),rgb(179,190,184),Enum.Material.Metal,nil,A(0,0,-0.13))
 		for _,side in {-1,1} do piece("SpannerJaw",V(0.13,0.24,0.13),V(0.69+side*0.11,3.42,-0.8),rgb(179,190,184),Enum.Material.Metal,nil,A(0,0,side*-0.25)) end
 	else
+		orb("TraderHairBun",V(1.4,1.15,1.1),V(0.10,6.42,0.90),HAIR)
+		orb("HairBunRibbon",V(0.91,0.18,1.21),V(0.10,6.43,0.96),spec.accent,Enum.Material.Fabric)
 		for _,side in {-1,1} do piece("TraderLapel",V(0.42,1.13,0.12),V(side*0.61,3.88,-0.62),spec.accent,Enum.Material.Fabric,nil,A(0,0,side*-0.23)) end
 		piece("TraderScarf",V(0.95,0.3,1.19),V(0,4.61,-0.03),rgb(226,184,132),Enum.Material.Fabric)
-		piece("ScarfTail",V(0.42,0.8,0.12),V(-0.14,4.06,-0.7),rgb(226,184,132),Enum.Material.Fabric)
+		piece("ScarfTail",V(0.42,0.8,0.12),V(-0.45,4.06,-0.7),rgb(226,184,132),Enum.Material.Fabric)
 		piece("LedgerCover",V(0.96,1.15,0.18),V(-1.55,2.76,-0.5),rgb(80,111,94),Enum.Material.Fabric,nil,A(0,0,-0.16))
 		piece("LedgerPages",V(0.8,0.98,0.08),V(-1.55,2.76,-0.62),IVORY,nil,nil,A(0,0,-0.16))
 		piece("LedgerClasp",V(0.22,0.25,0.13),V(-1.14,2.76,-0.67),BRASS,Enum.Material.Metal)
-		for j=1,3 do piece("CoatButton",V(0.13,0.13,0.09),V(0.05,2.86+j*0.36,-0.65),BRASS,Enum.Material.Metal) end
+		for j=1,3 do piece("CoatButton",V(0.13,0.13,0.09),V(-0.21,2.86+j*0.36,-0.65),BRASS,Enum.Material.Metal) end
 	end
-	local badge=piece("KeeperNamePlaque",V(3.2,0.65,0.12),V(0,4.11,-0.8),INK,Enum.Material.Wood)
+	-- A fitted pin follows the coat instead of covering both arms like a sign.
+	-- The trader's narrower badge leaves the scarf tail completely clear.
+	local badgeWidth=role=="Sell" and 1.15 or 1.62
+	local badgeX=role=="Sell" and 0.43 or 0
+	piece("NameBadgeFrame",V(badgeWidth+0.12,0.51,0.08),V(badgeX,4.03,-0.71),BRASS,Enum.Material.Metal)
+	local badge=piece("KeeperNamePlaque",V(badgeWidth,0.40,0.045),V(badgeX,4.03,-0.775),INK,Enum.Material.SmoothPlastic)
 	local surface=Instance.new("SurfaceGui")
 	surface.Name="KeeperIdentification";surface.Face=Enum.NormalId.Front;surface.CanvasSize=Vector2.new(480,96)
 	surface.LightInfluence=0.2;surface.MaxDistance=38;surface.Parent=badge

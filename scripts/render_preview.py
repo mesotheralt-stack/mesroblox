@@ -50,7 +50,7 @@ def mesh(shape):
 
 MESHES={kind:mesh(kind) for kind in ('Ball','Cylinder','Wedge','Block')}
 
-def render(parts, size, camera=(7,5,-11), background=(239,235,222)):
+def render(parts, size, camera=(7,5,-11), background=(239,235,222), depth_buffer=None):
     width,height=size
     forward=-np.array(camera,dtype=float);forward/=np.linalg.norm(forward)
     right=np.cross(forward,[0,1,0]);right/=np.linalg.norm(right)
@@ -91,14 +91,15 @@ def render(parts, size, camera=(7,5,-11), background=(239,235,222)):
     triangles=np.concatenate([c[0] for c in chunks]);colors=np.concatenate([c[1] for c in chunks])
     order=np.argsort(triangles[:,:,2].mean(axis=1))[::-1]
     pen=ImageDraw.Draw(image)
-    if width<1000:
+    if depth_buffer is None: depth_buffer=width>=1000
+    if not depth_buffer:
         for index in order:
             xy=(triangles[index,:,:2]-center)*scale
             xy[:,0]+=width/2;xy[:,1]=height*.46-xy[:,1]
             pen.polygon([tuple(p) for p in xy],fill=tuple(colors[index].astype(int)))
     else:
-        # A real depth buffer is essential for large ground triangles: sorting
-        # their centroids would paint the island floor over shops and trees.
+        # Depth testing avoids false cutouts where fine clothing, scales,
+        # and eyes overlap, as well as ground painting over map landmarks.
         pixels=np.array(image)
         depth=np.full((height,width),np.inf,dtype=np.float32)
         for index in order:
@@ -138,7 +139,7 @@ def main():
     pen.text((38,24),'BRAINROT BLOOM / CREATURE SCULPTURES',font=font(30,True),fill=(34,53,43))
     pen.text((38,72),'Geometry previews • Actual Part positions and rotations • Studio materials and lighting may differ',font=font(20),fill=(92,108,93))
     for i,creature in enumerate(content['creatures']):
-        image=render(creature['parts'],(w,h-110))
+        image=render(creature['parts'],(w,h-110),depth_buffer=True)
         draw=ImageDraw.Draw(image)
         image.save(output/(creature['id']+'.png'))
         x=(i%columns)*w;y=(i//columns)*h+130
@@ -146,6 +147,17 @@ def main():
         pen.text((x+34,y+h-100),creature['name'],font=font(25,True),fill=(34,53,43))
         pen.text((x+34,y+h-62),creature['rarity']+'  /  '+str(len(creature['parts']))+' sculpted pieces',font=font(21),fill=(92,108,93))
     sheet.resize((columns*360,round((h*rows+130)/2)),Image.Resampling.LANCZOS).save(output/'creature-contact-sheet.png')
+    if content.get('detectors'):
+        tile_w,tile_h=560,620
+        gear=Image.new('RGB',(tile_w*4,tile_h*2+90),(239,235,222))
+        pen=ImageDraw.Draw(gear)
+        pen.text((30,24),'BRAINROT BLOOM / DETECTOR CRAFTSMANSHIP',font=font(27,True),fill=(34,53,43))
+        for i,detector in enumerate(content['detectors']):
+            picture=render(detector['parts'],(tile_w,tile_h-80),camera=(5,4,-9),depth_buffer=True)
+            x,y=(i%4)*tile_w,90+(i//4)*tile_h
+            gear.paste(picture,(x,y))
+            pen.text((x+26,y+tile_h-66),detector['name'],font=font(24,True),fill=(34,53,43))
+        gear.resize((1120,665),Image.Resampling.LANCZOS).save(output/'detector-contact-sheet.png')
     for world in content['worlds']:
         image=render(world['parts'],(1600,1200),camera=(1.1,1.0,-1.4),background=(222,236,230))
         ImageDraw.Draw(image).text((32,24),world['name']+' • geometry preview',font=font(28,True),fill=(30,50,42))

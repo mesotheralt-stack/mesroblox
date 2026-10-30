@@ -4,7 +4,7 @@ local viewportSize = vec(1280,720,0)
 local requests = {}
 local searchOutcomes = {false,true}
 local uiNodes = {}
-local events = {Activated=true,MouseEnter=true,MouseLeave=true,FocusLost=true,InputBegan=true,RenderStepped=true,PromptTriggered=true,OnClientEvent=true}
+local events = {Activated=true,MouseEnter=true,MouseLeave=true,MouseButton1Down=true,MouseButton1Up=true,FocusLost=true,InputBegan=true,RenderStepped=true,PromptTriggered=true,OnClientEvent=true}
 local dimensionMeta = {}
 local function dimensions(xs,xo,ys,yo)
 	assert(type(xs or 0)=="number" and type(xo or 0)=="number" and type(ys or 0)=="number" and type(yo or 0)=="number","UDim2 requires numeric components")
@@ -229,13 +229,27 @@ local function checkClient()
 			for _,other in targets do assert(separated(targetBounds,other),"Dock touch targets must not overlap") end
 			table.insert(targets,targetBounds)
 		end
+		local foodTarget=nav:FindFirstChild("FoodNavigation")
+		local response=foodTarget:FindFirstChild("InteractionBorder")
+		foodTarget.MouseButton1Down:Fire()
+		assert(response.Transparency<0.3,"Press feedback should be clear without shrinking the touch target")
+		foodTarget.MouseButton1Up:Fire()
+		assert(response.Transparency>0.8,"Button feedback must return to its calm resting state")
 		local status=screen:FindFirstChild("ExpeditionStatus")
 		assert(status.TextStrokeTransparency~=0.45 and status.BackgroundTransparency<0.3,"World and detector text must have a readable status surface")
 		click(size.X<900 and "Bag" or "Collection")
 		assert(screen:GetAttribute("MenuOpen")==true,"Open pages must suspend sprint")
 		assert(controlsHidden(),"Journal pages must hide detector controls even when equipped")
 		assert(textExists("Your collection"),"Collection must open")
+		local collectionGrid=screen:FindFirstChild("CollectionGrid",true)
+		local collectionLayout=collectionGrid:FindFirstChildOfClass("UIGridLayout")
+		local cellWidth=collectionGrid.AbsoluteSize.X*collectionLayout.CellSize.X.Scale+collectionLayout.CellSize.X.Offset
+		assert(cellWidth>=170,"Sculpture cards need room for names and income instead of tiny phone columns")
+		if size.X<440 then assert(collectionGrid:GetAttribute("CardColumns")==1,"Portrait phones should present large individual sculpture cards") end
 		local modal=screen:FindFirstChild("JournalPanel",true)
+		local modalTitle=modal:FindFirstChild("JournalTitle")
+		local titleConstraint=modalTitle:FindFirstChildOfClass("UITextSizeConstraint")
+		assert(modalTitle.TextScaled and titleConstraint.MinTextSize>=18,"Long species titles must fit within a readable bounded type scale")
 		local modalBounds=bounds(modal,size.X,size.Y)
 		assert(not wallet.Visible and not help.Visible and nav.ZIndex<modal.Parent.ZIndex,"Pages must take precedence over exploration controls")
 		assert(modalBounds.top>=12 and modalBounds.bottom<=size.Y-12,"Pages must use the available height without clipping their close control")
@@ -246,6 +260,12 @@ local function checkClient()
 		click("Uncommon");assert(textExists("Uncommon"),"All rarity filters must build valid dimensions")
 		click("All");click("Sort: Income");assert(textExists("Sort: Rarity"),"Sort must cycle");click("Sort: Rarity");click("Sort: Level")
 		click("Feed & grow");assert(textExists("Feed to grow"),"Creature detail must open")
+		local hero=screen:FindFirstChild("CreatureHero",true)
+		if hero:GetAttribute("Stacked") then
+			local stageBounds=bounds(hero:FindFirstChild("SculptureStage"),hero.AbsoluteSize.X,hero.AbsoluteSize.Y)
+			local levelBounds=bounds(hero:FindFirstChild("HeroLevel"),hero.AbsoluteSize.X,hero.AbsoluteSize.Y)
+			assert(stageBounds.width>=200 and levelBounds.top>=stageBounds.bottom+8,"Phone detail stats must sit below a full-width sculpture stage")
+		end
 		click("Feed one");assert(requests[#requests].kind=="Feed" and requests[#requests].payload.quantity==1,"Feed uses selected creature")
 		click("×")
 		assert(screen:GetAttribute("MenuOpen")==false,"Closing a page must restore exploration input")
@@ -277,6 +297,8 @@ local function checkClient()
 		state.garden.slots={"pet-1","","","","",""}
 		click("Index");click("All rarities")
 		assert(textExists("Brainrot index") and textExists("1 / "..#Config.Creatures.." discovered"),"Index book must show unique lifetime progress")
+		local indexGrid=screen:FindFirstChild("IndexGrid",true)
+		if size.X<440 then assert(indexGrid:GetAttribute("CardColumns")==1,"Index sculptures must stay comfortably sized on phones") end
 		local unknown=0
 		for _,object in uiNodes do if object.ClassName=="ViewportFrame" and visible(object) and object:GetAttribute("Silhouette") then unknown+=1 end end
 		assert(unknown==#Config.Creatures-1 and textExists("???"),"Uncaught species must use hidden names and silhouette previews")
@@ -291,6 +313,13 @@ local function checkClient()
 		state.brainrots={fullCollection[1]}
 		click("My garden")
 		assert(textExists("My garden") and textExists("Garden 01"),"Garden management must identify the assigned plot")
+		local gardenHero=screen:FindFirstChild("GardenHero",true)
+		if gardenHero:GetAttribute("Stacked") then
+			local gardenStage=bounds(gardenHero:FindFirstChild("SculptureStage"),gardenHero.AbsoluteSize.X,gardenHero.AbsoluteSize.Y)
+			local gardenTitle=bounds(gardenHero:FindFirstChild("GardenHeroTitle"),gardenHero.AbsoluteSize.X,gardenHero.AbsoluteSize.Y)
+			local gardenIncome=bounds(gardenHero:FindFirstChild("GardenHeroIncome"),gardenHero.AbsoluteSize.X,gardenHero.AbsoluteSize.Y)
+			assert(gardenTitle.top>=gardenStage.bottom+8 and gardenIncome.bottom<=gardenHero.AbsoluteSize.Y-62,"Stacked garden labels must stay clear of the sculpture and clear-slot touch target")
+		end
 		click("Slot 2");click("Move here")
 		assert(requests[#requests].kind=="GardenAssign" and requests[#requests].payload.uid=="pet-1" and requests[#requests].payload.slot==2,"Garden controls must move the selected owned creature to its selected slot")
 		assert(textExists("Clear slot"),"Assigned garden slots must offer clearing")
@@ -322,6 +351,9 @@ local function checkClient()
 	click("Dig  ·  E")
 	advance(Config.SearchSeconds+0.001)
 	assert(textExists("Tap to collect"),"A successful delayed search must open the capture sheet")
+	local timer=gameScreen:FindFirstChild("CaptureTimer",true)
+	local meter=gameScreen:FindFirstChild("CaptureProgressTrack",true)
+	assert(timer.Position.Y.Offset+timer.Size.Y.Offset+8<=meter.Position.Y.Offset,"The capture timer and progress meter must keep a comfortable visual gap")
 	assert(gameScreen:GetAttribute("Capturing")==true and gameScreen:GetAttribute("Scanning")==false,"A capture must suspend sprint until finished")
 	assert(controlsHidden(),"The capture challenge must hide the detector HUD")
 	detector.Parent=backpack

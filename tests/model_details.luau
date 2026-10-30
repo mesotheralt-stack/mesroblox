@@ -23,6 +23,7 @@ local function verifyModels(Factory, content)
 			if part:IsA("Part") or part:IsA("WedgePart") then
 				assert(part.Anchored and not part.CanCollide and not part.CanTouch and not part.CanQuery,"Preview geometry must be inert")
 				assert(part.Size.X>0 and part.Size.Y>0 and part.Size.Z>0,"No zero-size model pieces")
+				if string.match(part.Name,"Iris$") then assert(part.CastShadow==false,"Layered eyes must not cast small striping shadows across the face") end
 				parts+=1
 			end
 		end
@@ -51,6 +52,16 @@ local function verifyModels(Factory, content)
 			local soles=0
 			for _,piece in model:GetChildren() do if piece.Name=="PawSole" then soles+=1 end end
 			assert(soles==4,"Quadrupeds need four grounded, layered paws")
+		elseif spec.shape=="shark" then
+			local ankle=model:FindFirstChild("SharkAnkle")
+			local slipper=model:FindFirstChild("SlipperUpper")
+			assert(ankle and ankle.CFrame.Y-ankle.Size.Y/2<slipper.CFrame.Y+slipper.Size.Y/2,"Shark legs must join its slippers instead of floating above them")
+			assert(ankle.CFrame.Y+ankle.Size.Y/2>1.4 and model:FindFirstChild("SlipperTongue"),"Slipper ankles must reach the body and finish the upper shoe")
+		elseif spec.shape=="wizard" then
+			assert(model:FindFirstChild("RobeHem").Shape==Enum.PartType.Ball and model:FindFirstChild("HatRibbon").Shape==Enum.PartType.Cylinder,"Wizard cloth and hat trim need rounded silhouettes")
+			local beard=0
+			for _,piece in model:GetChildren() do if piece.Name=="PointedBeard" then assert(piece.ClassName=="WedgePart");beard+=1 end end
+			assert(beard==2,"Wizard beard needs a continuous triangular face")
 		elseif spec.shape=="croissant" then
 			assert(model:FindFirstChild("PastryFold") and model:FindFirstChild("CurledPastryTip") and model:FindFirstChild("BakerScarf"),"Croissant needs pastry anatomy and its baker scarf")
 		elseif spec.shape=="snail" then
@@ -61,12 +72,24 @@ local function verifyModels(Factory, content)
 			local soles=0
 			for _,piece in model:GetChildren() do if piece.Name=="PawSole" then soles+=1 end end
 			assert(soles==4 and model:FindFirstChild("ShellMosaic") and model:FindFirstChild("ShellGardenBud"),"Terrapin needs four feet, a plated shell and living garden")
+			for _,piece in model:GetChildren() do
+				if piece.Name=="ShellMosaic" then
+					local surface=1.7+0.9*math.sqrt(1-(piece.CFrame.X/1.625)^2-((piece.CFrame.Z-0.45)/1.55)^2)
+					assert(piece.CFrame.Y-surface>0.05,"Shell mosaic plates must clear the curved shell surface")
+				end
+			end
 		elseif spec.shape=="koi" then
 			assert(model:FindFirstChild("KoiFanTail") and model:FindFirstChild("KoiWhisker") and model:FindFirstChild("FinRay"),"Koi needs fan tail, barbels and patterned fins")
+			local tail=model:FindFirstChild("KoiTailPeduncle")
+			assert(tail and tail.CFrame.Z-tail.Size.Z/2<2.065 and tail.CFrame.Z+tail.Size.Z/2>2.48,"Koi tail must overlap the body and tail fan")
+			local scales={}
+			for _,piece in model:GetChildren() do if piece.Name=="KoiSideScale" then table.insert(scales,piece) end end
+			assert(math.abs(scales[1].CFrame.X)>math.abs(scales[3].CFrame.X),"Koi scales must taper with the body rather than float off its sides")
 		elseif spec.shape=="clock" then
 			assert(model:FindFirstChild("ClockMinuteHand") and model:FindFirstChild("ClockHourHand") and model:FindFirstChild("WatchBow"),"Pocketwatch needs separate hands and winding bow")
 		elseif spec.shape=="manta" then
 			assert(model:FindFirstChild("SweptRayWing") and model:FindFirstChild("CephalicFin") and model:FindFirstChild("CometRayTail") and model:FindFirstChild("RayConstellationStar"),"Manta needs broad ray wings, forward fins and celestial details")
+			assert(model:FindFirstChild("RayWingShoulder"),"Ray wings need a smooth shoulder transition into their body")
 		end
 		checks+=4
 	end

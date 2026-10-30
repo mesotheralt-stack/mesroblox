@@ -269,8 +269,10 @@ function CreatureFactory.create(spec, scale)
 			piece("SideFlipper",V(1.7,0.3,1.5),V(side*1.55,1.93,0.0),base,"Wedge",A(0,side*0.25,0))
 			eye("SharkEye",V(side*0.76,2.72,-1.96),0.48)
 			for i=1,3 do rod("GillSlit",V(side*1.22,2.3,-0.4+i*0.29),V(side*1.12,1.86,-0.4+i*0.29),0.06,dark) end
+			orb("SharkAnkle",V(0.5,0.8,0.72),V(side*0.79,1.08,-0.45),base)
 			orb("SlipperUpper",V(1.1,0.62,1.75),V(side*0.79,0.61,-0.45),trim)
 			orb("SlipperSole",V(1.16,0.2,1.83),V(side*0.79,0.26,-0.45),ivory)
+			orb("SlipperTongue",V(0.55,0.1,0.77),V(side*0.79,0.9,-0.29),trim:Lerp(ivory,0.25))
 			for lace=1,3 do rod("SlipperLace",V(side*0.79-0.3,0.9,-0.7+lace*0.21),V(side*0.79+0.3,0.9,-0.7+lace*0.21),0.055,ivory) end
 		end
 		orb("SharkSmile",V(1.28,0.1,0.1),V(0,1.87,-2.75),ink)
@@ -352,18 +354,19 @@ function CreatureFactory.create(spec, scale)
 			piece("DiscoHeadBand",V(1.5,0.18,0.19),V(0,4.12,-1.0),trim)
 		end
 	elseif shape=="wizard" then
-		piece("RobeHem",V(2.7,0.55,2.0),V(0,0.48,0),dark)
+		orb("RobeHem",V(2.7,0.55,2.0),V(0,0.48,0),dark)
 		orb("RobeBody",V(2.35,2.65,1.9),V(0,1.8,0),base)
 		for i=-2,2 do rod("RobePleat",V(i*0.38,0.58,-0.86),V(i*0.26,1.65,-0.9),0.075,pale) end
 		orb("WizardHead",V(1.8,1.65,1.5),V(0,3.07,-0.1),pale)
 		face(V(0,3.22,-0.84),0.37,0.47,false)
 		orb("MoustacheLeft",V(0.58,0.24,0.2),V(-0.24,2.84,-0.98),ivory,A(0,0,-0.12))
 		orb("MoustacheRight",V(0.58,0.24,0.2),V(0.24,2.84,-0.98),ivory,A(0,0,0.12))
-		piece("PointedBeard",V(0.85,0.95,0.32),V(0,2.38,-0.85),ivory,"Wedge",A(0,math.pi,math.pi))
+		flatTriangle("PointedBeard",V(-0.45,2.88,-1.0),V(0.45,2.88,-1.0),V(0,1.9,-1.0),0.24,ivory)
+		for i=-1,1 do rod("BeardStrand",V(i*0.24,2.69,-1.13),V(i*0.08,2.09,-1.13),0.035,ivory:Lerp(trim,0.18)) end
 		piece("HatBrim",V(0.19,3.15,2.8),V(0,3.85,-0.05),dark,Enum.PartType.Cylinder,A(0,0,math.pi/2))
 		for i=1,4 do orb("TaperedHatTier",V(2.1-i*0.33,0.56,1.8-i*0.26),V(i*0.07,3.92+i*0.39,-0.05),base) end
 		tube("BentHatTip",{V(0.27,5.4,-0.05),V(0.6,5.69,-0.05),V(0.96,5.5,-0.08)},0.23,base)
-		piece("HatRibbon",V(1.86,0.24,1.66),V(0,4.04,-0.05),trim)
+		piece("HatRibbon",V(0.18,1.85,1.6),V(0,4.19,-0.05),trim,Enum.PartType.Cylinder,A(0,0,math.pi/2))
 		piece("HatBrooch",V(0.31,0.31,0.13),V(0,4.08,-0.92),ivory,nil,A(0,0,math.pi/4))
 		for _,side in {-1,1} do orb("WideSleeve",V(0.82,1.3,0.86),V(side*1.18,2.0,0),base,A(0,0,side*0.38)) end
 		rod("Wand",V(1.66,0.75,-0.1),V(1.91,3.5,-0.1),0.15,dark)
@@ -568,17 +571,17 @@ function CreatureFactory.create(spec, scale)
 			steam.Transparency=0.48
 		end
 	elseif shape=="turtle" then
-		orb("TerrapinBody",V(2.65,1.2,3.0),V(0,1.03,0.24),base)
+		orb("TerrapinBody",V(2.65,1.2,2.75),V(0,0.93,0.24),base)
 		orb("TerrariumShell",V(3.25,1.8,3.1),V(0,1.7,0.45),trim)
-		orb("ShellRim",V(3.4,0.3,3.2),V(0,1.13,0.45),trim:Lerp(ink,0.17))
+		piece("ShellRim",V(0.3,3.4,3.2),V(0,1.13,0.45),trim:Lerp(ink,0.17),Enum.PartType.Cylinder,A(0,0,math.pi/2))
 		for i=1,7 do
 			local a=i*math.pi*2/7
 			local x,z=math.cos(a)*0.94,math.sin(a)*0.82
 			local top=math.sqrt(1-(x/1.625)^2-(z/1.55)^2)
 			local normal=V(x/(1.625*1.625),top/0.9,z/(1.55*1.55))
-			orb("ShellMosaic",V(0.72,0.1,0.82),V(x,1.7+0.9*top+0.005,0.45+z),i%2==0 and pale or base,CFrame.lookAt(Vector3.zero,normal,V(0,0,1))*A(math.pi/2,0,0))
+			orb("ShellMosaic",V(0.65,0.14,0.7),V(x,1.7+0.9*top+0.065,0.45+z),i%2==0 and pale or base,CFrame.lookAt(Vector3.zero,normal,V(0,0,1))*A(math.pi/2,0,0))
 		end
-		orb("ShellCrownMosaic",V(1.05,0.22,1.16),V(0,2.62,0.45),pale)
+		orb("ShellCrownMosaic",V(1.05,0.16,1.16),V(0,2.69,0.45),pale)
 		orb("TurtleNeck",V(1.15,0.74,0.95),V(0,1.14,-1.31),base)
 		orb("TerrapinHead",V(1.7,1.1,1.36),V(0,1.48,-1.83),base)
 		face(V(0,1.65,-2.43),0.36,0.45,false)
@@ -594,14 +597,26 @@ function CreatureFactory.create(spec, scale)
 		orb("KoiBody",V(2.2,2.03,3.65),V(0,1.94,0.24),base)
 		orb("KoiBelly",V(1.65,1.22,2.8),V(0,1.47,-0.1),ivory)
 		orb("KoiHead",V(1.95,1.82,1.8),V(0,2.05,-1.15),base)
+		orb("KoiTailPeduncle",V(0.86,0.85,1.05),V(0,1.94,2.04),base)
 		face(V(0,2.24,-1.98),0.43,0.46,false)
 		orb("KoiLips",V(0.54,0.24,0.18),V(0,1.65,-2.05),trim)
 		for _,side in {-1,1} do
 			piece("KoiFanTail",V(1.65,1.5,0.2),V(side*0.61,1.94,2.58),trim,"Wedge",A(0,0,side*0.65))
 			orb("PectoralFin",V(1.72,0.2,1.1),V(side*1.4,1.76,-0.12),trim,A(0,side*0.52,side*-0.2))
 			tube("KoiWhisker",{V(side*0.38,1.75,-1.99),V(side*0.77,1.57,-2.15),V(side*1.02,1.7,-2.11)},0.06,ivory)
-			for i=1,3 do orb("KoiSideScale",V(0.12,0.53,0.58),V(side*1.05,2.0,-0.3+i*0.53),trim:Lerp(base,i*0.11),A(0,0,side*0.12)) end
-			for i=1,3 do rod("FinRay",V(side*0.94,1.87,-0.1),V(side*(1.58+i*0.13),1.82,-0.66+i*0.29),0.045,ivory) end
+			for i=1,3 do
+				local z=-0.3+i*0.53
+				local x=side*1.1*math.sqrt(1-(0.06/1.015)^2-((z-0.24)/1.825)^2)
+				local normal=V(x/(1.1*1.1),0.06/(1.015*1.015),(z-0.24)/(1.825*1.825))
+				orb("KoiSideScale",V(0.13,0.43,0.49),V(x+side*0.06,2.0,z),trim:Lerp(base,i*0.11),CFrame.lookAt(Vector3.zero,normal)*A(0,math.pi/2,0))
+			end
+			local function finSurface(u,v)
+				local y=0.1*math.sqrt(1-(u/0.86)^2-(v/0.55)^2)+0.035
+				local yaw,roll=side*0.52,side*-0.2
+				local x=math.cos(roll)*u-math.sin(roll)*y
+				return V(side*1.4+math.cos(yaw)*x+math.sin(yaw)*v,1.76+math.sin(roll)*u+math.cos(roll)*y,-0.12-math.sin(yaw)*x+math.cos(yaw)*v)
+			end
+			for i=1,3 do rod("FinRay",finSurface(side*-0.35,0),finSurface(side*0.6,(i-2)*0.16),0.035,ivory) end
 		end
 		for i=1,4 do piece("KoiDorsal",V(0.17,0.62,0.74),V(0,2.96,0.03+i*0.43),trim,"Wedge") end
 		orb("KoiForeheadMark",V(0.8,0.15,0.65),V(0,2.99,-1.17),trim)
@@ -633,6 +648,7 @@ function CreatureFactory.create(spec, scale)
 		orb("NebulaRayBody",V(2.9,1.12,3.0),V(0,1.83,0),base)
 		orb("RayIvoryBelly",V(2.55,0.36,2.65),V(0,1.42,-0.07),pale)
 		for _,side in {-1,1} do
+			orb("RayWingShoulder",V(1.35,0.52,1.9),V(side*1.1,1.8,0.1),base)
 			orb("SweptRayWing",V(4.0,0.33,2.3),V(side*2.37,1.79,0.37),base,A(0,side*0.37,side*0.14))
 			tube("CephalicFin",{V(side*0.78,1.85,-1.04),V(side*1.02,1.96,-1.66),V(side*0.75,2.15,-1.91)},0.29,base)
 			local function onWing(i)
@@ -677,7 +693,16 @@ function CreatureFactory.create(spec, scale)
 		LittleWalkingStick=Enum.Material.Wood,LittleWalkingStickJoint=Enum.Material.Wood,LittleWalkingStickTip=Enum.Material.Wood,
 	}
 	for _,object in model:GetChildren() do
-		if object:IsA("BasePart") and finishes[object.Name] then object.Material=finishes[object.Name] end
+		if object:IsA("BasePart") then
+			if finishes[object.Name] then object.Material=finishes[object.Name] end
+			-- Tiny face layers should read as a painted expression, not cast
+			-- striped shadows over the eye or cheek beneath them.
+			if string.match(object.Name,"White$") or string.match(object.Name,"Iris$") or string.match(object.Name,"Pupil$")
+				or string.match(object.Name,"Catchlight$") or string.match(object.Name,"UpperLid$") or string.match(object.Name,"SoftReflection$")
+				or object.Name=="Cheek" or object.Name=="HappyMouth" or object.Name=="Smile" or object.Name=="Tongue" then
+				object.CastShadow=false
+			end
+		end
 	end
 	if spec.rarity=="Mythic" or spec.rarity=="Secret" then
 		local light=Instance.new("PointLight")

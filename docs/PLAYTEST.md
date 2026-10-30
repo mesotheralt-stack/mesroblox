@@ -88,3 +88,11 @@ For tuning, use `src/shared/Config.luau`; keep game rewards and purchases on the
 - Die/reset while holding a detector, then respawn and equip again. Check the old character cannot leave stale controls visible or prevent the new detector from working.
 - Check the centered left navigation dock in desktop, portrait, tablet, and narrow landscape views. All six controls need readable labels and icons on their left. Keep the coin display, Roblox thumbstick, touch Sprint, and Dig controls clear; short screens use a compact two-column dock.
 - Open a menu on each screen size and verify the dock cannot cover or intercept its title, close button, content, or scrolling.
+
+
+## Model and interface finishing pass
+
+- Inspect all 28 species in the collection, as a following companion, and on a garden pad at low and high levels. Check connected shark/slipper anatomy, koi tail and body scales, turtle shell plates, wizard robe/beard, and manta wing roots. Small eye and accessory details must remain attached when growing.
+- Equip all seven detector tiers. Check the hollow coil, grip ridges, tuning dial, and signal screen; stronger tiers should show a broader loop and additional windings. Walk, sprint, jump, unequip, and upgrade while wearing R6: tool details must follow the handle without affecting movement.
+- Inspect the chef’s hat, mechanic’s goggles, trader’s scarf, boots/hands, and smaller wearable name badges. Verify all three F prompts remain reachable and open their existing station menus.
+- Check creature cards on portrait phones, landscape, tablet, and desktop. Models, names, rarity, level, and income must fit without crowded text. Inspect XP progress, capture progress, hover/press feedback, and selected states. The six left-side menu buttons and equipped-only detector HUD must keep their current behavior.

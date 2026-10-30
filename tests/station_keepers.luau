@@ -22,6 +22,14 @@ local function verifyStationKeepers(Factory)
 		end
 		assert(parts>=40 and parts<=70,"Keeper detail budget outside 40–70 parts: "..role.." / "..parts)
 		local plaque=keeper:FindFirstChild("KeeperNamePlaque")
+		assert(plaque and plaque.Size.X<=1.7 and plaque.Size.Y<=0.45,"Name plaques must fit the clothing instead of spanning the arms")
+		assert(keeper:FindFirstChild("NameBadgeFrame"),"Keeper name badge needs its fitted frame")
+		local detailsCount={BootToe=0,Thumb=0,SleeveShoulder=0,EyeIris=0,Sideburn=0}
+		for _,piece in keeper:GetChildren() do if detailsCount[piece.Name] then detailsCount[piece.Name]+=1 end end
+		for name,pieces in detailsCount do assert(pieces==2,"Each attendant needs paired fitted "..name.." details") end
+		if role=="Food" then assert(keeper:FindFirstChild("ChefHatPleat"),"Chef's hat needs shaped fabric pleats")
+		elseif role=="Gear" then assert(keeper:FindFirstChild("GoggleReflection"),"Mechanic's lenses need separate glass reflections")
+		elseif role=="Sell" then assert(keeper:FindFirstChild("TraderHairBun"),"Trader needs a distinct finished hairstyle") end
 		local prompt=plaque and plaque:FindFirstChildOfClass("ProximityPrompt")
 		assert(prompt and prompt:GetAttribute("Shop")==role and prompt.KeyboardKeyCode==Enum.KeyCode.F,"Keeper prompt must route to its real station using F")
 		assert(prompt.ObjectText==keeper:GetAttribute("KeeperName") and prompt.RequiresLineOfSight==false,"Friendly name and reachable interaction must survive placement behind a counter")

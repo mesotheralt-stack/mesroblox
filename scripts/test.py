@@ -62,6 +62,11 @@ def main() -> int:
         scene_prefix = color_shim + 'local Config = (function()\n' + config + '\nend)()\n' + (ROOT / 'tests/server_harness.luau').read_text() + '\n' + (ROOT / 'tests/world_startup.luau').read_text() + '\n' + (ROOT / 'tests/model_details.luau').read_text() + '\nConfig = (function()\n' + config + '\nend)()\n'
         model_test.write_text(scene_prefix + '\nlocal FactoryUnderTest = (function()\n' + (ROOT / 'src/shared/CreatureFactory.luau').read_text() + '\nend)()\nverifyModels(FactoryUnderTest, Config)\n')
         subprocess.run([runtime, str(model_test)], check=True, cwd=ROOT)
+        detector_test = Path(temporary) / 'detectors-run.luau'
+        detector_test.write_text(scene_prefix + '\nlocal DetectorUnderTest = (function()\n'
+            + (ROOT / 'src/server/DetectorTool.luau').read_text() + '\nend)()\n'
+            + (ROOT / 'tests/detector_tools.luau').read_text() + '\nverifyDetectorTools(DetectorUnderTest,Config)\n')
+        subprocess.run([runtime, str(detector_test)], check=True, cwd=ROOT)
         client_test = Path(temporary) / 'client-run.luau'
         client_test.write_text(scene_prefix + '\n' + (ROOT / 'tests/client_ui.luau').read_text() + '\n(function()\n' + (ROOT / 'src/client/Main.client.luau').read_text() + '\nend)()\ncheckClient()\n')
         subprocess.run([runtime, str(client_test)], check=True, cwd=ROOT)
