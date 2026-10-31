@@ -197,7 +197,7 @@ check(finishSale.state.discoveredVariants.sprout.Gold,"Selling the only owned co
 finishes.discoveredVariants.toast.Diamond=false;finishes.discoveredVariants.sprout.Rainbow=true
 local privateFinishes=state(finishPlayer)
 check(privateFinishes.discoveredVariants.toast.Diamond and not privateFinishes.discoveredVariants.sprout.Rainbow,"Returned finish history must be a deep copy, never a writable profile reference")
-local rollUnits={0,0.8,0.92,0.97,0.995}
+local rollUnits={0,0.878,0.958,0.988,0.998}
 for index,variant in Config.Variants do
 	check(call(finishPlayer,"Teleport",{destination="Meadow"}).ok,"Finish roll test requires the unlocked starter pit")
 	advance(Config.SearchSeconds+Config.Detectors[1].speed+0.1)

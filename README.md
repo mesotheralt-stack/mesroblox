@@ -48,11 +48,11 @@ After a successful signal, the server rolls a finish independently of species ra
 
 | Finish | Chance per successful signal | Income multiplier |
 | --- | ---: | ---: |
-| Normal | 80% | 1× |
-| Bronze | 12% | 1.5× |
-| Silver | 5% | 2× |
-| Gold | 2.5% | 3× |
-| Diamond | 0.5% | 5× |
+| Normal | 87.8% | 1× |
+| Bronze | 8% | 1.5× |
+| Silver | 3% | 2× |
+| Gold | 1% | 3× |
+| Diamond | 0.2% | 5× |
 
 The existing one-second scan still has a 50% chance to find a signal; a finish is awarded only after completing its capture. For example, a level-one Common normally earns $2 per second; Bronze earns $3, Silver $4, Gold $6, and Diamond $10. Fractional income is rounded down to whole coins. Sale value is 45 seconds of the creature's unboosted income, including its finish. Golden Hour doubles finish-adjusted income for five minutes and does not increase the sale price.
 

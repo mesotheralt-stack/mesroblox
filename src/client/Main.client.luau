@@ -1031,7 +1031,7 @@ local function helpPage()
 	for _,entry in ipairs({
 		{"Find & collect","Stand on the sand and choose Dig (E). A scan takes one second, with a 50% chance to find a signal. Tap or press Space to capture it."},
 		{"Feed & grow","Open Collection, choose a brainrot, and feed it from your pantry. Every creature earns coins while you play."},
-		{"Rare finishes","Every found signal rolls a finish independently of species rarity: Bronze 12% (1.5x), Silver 5% (2x), Gold 2.5% (3x), Diamond 0.5% (5x). Others are Normal. Finishes improve income and sale value."},
+		{"Rare finishes","Every found signal rolls a finish independently of species rarity: Bronze 8% (1.5x), Silver 3% (2x), Gold 1% (3x), Diamond 0.2% (5x). Others are Normal. Finishes improve income and sale value."},
 		{"Upgrade your kit","Food, Sell, and Gear take you straight to their shops. Stronger detectors uncover higher rarities; boosts last five minutes."},
 		{"Explore further","Use the glowing portal near each world’s entrance to travel or unlock new worlds. Hold Shift, click the left stick, or use Sprint on touch to move faster."},
 		{"Make it yours","Use Index (I) to track all "..#Config.Creatures.." species. Garden (G) opens your six displays and teleports you home. Display choices and discoveries save with your collection."},
@@ -1285,9 +1285,9 @@ resize = function(skipPageRender)
 	nav.Size=UDim2.fromOffset(dockWidth,dockHeight)
 	nav.Position=UDim2.fromOffset(12,dockCenter)
 	nav:SetAttribute("LayoutColumns",compactDock and 2 or 1)
-	local walletLeft=compactDock and dockWidth+24 or 12
+	local walletLeft=12
 	local walletWidth=math.min(304,math.max(180,size.X-walletLeft-70))
-	hud.Position=UDim2.fromOffset(walletLeft,12)
+	hud.Position=UDim2.new(0,walletLeft,1,-108)
 	hud.Size = UDim2.fromOffset(walletWidth,96)
 	coinsLabel.TextSize=walletWidth<230 and 20 or 27
 	helpButton.Position = UDim2.new(1, -12, 0, 12)

@@ -12,13 +12,13 @@ Config.SearchSeconds = 1
 Config.FindChance = 0.5
 
 -- Finishes roll independently of species rarity, after a successful signal.
--- The weights total 10,000: 80%, 12%, 5%, 2.5%, and 0.5% respectively.
+-- The weights total 10,000: 87.8%, 8%, 3%, 1%, and 0.2% respectively.
 Config.Variants = {
-	{id = "Normal", name = "Normal", weight = 8000, multiplier = 1, color = Color3.fromRGB(177, 191, 180), accent = Color3.fromRGB(239, 229, 201)},
-	{id = "Bronze", name = "Bronze", weight = 1200, multiplier = 1.5, color = Color3.fromRGB(191, 122, 71), accent = Color3.fromRGB(245, 185, 124)},
-	{id = "Silver", name = "Silver", weight = 500, multiplier = 2, color = Color3.fromRGB(184, 201, 215), accent = Color3.fromRGB(241, 249, 255)},
-	{id = "Gold", name = "Gold", weight = 250, multiplier = 3, color = Color3.fromRGB(237, 184, 60), accent = Color3.fromRGB(255, 232, 155)},
-	{id = "Diamond", name = "Diamond", weight = 50, multiplier = 5, color = Color3.fromRGB(119, 220, 244), accent = Color3.fromRGB(222, 251, 255)},
+	{id = "Normal", name = "Normal", weight = 8780, multiplier = 1, color = Color3.fromRGB(177, 191, 180), accent = Color3.fromRGB(239, 229, 201)},
+	{id = "Bronze", name = "Bronze", weight = 800, multiplier = 1.5, color = Color3.fromRGB(191, 122, 71), accent = Color3.fromRGB(245, 185, 124)},
+	{id = "Silver", name = "Silver", weight = 300, multiplier = 2, color = Color3.fromRGB(184, 201, 215), accent = Color3.fromRGB(241, 249, 255)},
+	{id = "Gold", name = "Gold", weight = 100, multiplier = 3, color = Color3.fromRGB(237, 184, 60), accent = Color3.fromRGB(255, 232, 155)},
+	{id = "Diamond", name = "Diamond", weight = 20, multiplier = 5, color = Color3.fromRGB(119, 220, 244), accent = Color3.fromRGB(222, 251, 255)},
 }
 
 Config.Rarities = {

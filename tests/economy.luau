@@ -28,11 +28,11 @@ check(Config.Detectors[1].price == 0 and Config.Detectors[1].world == Config.Wor
 
 -- A finish is an independent roll layered onto all seven rarity tiers.
 local expectedVariants = {
-	{id="Normal", weight=8000, multiplier=1},
-	{id="Bronze", weight=1200, multiplier=1.5},
-	{id="Silver", weight=500, multiplier=2},
-	{id="Gold", weight=250, multiplier=3},
-	{id="Diamond", weight=50, multiplier=5},
+	{id="Normal", weight=8780, multiplier=1},
+	{id="Bronze", weight=800, multiplier=1.5},
+	{id="Silver", weight=300, multiplier=2},
+	{id="Gold", weight=100, multiplier=3},
+	{id="Diamond", weight=20, multiplier=5},
 }
 check(#Config.Variants == #expectedVariants, "Every species must have Normal plus four special finishes")
 local variantWeight = 0
@@ -52,11 +52,11 @@ check(Config.variant(nil).id == "Normal" and Config.variant("unknown").id == "No
 for _, variant in ipairs(Config.Variants) do check(Config.variant(variant.id) == variant, "Known finish IDs must resolve their configured bonus") end
 
 for _, boundary in ipairs({
-	{0, "Normal"}, {0.799999999, "Normal"},
-	{0.8, "Bronze"}, {0.919999999, "Bronze"},
-	{0.92, "Silver"}, {0.969999999, "Silver"},
-	{0.97, "Gold"}, {0.994999999, "Gold"},
-	{0.995, "Diamond"}, {0.999999999, "Diamond"}, {1, "Diamond"},
+	{0, "Normal"}, {0.877999999, "Normal"},
+	{0.878, "Bronze"}, {0.957999999, "Bronze"},
+	{0.958, "Silver"}, {0.987999999, "Silver"},
+	{0.988, "Gold"}, {0.997999999, "Gold"},
+	{0.998, "Diamond"}, {0.999999999, "Diamond"}, {1, "Diamond"},
 }) do
 	check(Config.rollVariant(boundary[1]).id == boundary[2], "A finish boundary must select exactly one expected interval: " .. boundary[1])
 end
