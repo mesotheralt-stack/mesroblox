@@ -86,6 +86,12 @@ local function label(parent, text, size, color, props)
 	for key, value in pairs(props or {}) do p[key] = value end
 	return make("TextLabel", p, parent)
 end
+local soundSequence=0
+local function soundCue(kind)
+ soundSequence+=1
+ screen:SetAttribute("SoundCue",tostring(soundSequence)..":"..kind)
+end
+
 local function button(parent, text, onClick, props)
 	local p = {
 		Text = text, Font = Enum.Font.BuilderSansMedium, TextSize = 14,
@@ -106,7 +112,7 @@ local function button(parent, text, onClick, props)
 	b.MouseLeave:Connect(function() hovering=false;outline(0.9) end)
 	b.MouseButton1Down:Connect(function() outline(0.15) end)
 	b.MouseButton1Up:Connect(function() outline(hovering and 0.52 or 0.9) end)
-	if onClick then b.Activated:Connect(onClick) end
+	if onClick then b.Activated:Connect(function() soundCue("Click");onClick() end) end
 	return b
 end
 local function padding(parent, amount)
@@ -408,6 +414,7 @@ corner(toast, 14)
 padding(toast, 10)
 local toastVersion = 0
 local function notify(text, kind)
+	if kind=="error" then soundCue("Error") end
 	toastVersion += 1
 	local version = toastVersion
 	toast.Text = tostring(text)
@@ -519,6 +526,12 @@ request = function(action, payload)
 	if not ok then notify("Connection interrupted. Please try again.", "error"); return nil end
 	if type(result) ~= "table" then notify("The server could not complete that action.", "error"); return nil end
 	if result.state then state = result.state; updateHud() end
+ if result.ok then
+  local cues={BuyFood="Purchase",BuyDetector="Purchase",BuyBoost="Purchase",Sell="Sell",Feed="Feed",Teleport="Portal",UnlockWorld="Portal"}
+  if action=="TapDig" then soundCue(result.complete and "Capture" or "Tap")
+  elseif action=="StartDig" then soundCue(result.found and "Found" or "Miss")
+  elseif cues[action] then soundCue(cues[action]) end
+ end
 	if result.message and action ~= "TapDig" then notify(result.message, result.ok and "success" or "error") end
 	return result
 end
@@ -1022,6 +1035,9 @@ local function gardenPage()
 end
 
 local function helpPage()
+ button(body,screen:GetAttribute("SoundMuted") and "Sound: Off" or "Sound: On",function()
+  screen:SetAttribute("SoundMuted",not screen:GetAttribute("SoundMuted"));renderPage()
+ end,{Size=UDim2.new(1,0,0,44)})
 	title.Text="A little guide"
 	subtitle.Text="Find something weird. Feed it. Watch your garden grow."
 	button(body,"Take me to the sand pit",function()
@@ -1159,6 +1175,7 @@ startDig = function()
 	if busy or capture or activePage or not detectorEquipped() then return end
 	busy = true
 	screen:SetAttribute("Scanning", true)
+	soundCue("Scan")
 	digButton.Text = "Scanning…"
 	digButton.BackgroundColor3 = C.honey
 	digButton.TextColor3=C.bg
