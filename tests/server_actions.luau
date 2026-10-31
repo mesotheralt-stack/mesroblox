@@ -26,6 +26,21 @@ check(not call(starter,"BuyFood","invalid").ok,"Non-table payloads must fail")
 check(not call(starter,"BuyDetector",{id="made-up"}).ok,"Unknown detector purchases must fail")
 check(not call(starter,"EquipDetector",{id="void"}).ok,"Unowned detectors cannot be equipped")
 check(not call(starter,"Teleport",{destination="Cosmic"}).ok,"Locked world teleport must fail")
+local function visitLocalShop(player,worldId,role)
+	local result=call(player,"Teleport",{destination=role,world="Cosmic",worldId="Cosmic"})
+	local actual=player.Character:FindFirstChild("HumanoidRootPart").Position
+	local expected=map.shopDestinations[worldId][role]
+	check(result.ok and result.state.world==worldId,"Shop travel must keep the caller in their current world")
+	check((actual-expected).Magnitude<0.001,"Shop travel must use that world's physical station, ignoring client world overrides")
+	return result
+end
+for _,role in {"Food","Gear","Sell"} do visitLocalShop(starter,"Meadow",role) end
+local beforeLockedShop=starter.Character:FindFirstChild("HumanoidRootPart").Position
+starter.Character:PivotTo(map.destinations.Cosmic)
+check(not call(starter,"Teleport",{destination="Food"}).ok,"Local shops must not grant travel into a locked island")
+starter.Character:PivotTo(beforeLockedShop)
+check(not call(starter,"Teleport",{destination={"Food"}}).ok,"Malformed shop destinations must be refused safely")
+check(call(starter,"Teleport",{destination="Home"}).ok,"Home must remain separate from the digging pit after local shopping")
 check(not call(starter,"Feed",{uid="stolen",foodId="crumb",quantity=1}).ok,"Other players' brainrots cannot be fed")
 check(not call(starter,"Sell",{uid="stolen"}).ok,"Other players' brainrots cannot be sold")
 local buy=call(starter,"BuyFood",{id="crumb",quantity=2})
@@ -102,8 +117,17 @@ check(call(rich,"BuyDetector",{id="clover"}).ok,"Accessible detector purchase mu
 check(call(rich,"UnlockWorld",{id="Dunes"}).ok,"Second world must unlock and teleport")
 local inDunes=state(rich)
 check(inDunes.world=="Dunes" and table.find(inDunes.unlockedWorlds,"Dunes")~=nil,"Unlock must persist and enter the new world")
+for _,role in {"Food","Gear","Sell","Food"} do visitLocalShop(rich,"Dunes",role) end
 check(call(rich,"BuyDetector",{id="prism"}).ok,"World unlock must grant access to its detectors")
 check(call(rich,"UnlockWorld",{id="Cosmic"}).ok,"Third world must become reachable")
+for _,role in {"Sell","Food","Gear","Sell"} do visitLocalShop(rich,"Cosmic",role) end
+rich.Character:PivotTo(map.destinations.Dunes)
+visitLocalShop(rich,"Dunes","Sell")
+check(call(rich,"Teleport",{destination="Garden"}).ok,"Garden travel must remain available from any world")
+visitLocalShop(rich,"Meadow","Food")
+check(call(rich,"Teleport",{destination="Home"}).ok,"Home travel must still return to Meadow")
+visitLocalShop(rich,"Meadow","Gear")
+check(call(rich,"Teleport",{destination="Cosmic"}).ok,"Unlocked world travel must remain available after local shopping")
 check(call(rich,"BuyDetector",{id="moon"}).ok,"Final world must provide a Secret-capable detector")
 local maxDetector=state(rich)
 check(maxDetector.detector=="moon","Purchased detector must be equipped")

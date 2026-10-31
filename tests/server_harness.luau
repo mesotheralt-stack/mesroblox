@@ -119,6 +119,10 @@ local Random={new=function(seed)
 	return random
 end}
 local map={spawnCFrame=vec(0,5,-80),destinations={Home=vec(0,5,-80),Food=vec(-30,5,-30),Sell=vec(30,5,-30),Gear=vec(60,5,-30),Meadow=vec(0,5,0),Dunes=vec(520,5,0),Cosmic=vec(1040,5,0)},pits={Meadow={center=vec(0,0,0),size=vec(100,3,100)},Dunes={center=vec(520,0,0),size=vec(100,3,100)},Cosmic={center=vec(1040,0,0),size=vec(100,3,100)}}}
+map.shopDestinations={}
+for id,pit in map.pits do
+	map.shopDestinations[id]={Food=vec(pit.center.X-30,5,-30),Sell=vec(pit.center.X+30,5,-30),Gear=vec(pit.center.X+60,5,-30)}
+end
 map.gardens={}
 for i=1,6 do
 	local slots={}

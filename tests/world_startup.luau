@@ -50,6 +50,7 @@ local function verifyWorld(World)
 	local checks=0
 	local function inspect(object)
 		assert(object.ClassName~="BillboardGui","Map signs must not create floating pins")
+		assert(object.Name~="PhysicalSign" and object.Name~="PortalDirectionPost","Freestanding building and map signs must be removed without orphaned posts")
 		assert(object.Name~="RarityPreviewGrove" and object.Name~="DisplayPlinth" and object.Name~="GalleryWalkway","Public showcase scenery must be removed")
 		assert(object:GetAttribute("DecorativePreview")~=true,"Showcase specimens must be removed while personal displays remain")
 		if object.Name=="Grass" then
@@ -209,14 +210,26 @@ local function verifyWorld(World)
 	assert(cosmic:FindFirstChild("CoveViewingPier",true),"Cove landmark needs its walkable viewing pier")
 	assert(scene:FindFirstChild("Meadow"):FindFirstChild("UpperBrookCascade",true),"Meadow highlands need a woodland brook and cascades")
 	local village=scene:FindFirstChild("CloverVillage")
-	for station,role in {FoodMarket="Food",GearWorkshop="Gear",TradingStation="Sell"} do
-		local building=village:FindFirstChild(station)
-		local keeper=building and building:FindFirstChild("StationKeeper")
-		assert(keeper and keeper:GetAttribute("ShopRole")==role,"Every buy/sell station needs its own character")
-		local prompt=keeper:FindFirstChild("KeeperShopPrompt",true)
-		assert(prompt and prompt:GetAttribute("Shop")==role,"Attendant must open the corresponding existing shop")
+	local stationCount=0
+	for _,id in {"Meadow","Dunes","Cosmic"} do
+		local island=scene:FindFirstChild(id)
+		local market=id=="Meadow" and village or island:FindFirstChild("WorldMarket")
+		assert(market,"Every world needs a local market")
+		local arrivals=built.shopDestinations and built.shopDestinations[id]
+		assert(arrivals,"Each world needs server-owned local shop destinations")
+		for station,role in {FoodMarket="Food",GearWorkshop="Gear",TradingStation="Sell"} do
+			local building=market:FindFirstChild(station)
+			local keeper=building and building:FindFirstChild("StationKeeper")
+			assert(keeper and keeper:GetAttribute("ShopRole")==role,"Every world needs its own Food, Gear and Sell attendants")
+			local prompt=keeper:FindFirstChild("KeeperShopPrompt",true)
+			assert(prompt and prompt:GetAttribute("Shop")==role,"Each attendant must open the corresponding existing shop")
+			local frame=arrivals[role]
+			assert(frame and math.abs(frame.X-built.pits[id].center.X)<120 and frame.Z< -60 and frame.Z> -150,"Shop travel must arrive in the same world's market")
+			stationCount+=1
+		end
+		assert(island:FindFirstChild("WorldTravelPortal"):FindFirstChild("PortalHeader"),"The mounted portal header must remain for navigation")
 	end
-	assert(village:FindFirstChild("PortalDirectionPost",true),"The garden approach must point players toward the main portal")
+	assert(stationCount==9,"All three worlds need three working station attendants")
 	assert(scene:FindFirstChild("Dunes"):FindFirstChild("WeatheredMesaArch",true) and scene:FindFirstChild("Dunes"):FindFirstChild("CanyonMiningCamp",true),"Canyon theme needs its own mesa arch and mining camp")
 	assert(cosmic:FindFirstChild("WalkInCrystalCave",true) and cosmic:FindFirstChild("UpperQuartzFalls",true),"Crystal coast needs a raised walk-in geode cave and waterfall")
 	local meadowGround=scene:FindFirstChild("Meadow"):FindFirstChild("NorthernLawn")

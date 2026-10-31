@@ -42,23 +42,6 @@ local function disk(parent,name,position,radius,height,tint,material)
 	return part(parent,name,V(height,radius*2,radius*2),position,tint,material,Enum.PartType.Cylinder,CFrame.Angles(0,0,math.pi/2))
 end
 
-local function plaque(parent, position, title, subtitle, tint, width)
-	local board=part(parent,"PhysicalSign",V(width or 16,3.4,0.35),position,P.ink,Enum.Material.Wood)
-	board.CanCollide=false
-	local gui=Instance.new("SurfaceGui")
-	gui.Name="Wayfinding"; gui.Face=Enum.NormalId.Front; gui.CanvasSize=Vector2.new(600,140)
-	gui.LightInfluence=0.3; gui.MaxDistance=90; gui.Parent=board
-	local text=Instance.new("TextLabel")
-	text.Size=UDim2.new(1,-28,subtitle and 0.57 or 1,0); text.Position=UDim2.fromOffset(14,0)
-	text.BackgroundTransparency=1; text.Font=Enum.Font.BuilderSansBold; text.TextSize=31
-	text.TextColor3=tint or P.cream; text.Text=title; text.TextTruncate=Enum.TextTruncate.AtEnd; text.Parent=gui
-	if subtitle then
-		local sub=text:Clone(); sub.Size=UDim2.new(1,-28,0.43,0); sub.Position=UDim2.new(0,14,0.57,-3)
-		sub.Font=Enum.Font.BuilderSans; sub.TextSize=19; sub.TextColor3=rgb(193,209,190); sub.Text=subtitle; sub.Parent=gui
-	end
-	return board
-end
-
 local function prompt(target,action,name,key,value)
 	local object=Instance.new("ProximityPrompt")
 	object.ActionText=action; object.ObjectText=name; object.HoldDuration=0
@@ -275,7 +258,6 @@ local function digSite(parent,offset,tint,id)
 		part(supplies,"CartWheel",V(0.45,2.0,2.0),cart.Position+V(x,-1.1,z),P.darkWood,nil,Enum.PartType.Cylinder)
 	end end
 	detail(supplies,"SurveyDetector",V(0.3,4.8,0.3),cart.Position+V(0,2.3,0),P.brass,Enum.Material.Metal,nil,CFrame.Angles(0,0,0.45))
-	plaque(dig,offset+V(-38,4.0,-25),"The dig grounds","Search the sand · capture the signal",P.cream,23)
 	return center,size
 end
 
@@ -313,13 +295,16 @@ local function fountain(parent,position,tint)
 	for _,item in carved:GetChildren() do item.CanQuery=false;item:SetAttribute("ScenicDetail",true) end
 end
 
-local function shop(parent,position,food)
+local function shop(parent,position,food,worldIndex)
 	local building=folder(parent,food and "FoodMarket" or "GearWorkshop")
 	local color=food and rgb(210,126,97) or rgb(93,137,158)
+	if worldIndex==2 then color=food and rgb(205,151,100) or rgb(125,148,122)
+	elseif worldIndex==3 then color=food and rgb(175,158,202) or rgb(104,165,179) end
+	local plaster=worldIndex==2 and rgb(233,202,160) or worldIndex==3 and rgb(207,226,224) or P.cream
 	part(building,"FoundationTrim",V(40,0.5,29),position+V(0,0.55,0),P.stone,Enum.Material.Slate)
 	part(building,"ShopFloor",V(37,0.4,26),position+V(0,0.95,0),P.lightWood,Enum.Material.WoodPlanks)
 	for _,x in {-17,17} do for _,z in {-11,11} do part(building,"CarvedTimberPost",V(1.3,11.5,1.3),position+V(x,6.5,z),P.wood,Enum.Material.Wood) end end
-	part(building,"PlasterBackWall",V(35,8,0.8),position+V(0,5.2,11),P.cream,Enum.Material.Concrete)
+	part(building,"PlasterBackWall",V(35,8,0.8),position+V(0,5.2,11),plaster,Enum.Material.Concrete)
 	for _,x in {-11,11} do
 		part(building,"BackWindowFrame",V(7.3,5,0.2),position+V(x,6.3,10.45),P.wood,Enum.Material.Wood)
 		detail(building,"BackWindowPane",V(6.4,4.1,0.15),position+V(x,6.3,10.25),rgb(171,213,202),Enum.Material.Glass)
@@ -349,7 +334,6 @@ local function shop(parent,position,food)
 		end
 	end
 	for _,x in {-17,17} do lamp(building,position+V(x,1.0,-12),rgb(255,227,172),true) end
-	plaque(building,position+V(0,10,-13.3),food and "Food market" or "Gear workshop",food and "Fresh snacks · five-minute rotation" or "Detectors · growth & income boosts",P.cream,27)
 	StationKeeper.create(building,CFrame.new(position+V(0,1.15,-1.6)),food and "Food" or "Gear")
 	crate(building,position+V(-23,0.3,3),0.9); barrel(building,position+V(23,0.3,7))
 	local craft=folder(building,"MarketCraftsmanship")
@@ -435,7 +419,6 @@ local function windmill(parent,position)
 		for rib=-1,1 do detail(landmark,"SailRib",V(4.5,0.16,0.18),hub+V(x*(11.2+rib*3.8)+y*1.4,y*(11.2+rib*3.8)-x*1.4,0.58),P.lightWood,nil,nil,CFrame.Angles(0,0,-a)) end
 	end
 	for j=1,3 do crate(landmark,position+V(13+j*3.1,0.3,-3+(j%2)*5),0.8) end
-	plaque(landmark,position+V(0,4.2,13),"Clover flour mill","Home-grown snacks for hungry discoveries",P.cream,22)
 	local masonry=folder(landmark,"MillMasonry")
 	for row=1,6 do
 		local y=2.7+(row-1)*4.4
@@ -475,7 +458,6 @@ local function sunRuins(parent,position)
 		local x=-34+(j%2)*68
 		part(ruins,"BrokenColumn",V(5,4+j,5),position+V(x,3+j/2,-18+j*7),tint,Enum.Material.Sandstone,nil,CFrame.Angles(0,j,0.12*(j%2)))
 	end
-	plaque(ruins,position+V(0,5,-22),"The sun archive","An old survey station, reclaimed by sand",P.cream,24)
 	local carvings=folder(ruins,"ArchiveStoneCarvings")
 	for j=-3,3 do
 		local a=j*0.22
@@ -536,7 +518,6 @@ local function crystalCove(parent,position)
 		for _,z in {20,38} do part(pier,"PierMooringPost",V(0.65,4.4,0.65),position+V(x,2.0,z),rgb(107,138,136),Enum.Material.Wood) end
 		part(pier,"PierHandrail",V(0.3,0.3,19),position+V(x,4.05,29),rgb(191,198,184),Enum.Material.Wood)
 	end
-	plaque(cove,position+V(-21,4.4,43),"The crystal cove","Moonlit quartz · sheltered turquoise water",P.cream,25)
 end
 
 local function observatory(parent,position)
@@ -566,7 +547,6 @@ local function observatory(parent,position)
 	end
 	local lens=detail(place,"TelescopeLens",V(0.2,4.7,4.7),position+V(math.cos(0.35)*9.6,14.5+math.sin(0.35)*9.6,0),rgb(165,229,231),Enum.Material.Glass,Enum.PartType.Cylinder,CFrame.Angles(0,0,0.35)); lens.Transparency=0.25
 	for j=1,4 do part(place,"ObservatoryEntranceStep",V(18,0.45,5.0),position+V(0,j*0.45,-42+j*4.5),stone,Enum.Material.Slate) end
-	plaque(place,position+V(-21,4.5,-29),"Moonwatch observatory","A quiet lookout above the crystal coast",P.cream,23)
 	local astronomy=folder(place,"ObservatoryMetalwork")
 	for _,latitude in {-0.42,0.1,0.62,1.1} do
 		local radius=26.15*math.cos(latitude)
@@ -692,7 +672,6 @@ local function layeredBiomes(parent,offset,index)
 		end
 		tree(hills,offset+V(297,36.3,242),1.1,1,rgb(113,158,98),0.5)
 		bench(hills,offset+V(276,36.3,252))
-		plaque(hills,offset+V(283,40.5,257),"Clover highlands","Follow the timber trail to the valley lookout",P.cream,25)
 		cascade(hills,"UpperBrookCascade",offset+V(215,0,195),20.3,8.3,12,rgb(111,183,180))
 		cascade(hills,"LowerBrookCascade",offset+V(194,0,202),8.3,0.3,15,rgb(111,183,180))
 		local stream=detail(hills,"MeanderingBrook",V(10,0.2,61),offset+V(204,8.46,184),rgb(111,183,180),Enum.Material.Glass)
@@ -722,7 +701,6 @@ local function layeredBiomes(parent,offset,index)
 			part(arch,"ArchUpperShoulder",V(11,8.5,10),offset+V(-283+side*9,59,229),stone:Lerp(P.cream,0.08),Enum.Material.Sandstone,"Wedge",CFrame.Angles(0,side<0 and 0 or math.pi,side*0.15))
 		end
 		part(arch,"ArchKeystone",V(12,6.5,10),offset+V(-283,61.8,229),cap,Enum.Material.Sandstone,nil,CFrame.Angles(0,0,0.07))
-		plaque(mesas,offset+V(-283,43.3,258),"The red mesa","Ancient layers · a trail above the canyon",P.cream,26)
 		for _,pos in {V(-300,10.3,47),V(-286,24.3,117),V(-302,39.3,252)} do
 			part(mesas,"MesaCactusStem",V(2.2,7,2.2),offset+pos+V(0,3.5,0),rgb(111,143,98),Enum.Material.Grass,Enum.PartType.Ball)
 			for _,side in {-1,1} do part(mesas,"MesaCactusArm",V(2.2,3,1.7),offset+pos+V(side*1.6,3.6+side,0),rgb(111,143,98),Enum.Material.Grass,Enum.PartType.Ball,CFrame.Angles(0,0,side*-0.5)) end
@@ -742,7 +720,6 @@ local function layeredBiomes(parent,offset,index)
 		for _,x in {-4,4} do for _,z in {40.5,45.5} do part(camp,"OreCartWheel",V(0.6,2.2,2.2),p+V(x,1.9,z),P.darkWood,Enum.Material.Metal,Enum.PartType.Cylinder) end end
 		for j=1,5 do detail(camp,"ExposedCopperOre",V(2.5,2.2,2.5),p+V((j%3-1)*2,5.4,(j%2)*2+42),rgb(173,125,88),Enum.Material.Rock,Enum.PartType.Ball) end
 		crate(camp,p+V(-16,0,-7),1.1);barrel(camp,p+V(16,0,-5))
-		plaque(camp,p+V(0,5,-18),"The survey camp","Copper tracks beneath the red mesas",P.cream,24)
 	else
 		local grotto=folder(biome,"GeodeGrotto")
 		local rock=rgb(93,135,151)
@@ -779,7 +756,6 @@ local function layeredBiomes(parent,offset,index)
 		mirror.Transparency=0.15
 		local heart=detail(cave,"GeodeHeart",V(4,8,4),offset+V(283,39.3,244),rgb(179,163,227),Enum.Material.Neon,"Wedge")
 		local light=Instance.new("PointLight");light.Color=rgb(163,207,228);light.Brightness=1.2;light.Range=39;light.Parent=heart
-		plaque(grotto,offset+V(283,36.5,175),"The geode grotto","Climb into the heart of the crystal coast",P.cream,27)
 		cascade(grotto,"UpperQuartzFalls",offset+V(243,0,201),18.3,6.3,15,rgb(100,193,201))
 		cascade(grotto,"LowerQuartzFalls",offset+V(204,0,207),6.3,0.3,18,rgb(100,193,201))
 		for _,pos in {V(293,6.3,49),V(300,6.3,75),V(302,18.3,114),V(260,18.3,135),V(301,18.3,151)} do crystalCluster(grotto,offset+pos,1.3,rgb(158,210,221)) end
@@ -903,6 +879,54 @@ local function landscapes(parent,offset,index,rng)
 	end
 end
 
+local function tradingStation(parent,offset,worldIndex)
+	local sell=folder(parent,"TradingStation")
+	local canvas=worldIndex==2 and rgb(194,151,112) or worldIndex==3 and rgb(147,174,190) or rgb(145,168,130)
+	part(sell,"SellArea",V(30,0.3,20),offset+V(-64,0.65,-118),rgb(196,174,114),Enum.Material.Slate)
+	part(sell,"TradingCounter",V(17,2.3,4),offset+V(-64,2,-124),P.wood,Enum.Material.WoodPlanks)
+	disk(sell,"TradingScalePan",offset+V(-64,3.7,-124),2.1,0.2,P.brass,Enum.Material.Metal)
+	part(sell,"ScaleBalance",V(0.4,4.0,0.4),offset+V(-64,5.3,-124),P.brass,Enum.Material.Metal)
+	part(sell,"ScaleBeam",V(7,0.3,0.3),offset+V(-64,7.2,-124),P.brass,Enum.Material.Metal)
+	crate(sell,offset+V(-84,0.3,-118),0.85)
+	StationKeeper.create(sell,CFrame.new(offset+V(-69,0.3,-128.5))*CFrame.Angles(0,math.pi,0),"Sell")
+	local tradingCraft=folder(sell,"TradingPavilion")
+	for _,x in {-80,-48} do
+		for _,z in {-136,-112} do
+			detail(tradingCraft,"TradingPavilionPost",V(0.7,10,0.7),offset+V(x,5.5,z),P.darkWood,Enum.Material.Wood)
+			detail(tradingCraft,"TradingPostFoot",V(1.5,0.6,1.5),offset+V(x,1,z),P.stone,Enum.Material.Slate)
+		end
+	end
+	for j=0,7 do
+		detail(tradingCraft,"TradingCanvasRoof",V(4.4,0.22,29),offset+V(-79.4+j*4.4,11.25+(j<4 and j or 7-j)*0.24,-124),j%2==0 and canvas or P.cream,Enum.Material.Fabric)
+	end
+	detail(tradingCraft,"TradingCounterTopTrim",V(18,0.25,4.5),offset+V(-64,3.35,-124),P.lightWood,Enum.Material.Wood)
+	for _,x in {-70,-58} do detail(tradingCraft,"TradingCabinetPanel",V(4.1,1.6,0.12),offset+V(x,2,-121.92),canvas,Enum.Material.Wood) end
+	for _,item in tradingCraft:GetChildren() do item.CanQuery=false;item:SetAttribute("ScenicDetail",true) end
+	return sell
+end
+
+local function shopDestinations(offset)
+	return {
+		Food=CFrame.new(offset+V(-64,5,-86))*CFrame.Angles(0,math.pi,0),
+		Gear=CFrame.new(offset+V(64,5,-86))*CFrame.Angles(0,math.pi,0),
+		Sell=CFrame.new(offset+V(-64,5,-113)),
+	}
+end
+
+local function worldMarket(island,offset,index,id)
+	local market=folder(island,"WorldMarket")
+	market:SetAttribute("WorldId",id)
+	local paving=index==2 and rgb(214,181,139) or rgb(172,201,202)
+	part(market,"MarketCourt",V(190,0.14,88),offset+V(0,0.42,-109),paving,Enum.Material.Cobblestone)
+	for _,side in {-1,1} do
+		part(market,"ShopApproach",V(70,0.16,16),offset+V(side*43,0.45,-88),paving,Enum.Material.Cobblestone)
+		lamp(market,offset+V(side*100,0.3,-111),rgb(255,229,179),false)
+	end
+	shop(market,offset+V(-64,0,-66),true,index)
+	shop(market,offset+V(64,0,-66),false,index)
+	tradingStation(market,offset,index)
+end
+
 local function centralHub(parent,result)
 	local hub=folder(parent,"CloverVillage")
 	part(hub,"VillagePlaza",V(200,0.2,104),V(0,0.42,-129),rgb(190,191,158),Enum.Material.Cobblestone)
@@ -917,30 +941,8 @@ local function centralHub(parent,result)
 	end
 	fountain(hub,V(0,0.55,-150),rgb(114,183,178))
 	shop(hub,V(-64,0,-66),true); shop(hub,V(64,0,-66),false)
-	local sell=folder(hub,"TradingStation")
-	local sellPad=part(sell,"SellArea",V(30,0.3,20),V(-64,0.65,-118),rgb(196,174,114),Enum.Material.Slate)
-	part(sell,"TradingCounter",V(17,2.3,4),V(-64,2,-124),P.wood,Enum.Material.WoodPlanks)
-	disk(sell,"TradingScalePan",V(-64,3.7,-124),2.1,0.2,P.brass,Enum.Material.Metal)
-	part(sell,"ScaleBalance",V(0.4,4.0,0.4),V(-64,5.3,-124),P.brass,Enum.Material.Metal)
-	part(sell,"ScaleBeam",V(7,0.3,0.3),V(-64,7.2,-124),P.brass,Enum.Material.Metal)
-	plaque(sell,V(-64,6,-130),"Trading post","Review your creature before selling",P.cream,25)
-	crate(sell,V(-84,0.3,-118),0.85)
-	StationKeeper.create(sell,CFrame.new(-69,0.3,-128.5)*CFrame.Angles(0,math.pi,0),"Sell")
-	local tradingCraft=folder(sell,"TradingPavilion")
-	for _,x in {-80,-48} do
-		for _,z in {-136,-112} do
-			detail(tradingCraft,"TradingPavilionPost",V(0.7,10,0.7),V(x,5.5,z),P.darkWood,Enum.Material.Wood)
-			detail(tradingCraft,"TradingPostFoot",V(1.5,0.6,1.5),V(x,1,z),P.stone,Enum.Material.Slate)
-		end
-	end
-	for j=0,7 do
-		detail(tradingCraft,"TradingCanvasRoof",V(4.4,0.22,29),V(-79.4+j*4.4,11.25+(j<4 and j or 7-j)*0.24,-124),j%2==0 and rgb(145,168,130) or P.cream,Enum.Material.Fabric)
-	end
-	detail(tradingCraft,"TradingCounterTopTrim",V(18,0.25,4.5),V(-64,3.35,-124),P.lightWood,Enum.Material.Wood)
-	for _,x in {-70,-58} do detail(tradingCraft,"TradingCabinetPanel",V(4.1,1.6,0.12),V(x,2,-121.92),rgb(148,165,128),Enum.Material.Wood) end
-	for _,item in tradingCraft:GetChildren() do item.CanQuery=false;item:SetAttribute("ScenicDetail",true) end
+	tradingStation(hub,V(0,0,0),1)
 	local home=part(hub,"HomePad",V(24,0.25,19),V(0,0.66,-106),rgb(164,194,143),Enum.Material.Slate)
-	plaque(hub,V(0,5.3,-112),"Brainrot Bloom","Find it · feed it · watch it flourish",P.cream,24)
 	result.spawnCFrame=CFrame.new(0,5,-91)*CFrame.Angles(0,math.pi,0)
 	result.destinations.Home=result.spawnCFrame
 	result.destinations.Food=CFrame.new(-64,5,-86)*CFrame.Angles(0,math.pi,0)
@@ -957,8 +959,6 @@ local function centralHub(parent,result)
 		lamp(green,V(side*16,0.3,-260),rgb(255,229,179),false)
 		for j=1,4 do flowerCluster(green,V(side*(28+j*16),0.4,-198),rgb(233,205,158)) end
 	end
-	part(green,"PortalDirectionPost",V(0.6,5.7,0.6),V(17,3.15,-278),P.darkWood,Enum.Material.Wood)
-	plaque(green,V(17,6.6,-278.4),"WORLD PORTAL  ↑","Through the village · follow the turquoise trail",rgb(164,237,224),26)
 	local gazebo=folder(green,"CloverGazebo")
 	local center=V(-68,0.3,-237)
 	disk(gazebo,"GazeboStoneBase",center+V(0,0.3,0),19,0.6,P.stone,Enum.Material.Cobblestone)
@@ -1076,7 +1076,7 @@ function World.build(config)
 	-- normal server scripts lack the PluginOrOpenCloud capability to set it.
 	local ocean=detail(scene,"Ocean",V(4000,3,1600),V(1040,-20,0),rgb(67,137,157),Enum.Material.Glass)
 	ocean.Transparency=0.16
-	local result={destinations={},pits={}}
+	local result={destinations={},shopDestinations={},pits={}}
 	local ids={"Meadow","Dunes","Cosmic"}
 	local grass={rgb(117,158,106),rgb(190,145,102),rgb(126,171,174)}
 	local sand={rgb(225,211,173),rgb(224,174,119),rgb(195,216,215)}
@@ -1095,14 +1095,14 @@ function World.build(config)
 		for _,side in {-1,1} do part(island,"SideLawn",V(190,6,280),offset+V(side*255,-2.7,130),grass[index],groundMaterial) end
 		local center,size=digSite(island,offset,sand[index],id)
 		result.pits[id]={center=center,size=size}
+		result.shopDestinations[id]=shopDestinations(offset)
 		result.destinations[id]=CFrame.new(offset+V(0,4,7))*CFrame.Angles(0,math.pi,0)
 		part(island,"ExpeditionWalkway",V(22,0.18,146),offset+V(0,0.44,-91),rgb(207,203,170),Enum.Material.Cobblestone)
-		local name=config.Worlds[index] and config.Worlds[index].name or id
-		plaque(island,offset+V(39,4.3,-26),name,"Choose Dig while standing in the sand",P.cream,24)
 		landscapes(island,offset,index,rng)
 		layeredBiomes(island,offset,index)
 		BiomeDetails.build(island,offset,index)
 		pathFinishes(island,offset,index)
+		if index>1 then worldMarket(island,offset,index,id) end
 		-- The travel landmark sits directly on the main avenue between the
 		-- village and pit, with a trail visible from either approach.
 		PortalFactory.create(island,offset+V(0,0,-35),id,config.Worlds[index].color)

@@ -151,12 +151,35 @@ for _,id in {"Meadow","Dunes","Cosmic"} do
 	assert(routeCount>=3,id.." must have three connected terrain climbs")
 end
 local village=scene:WaitForChild("CloverVillage")
-for station,role in {FoodMarket="Food",GearWorkshop="Gear",TradingStation="Sell"} do
-	local keeper=village:WaitForChild(station):WaitForChild("StationKeeper")
-	assert(keeper:GetAttribute("ShopRole")==role and not keeper:FindFirstChildOfClass("Humanoid"),"Every station needs its own stationary attendant")
-	for _,piece in keeper:GetDescendants() do
-		if piece:IsA("BasePart") then assert(not piece.CanCollide and not piece.CanTouch and not piece.CanQuery,"Station attendants must not block player movement") end
+local stationCount=0
+for _,id in {"Meadow","Dunes","Cosmic"} do
+	local island=scene:WaitForChild(id)
+	local market=id=="Meadow" and village or island:WaitForChild("WorldMarket")
+	local arrivals=assert(built.shopDestinations and built.shopDestinations[id],"Missing world-local station destinations")
+	for station,role in {FoodMarket="Food",GearWorkshop="Gear",TradingStation="Sell"} do
+		local building=market:WaitForChild(station)
+		local keeper=building:WaitForChild("StationKeeper")
+		assert(keeper:GetAttribute("ShopRole")==role and not keeper:FindFirstChildOfClass("Humanoid"),"Every world station needs its own stationary attendant")
+		local prompt=keeper:FindFirstChild("KeeperShopPrompt",true)
+		assert(prompt and prompt:GetAttribute("Shop")==role,"Station attendant must open the correct shop")
+		for _,piece in keeper:GetDescendants() do
+			if piece:IsA("BasePart") then assert(not piece.CanCollide and not piece.CanTouch and not piece.CanQuery,"Station attendants must not block player movement") end
+		end
+		local frame=assert(arrivals[role],"Missing local station arrival")
+		local at=frame.Position
+		assert(math.abs(at.X-built.pits[id].center.X)<120 and at.Z< -60 and at.Z> -150,"Station arrival must stay within its own world's market")
+		for _,solid in scene:GetDescendants() do
+			if solid:IsA("BasePart") and solid.CanCollide then
+				local q=solid.CFrame:PointToObjectSpace(at)
+				assert(math.abs(q.X)>=solid.Size.X/2+0.8 or math.abs(q.Y)>=solid.Size.Y/2+1.8 or math.abs(q.Z)>=solid.Size.Z/2+0.8,"Scenery blocks a shop arrival: "..id.." / "..role.." / "..solid:GetFullName())
+			end
+		end
+		stationCount+=1
 	end
+end
+assert(stationCount==9,"The scene must have Food, Gear and Sell in all three worlds")
+for _,object in scene:GetDescendants() do
+	assert(object.Name~="PhysicalSign" and object.Name~="PortalDirectionPost","Removed map signs must not survive in the baked place")
 end
 -- Include rotated boulders and wedge faces when checking the garden route.
 -- Conservative world bounds must leave a twelve-stud-wide walking corridor.
@@ -175,7 +198,7 @@ for _,boundary in {scene:WaitForChild("Meadow"):WaitForChild("NaturalBoundary"),
 	end
 end
 local mapParts=validate(environment.workspace)
-assert(mapParts<10000,"Map exceeds its bounded geometry budget")
+assert(mapParts<11000,"Map exceeds its bounded geometry budget")
 local scenicParts=0
 for _,piece in scene:GetDescendants() do
 	if piece:GetAttribute("ScenicDetail")==true then

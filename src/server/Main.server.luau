@@ -396,18 +396,42 @@ local function pitForPosition(position)
 end
 
 local function teleport(player, profile, destination)
-	local frame = destination == "Garden" and gardens:getSpawnCFrame(player) or type(destination) == "string" and map.destinations[destination]
-	if not frame then return false, "That destination does not exist." end
-	local world = lookup(Config.Worlds, destination)
-	if world and not owned(profile.data.unlockedWorlds, world.id) then return false, "Unlock this world at a World portal first." end
+	if type(destination) ~= "string" then return false, "That destination does not exist." end
 	local root = rootFor(player)
 	if not root then return false, "Wait for your character to spawn." end
+	local world = lookup(Config.Worlds, destination)
+	local targetWorld = world and world.id or Config.Worlds[1].id
+	local frame
+	if destination == "Food" or destination == "Gear" or destination == "Sell" then
+		-- Resolve shops on the server from the island the character occupies.
+		-- The profile covers brief out-of-bounds falls; garden visits belong to Meadow.
+		targetWorld = profile.world
+		for _, candidate in Config.Worlds do
+			local pit = map.pits[candidate.id]
+			if pit and math.abs(root.Position.X - pit.center.X) <= 350 and math.abs(root.Position.Z) <= 330 then
+				targetWorld = candidate.id
+				break
+			end
+		end
+		local meadow = map.pits[Config.Worlds[1].id]
+		if meadow and math.abs(root.Position.X-meadow.center.X) <= 350 and root.Position.Z < -330 and root.Position.Z >= -850 then
+			targetWorld = Config.Worlds[1].id
+		end
+		local stations = map.shopDestinations and map.shopDestinations[targetWorld]
+		frame = stations and stations[destination]
+	elseif destination == "Garden" then
+		frame = gardens:getSpawnCFrame(player)
+	else
+		frame = map.destinations[destination]
+	end
+	if not frame then return false, "That destination does not exist." end
+	if not owned(profile.data.unlockedWorlds, targetWorld) then return false, "Unlock this world at a World portal first." end
 	profile.scan = nil
 	profile.dig = nil
 	player.Character:PivotTo(frame)
 	root.AssemblyLinearVelocity = Vector3.zero
 	root.AssemblyAngularVelocity = Vector3.zero
-	profile.world = world and world.id or Config.Worlds[1].id
+	profile.world = targetWorld
 	return true
 end
 
