@@ -34,6 +34,12 @@ For tuning, use `src/shared/Config.luau`; keep game rewards and purchases on the
 
 ## Visual update checks
 
+- Inspect the refined village from walking height: roof tiles, awnings, shop signs, shopkeepers, fountain stonework, and the trading pavilion should align cleanly. Check nighttime readability with the updated atmosphere and mild bloom.
+- Follow the meadow brook past the highlands toward the pond. Check banks, crossing pavers, reeds, and waterlilies for gaps or floating pieces. Visit the mill's kitchen garden and orchard honey boxes.
+- Inspect oasis rugs and pottery, fossil spirals, cactus ribs, and the canyon survey camp. In the cove, inspect shells, tidepools, pier ropes, cave veins, and hanging quartz. Fine details should meet their supporting surfaces without flickering.
+- Visit each personal garden and inspect the shed roof, window boxes, pergola, and potting tools. Walk through the gate, between all six display pads, and back across the neighborhood bridge.
+- On a lower-end device, check frame rate while turning toward the detailed village and crystal cove. The automated geometry budget bounds scenery size; it does not measure Roblox engine performance.
+
 - Verify the 700 × 660-stud islands and 320 × 280 sand pits have solid ground, clear digging areas, and working world teleports. Check the pond, outer trails, ruins, and crystals without getting stuck.
 - Check the physical shop/world signs are readable nearby and no floating destination panels cover the scenery.
 - Inspect all 28 creatures in the collection and as companions. Check fine details remain attached when models grow, and each preview frames the whole creature.

@@ -175,7 +175,27 @@ for _,boundary in {scene:WaitForChild("Meadow"):WaitForChild("NaturalBoundary"),
 	end
 end
 local mapParts=validate(environment.workspace)
-assert(mapParts<7000,"Map exceeds its bounded geometry budget")
+assert(mapParts<10000,"Map exceeds its bounded geometry budget")
+local scenicParts=0
+for _,piece in scene:GetDescendants() do
+	if piece:GetAttribute("ScenicDetail")==true then
+		scenicParts+=1
+		assert(piece:IsA("BasePart") and piece.Anchored and not piece.CanCollide and not piece.CanTouch and not piece.CanQuery,"Map finishing must not interfere with movement or interactions")
+	end
+end
+assert(scenicParts>1500,"Authored scenery detail was not built")
+for _,id in {"Meadow","Dunes","Cosmic"} do
+	local island=scene:WaitForChild(id)
+	assert(island:FindFirstChild("BiomeDetails") and island:FindFirstChild("PathFinishes"),"Missing world scenery pass")
+	local offset=built.pits[id].center.X
+	-- Cosmetic ripples may touch the sand; no other new detail should clutter it.
+	for _,p in island:GetDescendants() do
+		if p:GetAttribute("ScenicDetail")==true and p.Name~="SandRippleCrest" then
+			local at=p.CFrame.Position
+			assert(math.abs(at.X-offset)-p.Size.X/2>160 or at.Z-p.Size.Z/2>270 or at.Z+p.Size.Z/2< -10,"New scenery intrudes into the excavation basin: "..p:GetFullName())
+		end
+	end
+end
 local sculptureCount=0
 for _,spec in config.Creatures do
 	for _,variant in config.Variants do
@@ -250,7 +270,7 @@ local function parts(model)
 	end
 	return result
 end
-local geometry={creatures={},variants={},worlds={},details={},detectors={}}
+local geometry={creatures={},variants={},worlds={},details={},scenicViews={},detectors={}}
 for _,spec in config.Creatures do
 	local model=factory.create(spec,1)
 	table.insert(geometry.creatures,{id=spec.id,name=spec.name,rarity=spec.rarity,parts=parts(model)})
@@ -284,10 +304,29 @@ for index,id in {"Meadow","Dunes","Cosmic"} do
 	end
 	table.insert(geometry.worlds,{id=id,name=config.Worlds[index].name,parts=content})
 	local biome=island:FindFirstChild("LayeredBiome")
+	local scenic=island:FindFirstChild("BiomeDetails")
 	if biome then
 		local focus=id=="Dunes" and biome:FindFirstChild("SandstoneMesas") or biome
-		table.insert(geometry.details,{id=id,name=config.Worlds[index].name.." / terrain detail",parts=parts(focus or biome)})
+		local terrainParts=parts(focus or biome)
+		for _,p in parts(scenic) do
+			local x=p.cf[1]-(index-1)*1040
+			if p.cf[3]>0 and ((id=="Dunes" and x< -190) or (id~="Dunes" and x>180)) then table.insert(terrainParts,p) end
+		end
+		table.insert(geometry.details,{id=id,name=config.Worlds[index].name.." / terrain detail",parts=terrainParts})
 	end
+	local closeup={}
+	local function include(object)
+		for _,p in parts(assert(object,"Missing authored scenery view")) do table.insert(closeup,p) end
+	end
+	if id=="Meadow" then
+		include(island:FindFirstChild("CloverWindmill",true));include(scenic:FindFirstChild("MillKitchenGarden"))
+		table.insert(closeup,{name="PreviewGround",shape="Block",size={100,0.1,110},cf={-256,0.25,-202,1,0,0,0,1,0,0,0,1},color={117/255,158/255,106/255},alpha=1,material="Grass"})
+	elseif id=="Dunes" then
+		include(biome:FindFirstChild("CanyonMiningCamp"));include(scenic:FindFirstChild("SurveyorsWorkplace"))
+	else
+		include(island:FindFirstChild("MoonbloomTidalCove",true));include(scenic:FindFirstChild("PearlescentShore"));include(scenic:FindFirstChild("BleachedPierDetails"))
+	end
+	table.insert(geometry.scenicViews,{id=id,name=id=="Meadow" and "Clover mill garden" or id=="Dunes" and "Canyon survey camp" or "Moonbloom crystal shore",parts=closeup})
 end
 local neighborhood=environment.workspace:WaitForChild("BrainrotWorld"):FindFirstChild("GardenNeighborhood")
 if neighborhood then geometry.gardens={name="Personal Gardens",parts=parts(neighborhood)} end

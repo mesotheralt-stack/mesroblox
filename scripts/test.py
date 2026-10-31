@@ -36,7 +36,7 @@ def main() -> int:
     garden_module = '\nActualGardenService = (function()\n' + (ROOT / 'src/server/GardenService.luau').read_text() + '\nend)();\n'
     world_modules = ''.join('\nActual' + name + ' = (function()\n'
         + (ROOT / f'src/server/{name}.luau').read_text() + '\nend)();\n'
-        for name in ('PortalFactory', 'StationKeeper'))
+        for name in ('PortalFactory', 'StationKeeper', 'BiomeDetails'))
     harness = (ROOT / 'tests/server_harness.luau').read_text()
     code = color_shim + 'local Config = (function()\n' + config + '\nend)()\n' + tests
     with tempfile.TemporaryDirectory(prefix='brainrot-tests-') as temporary:

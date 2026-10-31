@@ -72,6 +72,80 @@ local function fence(parent,position,across,width)
 	end
 end
 
+-- Small crafted details stay out of the garden's ownership/display machinery.
+-- They are inert so visiting another plot never catches a character on a prop.
+local function scenic(parent,name,size,position,tint,material,shape,rotation)
+	local object=detail(parent,name,size,position,tint,shape,rotation)
+	object.Material=material or Enum.Material.SmoothPlastic
+	object:SetAttribute("ScenicDetail",true)
+	return object
+end
+
+local function pottedPlant(parent,position,tint,seed)
+	local clay=rgb(182,123,91):Lerp(CREAM,(seed%3)*0.055)
+	scenic(parent,"TerracottaPlanter",V(2.3,2.1,2.3),position+V(0,1.05,0),clay,Enum.Material.SmoothPlastic,Enum.PartType.Ball)
+	scenic(parent,"PlanterRolledRim",V(0.3,2.45,2.45),position+V(0,1.94,0),clay:Lerp(CREAM,0.16),Enum.Material.SmoothPlastic,Enum.PartType.Cylinder,CFrame.Angles(0,0,math.pi/2))
+	scenic(parent,"PlanterSoil",V(0.1,1.96,1.96),position+V(0,2.12,0),rgb(91,76,55),Enum.Material.Ground,Enum.PartType.Cylinder,CFrame.Angles(0,0,math.pi/2))
+	for _,side in {-1,1} do
+		scenic(parent,"PlanterFoliage",V(1.45,2.25,0.65),position+V(side*0.45,2.9,0),LEAF:Lerp(DARK,0.18+(seed%2)*0.08),Enum.Material.Grass,Enum.PartType.Ball,CFrame.Angles(0,seed*0.6,side*-0.42))
+	end
+	scenic(parent,"PlanterBloom",V(1.4,0.65,1.4),position+V(0,3.9,0),tint:Lerp(CREAM,0.25),nil,Enum.PartType.Ball)
+end
+
+local function gardenCraft(parent,center,tint,id)
+	local art=folder(parent,"GardenCraftsmanship")
+	local roof=DARK:Lerp(tint,0.13)
+	for _,side in {-1,1} do
+		local roll=side*-0.29
+		scenic(art,"ShedPitchedRoof",V(14.2,0.55,19),center+V(-34+side*6.5,10.7,-42),roof,Enum.Material.WoodPlanks,nil,CFrame.Angles(0,0,roll))
+		scenic(art,"ShedGableFascia",V(14.7,0.48,0.48),center+V(-34+side*6.5,10.8,-51.65),CREAM,Enum.Material.Wood,nil,CFrame.Angles(0,0,roll))
+		for j=1,3 do
+			local x=side*(j*3.4-1.0)
+			scenic(art,"ShedRoofShingleCourse",V(0.13,0.15,18.7),center+V(-34+x,13.02-math.abs(x)*math.tan(0.29),-42),roof:Lerp(CREAM,0.16),Enum.Material.WoodPlanks)
+		end
+	end
+	scenic(art,"ShedRidgeCap",V(0.65,0.55,19.8),center+V(-34,12.8,-42),CREAM,Enum.Material.Wood)
+	for _,x in {-45.7,-22.3} do for _,z in {-49.4,-34.6} do
+		scenic(art,"ShedCornerTimber",V(0.5,8.15,0.5),center+V(x,4.75,z),WOOD,Enum.Material.Wood)
+	end end
+	for _,x in {-28.3,-23.7} do scenic(art,"ShedWindowUpright",V(0.26,3.6,0.34),center+V(x,5.5,-34.0),CREAM,Enum.Material.Wood) end
+	for _,y in {3.8,7.2} do scenic(art,"ShedWindowLintel",V(4.85,0.26,0.34),center+V(-26,y,-34.0),CREAM,Enum.Material.Wood) end
+	scenic(art,"ShedWindowMullion",V(0.15,3.2,0.38),center+V(-26,5.5,-33.95),WOOD,Enum.Material.Wood)
+	scenic(art,"ShedWindowTransom",V(4.3,0.15,0.38),center+V(-26,5.5,-33.95),WOOD,Enum.Material.Wood)
+	scenic(art,"ShedWindowBox",V(5.4,0.95,1.7),center+V(-26,3.3,-33.6),WOOD,Enum.Material.WoodPlanks)
+	scenic(art,"WindowBoxSoil",V(4.8,0.12,1.2),center+V(-26,3.81,-33.6),rgb(87,76,56),Enum.Material.Ground)
+	for j=-1,1 do
+		scenic(art,"WindowBoxLeaves",V(1.6,0.8,1.3),center+V(-26+j*1.5,4.1,-33.6),LEAF:Lerp(DARK,0.12),Enum.Material.Grass,Enum.PartType.Ball)
+		scenic(art,"WindowBoxBlossom",V(0.95,0.4,0.95),center+V(-26+j*1.5,4.56,-33.6),tint:Lerp(CREAM,0.3),nil,Enum.PartType.Ball)
+	end
+	scenic(art,"ShedDoorHandle",V(0.3,0.3,0.25),center+V(-32,4,-34.12),rgb(192,159,94),Enum.Material.Metal,Enum.PartType.Ball)
+	for _,y in {2.2,6.1} do scenic(art,"ShedDoorHinge",V(0.75,0.2,0.15),center+V(-36.3,y,-34.15),DARK,Enum.Material.Metal) end
+	scenic(art,"ShedSkirting",V(24,0.45,0.35),center+V(-34,1.05,-34.25),CREAM,Enum.Material.Wood)
+	for j,position in {V(-48,0.72,-28),V(-18,0.72,-45),V(46,0.72,-26)} do pottedPlant(art,center+position,tint,j+id) end
+	for _,side in {-1,1} do
+		local shrub=center+V(side*47,0,4)
+		scenic(art,"ClippedHydrangea",V(6.2,2.7,5.4),shrub+V(0,1.9,0),LEAF:Lerp(DARK,0.3),Enum.Material.Grass,Enum.PartType.Ball)
+		scenic(art,"HydrangeaUpperLeaves",V(4.7,2.6,4.3),shrub+V(side*0.8,2.8,0),LEAF:Lerp(DARK,0.18),Enum.Material.Grass,Enum.PartType.Ball)
+		for _,bloom in {-1,1} do scenic(art,"HydrangeaBlossom",V(1.7,0.7,1.6),shrub+V(bloom*1.5,3.7,0.5),tint:Lerp(CREAM,0.4),nil,Enum.PartType.Ball) end
+	end
+	local can=center+V(-37,3.05,-27)
+	scenic(art,"WateringCanBody",V(1.7,1.8,1.3),can+V(0,0.8,0),tint:Lerp(DARK,0.22),Enum.Material.Metal,Enum.PartType.Ball)
+	scenic(art,"WateringCanSpout",V(0.35,1.8,0.35),can+V(1.05,1.1,0),tint:Lerp(DARK,0.1),Enum.Material.Metal,nil,CFrame.Angles(0,0,-0.8))
+	for _,side in {-1,1} do scenic(art,"WateringCanHandle",V(0.16,1.5,0.16),can+V(side*0.65,1.8,0),DARK,Enum.Material.Metal) end
+	scenic(art,"WateringCanHandleTop",V(1.4,0.16,0.16),can+V(0,2.5,0),DARK,Enum.Material.Metal)
+	for j=1,2 do scenic(art,"SeedPacket",V(1.1,0.08,1.4),center+V(-32+j*1.35,3.01,-27),j==1 and CREAM or tint,Enum.Material.Fabric,nil,CFrame.Angles(0,j*0.22,0)) end
+	for j=1,9 do scenic(art,"GardenPavingJoint",V(12.4,0.022,0.13),center+V(0,0.825,-43+j*9.6),STONE:Lerp(DARK,0.24),Enum.Material.Slate) end
+	-- A rose pergola frames the existing bird bath in the back corner, well
+	-- away from the six creature display pads and the entrance/spawn corridor.
+	for _,x in {24,48} do for _,z in {-54,-30} do
+		scenic(art,"RosePergolaPost",V(0.65,11.5,0.65),center+V(x,6.4,z),WOOD,Enum.Material.Wood)
+		for j=1,2 do scenic(art,"ClimbingRoseLeaves",V(2.4,2.3,1.2),center+V(x,3+j*3.4,z),LEAF:Lerp(DARK,0.17),Enum.Material.Grass,Enum.PartType.Ball,CFrame.Angles(0,j*0.7,0.25)) end
+	end end
+	for _,x in {24,48} do scenic(art,"ClimbingRoseBloom",V(1.4,0.6,1.4),center+V(x,8.2,-29.35),tint:Lerp(CREAM,0.3),nil,Enum.PartType.Ball) end
+	for _,z in {-54,-30} do scenic(art,"PergolaCrossbeam",V(27,0.7,0.8),center+V(36,12.3,z),CREAM,Enum.Material.Wood) end
+	for j=1,5 do scenic(art,"PergolaRafter",V(0.65,0.6,28),center+V(23+j*4.3,12.8,-42),WOOD,Enum.Material.Wood) end
+end
+
 function GardenService.build(parent,config)
 	local neighborhood=folder(parent,"GardenNeighborhood")
 	part(neighborhood,"GardenIslandStone",V(466,13,404),V(0,-8,-585),rgb(128,140,115),Enum.Material.Slate)
@@ -86,6 +160,10 @@ function GardenService.build(parent,config)
 		end
 	end
 	for _,x in {-9,9} do part(bridge,"BridgeHandrail",V(0.4,0.4,61),V(x,4.5,-358),WOOD,Enum.Material.Wood) end
+	for _,x in {-9,9} do
+		for j=0,6 do scenic(bridge,"BridgeRopeLashing",V(0.85,0.35,0.85),V(x,3.7,-329-j*9.6),CREAM,Enum.Material.Fabric) end
+		for _,z in {-331,-387} do scenic(bridge,"BridgeStoneAbutment",V(4,2.2,5),V(x<0 and -11.5 or 11.5,0.3,z),STONE,Enum.Material.Slate,Enum.PartType.Ball) end
+	end
 	for _,z in {-425,-590,-750} do
 		part(neighborhood,"GardenCrossStreet",V(430,0.2,12),V(0,0.45,z),STONE,Enum.Material.Cobblestone)
 	end
@@ -119,7 +197,6 @@ function GardenService.build(parent,config)
 		lamp(model,center+V(46,0.6,48))
 		-- A small potting shed, water feature and generous flower beds.
 		part(model,"PottingShed",V(23,8,15),center+V(-34,4.65,-42),tints[id],Enum.Material.WoodPlanks)
-		part(model,"ShedRoof",V(27,0.8,19),center+V(-34,9.1,-42),DARK,Enum.Material.WoodPlanks)
 		part(model,"ShedDoor",V(6.0,6.4,0.25),center+V(-34,3.8,-34.35),DARK,Enum.Material.Wood)
 		detail(model,"ShedWindow",V(4,3,0.2),center+V(-26,5.5,-34.2),CREAM)
 		part(model,"PottingTable",V(13,0.5,5),center+V(-34,2.7,-27),WOOD,Enum.Material.Wood)
@@ -131,6 +208,7 @@ function GardenService.build(parent,config)
 			part(model,"RaisedFlowerBed",V(12,0.7,9),center+V(x,1.0,39),WOOD,Enum.Material.WoodPlanks)
 			flowers(model,center+V(x,1.35,39),tints[id]:Lerp(CREAM,0.18))
 		end
+		gardenCraft(model,center,tints[id],id)
 		local slots,slotSigns={},{}
 		for slot=1,6 do
 			local x=((slot-1)%3-1)*29

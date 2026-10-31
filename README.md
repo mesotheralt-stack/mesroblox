@@ -60,6 +60,10 @@ The index lets you inspect each finish and remembers discoveries after selling. 
 
 ## World portals
 
+The scenery has an additional handcrafted detail pass. Clover Commons has orchard apples and honey boxes, fern-lined banks, a winding brook, waterlilies, and the mill's kitchen garden. Sunset Sands has woven oasis rugs, glazed pottery, ribbed cacti, ammonite fossils, tent rigging, and a surveyor's worktable. Moonbloom Cove has pearlescent shells, coral-like mineral gardens, tidepools, cavern veins, hanging quartz, and rope-wrapped pier posts.
+
+The village includes tiled roofs, striped awnings, timber braces, window boxes, carved fountain masonry, a covered trading pavilion, and planted plaza edges. The six personal gardens have pitched sheds, framed windows, potting tools, terracotta planters, hydrangeas, and climbing-rose pergolas. Weathered cliff strata, finished path edges, fine sand ripples, atmospheric haze, and restrained color grading tie the map together. Decorative additions do not block movement or proximity interactions; the excavation areas and existing stair routes remain open.
+
 Every world has a large circular **World portal** on the main avenue between the village and sand pit. Follow the turquoise ground arrows; signs label the gate from both sides, and the garden approach points toward it. Three spiral arms rotate inside the stone ring, sparks orbit in the opposite direction, and the glow pulses gently. Press **F** or tap the prompt to choose a world. Unlocked worlds offer travel; locked worlds show their cost and detector requirement.
 
 Portal motion runs locally at up to 30 updates per second and pauses beyond 350 studs from the camera. The static gate and spiral remain visible in Studio’s edit view; press Play for animation and travel.
@@ -110,6 +114,7 @@ Cloud tasks already have an isolated checkout; use this checkout without creatin
 | `src/shared/Config.luau` | Rarities, creatures, finish odds/multipliers, foods, prices, XP, income, worlds, detector tuning |
 | `src/shared/CreatureFactory.luau` | Original procedural creature models |
 | `src/server/World.luau` | Themed terrain, shops, sand pits, world portals, lighting cycle |
+| `src/server/BiomeDetails.luau` | Authored orchard, brook, oasis, survey camp, tidepool and mineral scenery |
 | `src/server/PortalFactory.luau` | Circular travel gates and animated effect metadata |
 | `src/server/StationKeeper.luau` | Chef, mechanic, and trader characters with shop prompts |
 | `src/client/PortalEffects.client.luau` | Portal swirls, orbiting sparks, pulse, and distance culling |
@@ -126,6 +131,8 @@ Cloud tasks already have an isolated checkout; use this checkout without creatin
 [Creature sculpture contact sheet](docs/creature-geometry-preview.png) · [Collectible finishes](docs/variant-geometry-preview.png) · [Detector models](docs/detector-geometry-preview.png) · [Six gardens](docs/garden-geometry-preview.png) · [Village detail](docs/village-geometry-preview.png) · [Clover Commons](docs/meadow-geometry-preview.png) · [Sunset Sands](docs/dunes-geometry-preview.png) · [Moonbloom Cove](docs/cove-geometry-preview.png)
 
 [Meadow terrain](docs/meadow-terrain-preview.png) · [Canyon terrain](docs/canyon-terrain-preview.png) · [Crystal grotto](docs/grotto-terrain-preview.png)
+
+[Mill kitchen garden](docs/meadow-scenery-preview.png) · [Canyon survey camp](docs/canyon-scenery-preview.png) · [Crystal shore](docs/cove-scenery-preview.png)
 
 These previews are drawn from the generated Parts’ actual positions and rotations. They are **offline geometry renders**, not Roblox Studio screenshots: materials, transparency, fonts, lighting, and vegetation scatter may differ in the engine.
 

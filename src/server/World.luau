@@ -5,6 +5,7 @@ local Workspace = game:GetService("Workspace")
 local GardenService = require(script.Parent:WaitForChild("GardenService"))
 local PortalFactory = require(script.Parent:WaitForChild("PortalFactory"))
 local StationKeeper = require(script.Parent:WaitForChild("StationKeeper"))
+local BiomeDetails = require(script.Parent:WaitForChild("BiomeDetails"))
 
 local World = {}
 local cycleStarted = false
@@ -172,6 +173,15 @@ local function cliffSegment(parent,position,width,depth,height,index,seed,yaw,in
 	detail(parent,"FracturedMineralPlate",V(width*0.72,height*0.37,depth*0.63),position+inward*(depth*0.73)+along*(width*0.12)+V(0,height*0.31,0),tint:Lerp(P.cream,index==2 and 0.20 or 0.12),index==2 and Enum.Material.Sandstone or Enum.Material.Slate,"Wedge",CFrame.Angles(0,yaw+(seed%2)*math.pi,0)*CFrame.Angles(0.1,0,(seed%2==0 and -0.1 or 0.15)))
 	local toe=part(parent,"WeatheredCliffFoot",V(width*0.64,12+(seed%3)*2,depth*1.12),position+inward*(depth*0.46)+V(0,2,0),tint:Lerp(P.darkStone,0.12),Enum.Material.Rock,Enum.PartType.Ball,CFrame.Angles(0,yaw+seed*0.13,0))
 	toe.CanTouch=false
+	-- Sediment bands follow the buttress's actual ellipsoid cross-section.
+	-- A tiny exposed rim reads as geology instead of floating straight strips.
+	for seam=1,2 do
+		local level=seam==1 and 0.27 or 0.57
+		local y=(height*level-height*0.40)/(height*(1.35+(seed%3)*0.04)/2)
+		local factor=math.sqrt(1-y*y)
+		local band=detail(parent,"WeatheredStrataBand",V(width*1.5*factor+0.35,0.9+(seed%2)*0.25,depth*2*factor+0.35),position+inward*(depth*0.08)+V(0,height*level,0),tint:Lerp(index==3 and rgb(157,211,211) or P.cream,index==2 and 0.25 or 0.16),index==2 and Enum.Material.Sandstone or Enum.Material.Slate,Enum.PartType.Ball,CFrame.Angles(0,yaw,0))
+		band.CanQuery=false;band:SetAttribute("ScenicDetail",true)
+	end
 	if index==1 and seed%3==0 then
 		detail(parent,"ClingingCliffMoss",V(width*0.46,7,depth*0.8),position+inward*(depth*0.64)+V(0,height*0.68,0),rgb(113,143,99),Enum.Material.Grass,Enum.PartType.Ball,CFrame.Angles(0,yaw,0.14))
 	elseif index==3 and seed%2==0 then
@@ -244,6 +254,10 @@ local function digSite(parent,offset,tint,id)
 		for col=1,5 do
 			local ripple=detail(dig,"WindBrushedSand",V(38,0.025,15),offset+V(-145+col*49,-1.085,17+row*50),tint:Lerp(P.cream,(row+col)%2==0 and 0.08 or 0.025),Enum.Material.Sand,Enum.PartType.Ball,CFrame.Angles(0,0.08*(col%2),0))
 			ripple.CanQuery=false
+			for crest=1,3 do
+				local line=detail(dig,"SandRippleCrest",V(11+(crest%2)*4,0.025,0.12),offset+V(-145+col*49+(crest%2)*2,-1.06,17+row*50+(crest-2)*2.7),tint:Lerp(P.cream,0.22),Enum.Material.Sand,nil,CFrame.Angles(0,0.12*(col%3-1),0))
+				line.CanQuery=false;line:SetAttribute("ScenicDetail",true)
+			end
 		end
 	end
 	for _,x in {-179,179} do
@@ -278,6 +292,25 @@ local function fountain(parent,position,tint)
 		jet.Transparency=0.25
 	end
 	detail(court,"FountainFinial",V(2.0,2.8,2.0),position+V(0,7.1,0),tint,Enum.Material.Glass,Enum.PartType.Ball)
+	local carved=folder(court,"CarvedFountainStonework")
+	for j=1,20 do
+		local a=j*math.pi/10
+		detail(carved,"HandCutBasinRim",V(3.1,0.5,1.15),position+V(math.sin(a)*10.1,2.23,math.cos(a)*10.1),P.cream:Lerp(P.stone,(j%3)*0.035),Enum.Material.Marble,nil,CFrame.Angles(0,a,0))
+	end
+	for j=1,12 do
+		local a=j*math.pi/6
+		detail(carved,"FountainMosaicBorder",V(5.4,0.07,1.2),position+V(math.sin(a)*14.6,0.31,math.cos(a)*14.6),j%2==0 and P.cream or P.darkStone,Enum.Material.Slate,nil,CFrame.Angles(0,a,0))
+	end
+	for j=1,6 do
+		local a=j*math.pi/3
+		detail(carved,"PedestalFluting",V(0.22,2.6,0.22),position+V(math.sin(a)*2.64,3.5,math.cos(a)*2.64),P.stone,Enum.Material.Marble)
+	end
+	for j=1,8 do
+		local a=j*math.pi/4
+		local spill=detail(carved,"UpperBowlOverflow",V(0.18,2.6,0.3),position+V(math.sin(a)*4.25,4.05,math.cos(a)*4.25),tint:Lerp(P.cream,0.3),Enum.Material.Glass)
+		spill.Transparency=0.34;spill.CastShadow=false
+	end
+	for _,item in carved:GetChildren() do item.CanQuery=false;item:SetAttribute("ScenicDetail",true) end
 end
 
 local function shop(parent,position,food)
@@ -319,6 +352,37 @@ local function shop(parent,position,food)
 	plaque(building,position+V(0,10,-13.3),food and "Food market" or "Gear workshop",food and "Fresh snacks · five-minute rotation" or "Detectors · growth & income boosts",P.cream,27)
 	StationKeeper.create(building,CFrame.new(position+V(0,1.15,-1.6)),food and "Food" or "Gear")
 	crate(building,position+V(-23,0.3,3),0.9); barrel(building,position+V(23,0.3,7))
+	local craft=folder(building,"MarketCraftsmanship")
+	-- Shingles sit on the authored slopes, keeping fine roof seams above the
+	-- original skin rather than introducing coplanar patterned surfaces.
+	for _,side in {-1,1} do
+		local angle=side*-0.31
+		for row=-1,1 do for column=0,5 do
+			local x=row*7.45
+			local at=position+V(side*10+x*math.cos(angle)-0.53*math.sin(angle),14+x*math.sin(angle)+0.53*math.cos(angle),-12.5+column*5)
+			detail(craft,"GlazedRoofShingle",V(7.26,0.14,4.82),at,color:Lerp(P.cream,0.035+((row+column)%3)*0.035),Enum.Material.Slate,nil,CFrame.Angles(0,0,angle))
+		end end
+		for _,z in {-10,10} do
+			detail(craft,"TimberKneeBrace",V(3.8,0.5,0.6),position+V(side*15.7,10.8,z),P.darkWood,Enum.Material.Wood,nil,CFrame.Angles(0,0,side*0.64))
+		end
+		detail(craft,"PlasterPlinthCourse",V(0.9,0.38,23),position+V(side*17.2,1.52,0),P.cream,Enum.Material.Marble)
+	end
+	for j=0,6 do
+		local stripe=j%2==0 and color:Lerp(P.cream,0.18) or P.cream
+		detail(craft,"StripedCanvasAwning",V(4.16,0.16,7.4),position+V(-12.6+j*4.2,8.4,-16.9),stripe,Enum.Material.Fabric,nil,CFrame.Angles(-0.12,0,0))
+		detail(craft,"ScallopedAwningValance",V(4.16,0.85,0.16),position+V(-12.6+j*4.2,7.55,-20.58),stripe,Enum.Material.Fabric)
+	end
+	for _,x in {-11,11} do
+		detail(craft,"WindowFlowerBox",V(7.5,0.9,1.6),position+V(x,4.05,9.35),P.lightWood,Enum.Material.WoodPlanks)
+		for j=-1,1 do
+			detail(craft,"WindowBoxFoliage",V(2.3,1.1,1.8),position+V(x+j*2,4.65,9.2),rgb(109,154,99),Enum.Material.Grass,Enum.PartType.Ball)
+			detail(craft,"WindowBoxBlossom",V(0.65,0.45,0.65),position+V(x+j*2,5.3,9.0),food and rgb(235,170,145) or rgb(226,209,151),Enum.Material.SmoothPlastic,Enum.PartType.Ball)
+		end
+	end
+	for _,x in {-10,10} do
+		detail(craft,"CabinetBrassHandle",V(1.3,0.16,0.18),position+V(x,3.3,-8.48),P.brass,Enum.Material.Metal)
+	end
+	for _,item in craft:GetChildren() do item.CanQuery=false;item:SetAttribute("ScenicDetail",true) end
 end
 
 local function pond(parent,position,palm)
@@ -372,6 +436,18 @@ local function windmill(parent,position)
 	end
 	for j=1,3 do crate(landmark,position+V(13+j*3.1,0.3,-3+(j%2)*5),0.8) end
 	plaque(landmark,position+V(0,4.2,13),"Clover flour mill","Home-grown snacks for hungry discoveries",P.cream,22)
+	local masonry=folder(landmark,"MillMasonry")
+	for row=1,6 do
+		local y=2.7+(row-1)*4.4
+		local tier=math.clamp(math.floor((y-0.4)/7)+1,1,4)
+		local radius=8.3-tier*0.7+0.06
+		for j=1,6 do
+			local a=j*math.pi/3+(row%2)*math.pi/6
+			detail(masonry,"WeatheredMillStone",V(2.5,0.46,0.17),position+V(math.sin(a)*radius,y,math.cos(a)*radius),P.stone:Lerp(P.cream,(j%3)*0.1),Enum.Material.Slate,nil,CFrame.Angles(0,a,0))
+		end
+	end
+	for _,x in {-1.4,1.4} do detail(masonry,"MillDoorIronHinge",V(0.55,0.22,0.16),position+V(x,4.1,8.12),P.brass,Enum.Material.Metal) end
+	for _,item in masonry:GetChildren() do item.CanQuery=false;item:SetAttribute("ScenicDetail",true) end
 end
 
 local function sunRuins(parent,position)
@@ -400,6 +476,21 @@ local function sunRuins(parent,position)
 		part(ruins,"BrokenColumn",V(5,4+j,5),position+V(x,3+j/2,-18+j*7),tint,Enum.Material.Sandstone,nil,CFrame.Angles(0,j,0.12*(j%2)))
 	end
 	plaque(ruins,position+V(0,5,-22),"The sun archive","An old survey station, reclaimed by sand",P.cream,24)
+	local carvings=folder(ruins,"ArchiveStoneCarvings")
+	for j=-3,3 do
+		local a=j*0.22
+		for _,side in {-1,1} do
+			detail(carvings,"ArchiveGlyph",V(0.16,1.7,0.14),position+V(math.sin(a)*26+side*0.6,21+math.cos(a)*9,-3.56),rgb(151,113,78),Enum.Material.Sandstone,nil,CFrame.Angles(0,0,side*0.35-a))
+		end
+	end
+	for _,side in {-1,1} do
+		for _,h in {3.0,19.8} do detail(carvings,"ColumnReliefBand",V(6.5,0.5,6.5),position+V(side*17,h,0),tint:Lerp(P.cream,0.18),Enum.Material.Sandstone) end
+	end
+	for j=1,8 do
+		local a=j*math.pi/4
+		detail(carvings,"WeatheredCourtyardMosaic",V(3.6,0.055,1.1),position+V(math.sin(a)*11,2.14,10+math.cos(a)*11),j%2==0 and P.brass or rgb(157,113,78),Enum.Material.Sandstone,nil,CFrame.Angles(0,a,0))
+	end
+	for _,item in carvings:GetChildren() do item.CanQuery=false;item:SetAttribute("ScenicDetail",true) end
 end
 
 local function crystalCluster(parent,position,scale,tint)
@@ -415,7 +506,9 @@ local function crystalCluster(parent,position,scale,tint)
 		-- Paired sloping planes make a clean mineral termination, rather than a
 		-- blunt neon cube. Opaque faces retain color against the pale ground.
 		for _,side in {-1,1} do
-			detail(cluster,"CutCrystalTip",V(w/2,w*1.05,w),pos+V(math.cos(a)*side*w/4,h/2+w*0.52,-math.sin(a)*side*w/4),tint:Lerp(P.cream,side==1 and 0.2 or 0.05),Enum.Material.SmoothPlastic,"Wedge",CFrame.Angles(0,a+side*math.pi/2,0))
+			local tipHeight=w*0.95
+			local tip=detail(cluster,"CutCrystalTip",V(w,tipHeight,w/2),pos+V(math.sin(a)*side*w/4,h/2+tipHeight/2,math.cos(a)*side*w/4),tint:Lerp(P.cream,side==1 and 0.2 or 0.05),Enum.Material.SmoothPlastic,"Wedge",CFrame.Angles(0,a+(side<0 and 0 or math.pi),0))
+			tip.CanQuery=false;tip:SetAttribute("ScenicDetail",true)
 		end
 		detail(cluster,"CrystalFaceReflection",V(w*0.12,h*0.76,0.035),pos+V(math.sin(a)*(w/2+0.025),h*0.03,math.cos(a)*(w/2+0.025)),tint:Lerp(P.cream,0.65),Enum.Material.SmoothPlastic,nil,CFrame.Angles(0,a,0))
 	end
@@ -474,6 +567,24 @@ local function observatory(parent,position)
 	local lens=detail(place,"TelescopeLens",V(0.2,4.7,4.7),position+V(math.cos(0.35)*9.6,14.5+math.sin(0.35)*9.6,0),rgb(165,229,231),Enum.Material.Glass,Enum.PartType.Cylinder,CFrame.Angles(0,0,0.35)); lens.Transparency=0.25
 	for j=1,4 do part(place,"ObservatoryEntranceStep",V(18,0.45,5.0),position+V(0,j*0.45,-42+j*4.5),stone,Enum.Material.Slate) end
 	plaque(place,position+V(-21,4.5,-29),"Moonwatch observatory","A quiet lookout above the crystal coast",P.cream,23)
+	local astronomy=folder(place,"ObservatoryMetalwork")
+	for _,latitude in {-0.42,0.1,0.62,1.1} do
+		local radius=26.15*math.cos(latitude)
+		local height=20+11.15*math.sin(latitude)
+		for j=1,12 do
+			local a,b=(j-1)*math.pi/6,j*math.pi/6
+			local first=position+V(math.sin(a)*radius,height,math.cos(a)*radius)
+			local last=position+V(math.sin(b)*radius,height,math.cos(b)*radius)
+			detail(astronomy,"DomeBrassLatitude",V(0.2,0.2,(last-first).Magnitude), (first+last)/2,P.brass,Enum.Material.Metal,nil,CFrame.lookAt(Vector3.zero,last-first))
+		end
+	end
+	detail(astronomy,"DomeFinialStem",V(0.35,3.3,0.35),position+V(0,32.3,0),P.brass,Enum.Material.Metal)
+	detail(astronomy,"DomeFinialOrb",V(1.4,1.4,1.4),position+V(0,34,0),rgb(188,229,222),Enum.Material.Glass,Enum.PartType.Ball)
+	for j=1,8 do
+		local a=j*math.pi/4
+		detail(astronomy,"ObservatoryFloorStar",V(0.35,0.06,5),position+V(math.sin(a)*8,2.315,math.cos(a)*8),P.brass,Enum.Material.Metal,nil,CFrame.Angles(0,a,0))
+	end
+	for _,item in astronomy:GetChildren() do item.CanQuery=false;item:SetAttribute("ScenicDetail",true) end
 end
 
 -- Traversable landforms have flat, supported walking surfaces. Their stair
@@ -815,6 +926,19 @@ local function centralHub(parent,result)
 	plaque(sell,V(-64,6,-130),"Trading post","Review your creature before selling",P.cream,25)
 	crate(sell,V(-84,0.3,-118),0.85)
 	StationKeeper.create(sell,CFrame.new(-69,0.3,-128.5)*CFrame.Angles(0,math.pi,0),"Sell")
+	local tradingCraft=folder(sell,"TradingPavilion")
+	for _,x in {-80,-48} do
+		for _,z in {-136,-112} do
+			detail(tradingCraft,"TradingPavilionPost",V(0.7,10,0.7),V(x,5.5,z),P.darkWood,Enum.Material.Wood)
+			detail(tradingCraft,"TradingPostFoot",V(1.5,0.6,1.5),V(x,1,z),P.stone,Enum.Material.Slate)
+		end
+	end
+	for j=0,7 do
+		detail(tradingCraft,"TradingCanvasRoof",V(4.4,0.22,29),V(-79.4+j*4.4,11.25+(j<4 and j or 7-j)*0.24,-124),j%2==0 and rgb(145,168,130) or P.cream,Enum.Material.Fabric)
+	end
+	detail(tradingCraft,"TradingCounterTopTrim",V(18,0.25,4.5),V(-64,3.35,-124),P.lightWood,Enum.Material.Wood)
+	for _,x in {-70,-58} do detail(tradingCraft,"TradingCabinetPanel",V(4.1,1.6,0.12),V(x,2,-121.92),rgb(148,165,128),Enum.Material.Wood) end
+	for _,item in tradingCraft:GetChildren() do item.CanQuery=false;item:SetAttribute("ScenicDetail",true) end
 	local home=part(hub,"HomePad",V(24,0.25,19),V(0,0.66,-106),rgb(164,194,143),Enum.Material.Slate)
 	plaque(hub,V(0,5.3,-112),"Brainrot Bloom","Find it · feed it · watch it flourish",P.cream,24)
 	result.spawnCFrame=CFrame.new(0,5,-91)*CFrame.Angles(0,math.pi,0)
@@ -860,15 +984,85 @@ local function centralHub(parent,result)
 		part(green,"BrookCrossingRail",V(37,0.3,0.3),V(68,3.6,z),P.darkWood,Enum.Material.Wood)
 		for _,x in {51,68,85} do part(green,"BrookCrossingPost",V(0.4,2.8,0.4),V(x,2.2,z),P.darkWood,Enum.Material.Wood) end
 	end
+	local finish=folder(hub,"VillageStoneAndPlanting")
+	for _,side in {-1,1} do
+		for j=0,8 do
+			detail(finish,"PlazaPerimeterStone",V(10.0,0.07,0.9),V(side*(17+j*9),0.6,-178),j%2==0 and P.stone or P.cream,Enum.Material.Slate)
+		end
+		for _,z in {-108,-145} do
+			local x=side*91
+			detail(finish,"VillagePlanterBox",V(7.5,1.3,7.5),V(x,1.14,z),P.cream,Enum.Material.Marble)
+			detail(finish,"PlanterSoil",V(6.6,0.12,6.6),V(x,1.85,z),rgb(91,75,55),Enum.Material.Ground)
+			for j=1,3 do
+				local a=j*math.pi*2/3
+				detail(finish,"ClippedVillageShrub",V(4.8,3.1,4.8),V(x+math.sin(a)*1.45,2.8,z+math.cos(a)*1.45),rgb(116,158,103):Lerp(P.cream,j*0.025),Enum.Material.Grass,Enum.PartType.Ball)
+			end
+		end
+	end
+	for _,side in {-1,1} do
+		for j=0,4 do
+			detail(finish,"GazeboFretwork",V(0.28,3.1,0.28),center+V(side*15.45,10.9,-8+j*4),P.cream,Enum.Material.Wood,nil,CFrame.Angles(side*0.6,0,0))
+		end
+	end
+	for _,item in finish:GetChildren() do item.CanQuery=false;item:SetAttribute("ScenicDetail",true) end
+end
+
+local function pathFinishes(island,offset,index)
+	local paths=folder(island,"PathFinishes")
+	local trim=index==2 and rgb(154,111,81) or index==3 and rgb(113,150,165) or rgb(139,151,124)
+	local pale=index==2 and rgb(231,193,147) or index==3 and rgb(195,218,215) or rgb(222,215,181)
+	local function inlay(name,size,at,color,rotation)
+		local p=detail(paths,name,size,offset+at,color,Enum.Material.Slate,nil,rotation)
+		p.CanQuery=false;p:SetAttribute("ScenicDetail",true)
+	end
+	-- Low kerbs and irregular masonry joints define a deliberate main avenue.
+	-- Nothing rises high enough to interfere with walking or digging.
+	for j=0,10 do
+		local z=-158+j*8.5
+		for _,side in {-1,1} do
+			inlay("AvenueBorderStone",V(0.65,0.18,7.8),V(side*11.6,0.49,z),trim:Lerp(pale,(j%3)*0.06))
+		end
+		if z< -120 or z> -94 then
+			inlay("AvenuePavingJoint",V(21.8,0.018,0.09),V(0,0.548,z),trim:Lerp(pale,0.12))
+		end
+	end
+	-- Lateral landmark paths get a finer edge without filling their paving gaps.
+	for _,side in {-1,1} do
+		for j=1,12 do
+			local x=side*(32+j*14)
+			if side<0 or index==3 or j<12 then
+				for _,edge in {-1,1} do
+					inlay("TrailEdgeCobble",V(11.5,0.12,0.65),V(x,0.40,-171+edge*4.7),pale:Lerp(trim,(j%3)*0.15),CFrame.Angles(0,(j%2)*0.045,0))
+				end
+			end
+		end
+	end
+	-- Small recessed corner insets distinguish the far worlds' approach courts.
+	if index>1 then
+		for _,side in {-1,1} do
+			for j=0,5 do
+				inlay("ExpeditionMosaic",V(1.5,0.04,1.5),V(side*8,0.55,-153+j*11),index==2 and rgb(202,155,96) or rgb(137,196,196),CFrame.Angles(0,math.pi/4,0))
+			end
+		end
+	end
 end
 
 function World.startDayNight()
 	if cycleStarted then return end
 	cycleStarted=true
 	Lighting.ClockTime=9; Lighting.Brightness=2.1; Lighting.GlobalShadows=true
-	Lighting.Ambient=rgb(102,113,141); Lighting.OutdoorAmbient=rgb(138,151,164)
+	Lighting.Ambient=rgb(82,97,118); Lighting.OutdoorAmbient=rgb(128,143,155)
+	Lighting.ShadowSoftness=0.35;Lighting.EnvironmentDiffuseScale=0.65;Lighting.EnvironmentSpecularScale=0.65
+	Lighting.ColorShift_Top=rgb(14,8,0)
 	local atmosphere=Lighting:FindFirstChildOfClass("Atmosphere") or Instance.new("Atmosphere")
-	atmosphere.Density=0.19; atmosphere.Color=rgb(205,232,255); atmosphere.Decay=rgb(161,186,211); atmosphere.Parent=Lighting
+	atmosphere.Density=0.23;atmosphere.Offset=0.08;atmosphere.Haze=1.2;atmosphere.Glare=0.08
+	atmosphere.Color=rgb(211,231,239);atmosphere.Decay=rgb(185,174,158);atmosphere.Parent=Lighting
+	local grade=Lighting:FindFirstChild("MapColorGrade") or Instance.new("ColorCorrectionEffect")
+	grade.Name="MapColorGrade";grade.Contrast=0.07;grade.Saturation=0.06;grade.Brightness=0.015;grade.TintColor=rgb(255,252,246);grade.Parent=Lighting
+	local bloom=Lighting:FindFirstChild("MapBloom") or Instance.new("BloomEffect")
+	bloom.Name="MapBloom";bloom.Intensity=0.16;bloom.Size=24;bloom.Threshold=1.25;bloom.Parent=Lighting
+	local rays=Lighting:FindFirstChild("MapSunRays") or Instance.new("SunRaysEffect")
+	rays.Name="MapSunRays";rays.Intensity=0.035;rays.Spread=0.75;rays.Parent=Lighting
 	task.spawn(function()
 		local start=os.clock()
 		while true do Lighting.ClockTime=(9+(os.clock()-start)/30)%24;task.wait(0.5) end
@@ -907,6 +1101,8 @@ function World.build(config)
 		plaque(island,offset+V(39,4.3,-26),name,"Choose Dig while standing in the sand",P.cream,24)
 		landscapes(island,offset,index,rng)
 		layeredBiomes(island,offset,index)
+		BiomeDetails.build(island,offset,index)
+		pathFinishes(island,offset,index)
 		-- The travel landmark sits directly on the main avenue between the
 		-- village and pit, with a trail visible from either approach.
 		PortalFactory.create(island,offset+V(0,0,-35),id,config.Worlds[index].color)

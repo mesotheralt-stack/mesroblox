@@ -67,6 +67,18 @@ local function verifyWorld(World)
 	end
 	assert(built.pits.Dunes.center.X-built.pits.Meadow.center.X==1040,"Expanded islands must remain separate")
 	local scene=workspace:FindFirstChild("BrainrotWorld")
+	local scenicCount=0
+	for _,piece in scene:GetDescendants() do
+		if piece:GetAttribute("ScenicDetail")==true then
+			assert(piece:IsA("BasePart") and piece.Anchored and not piece.CanCollide and not piece.CanTouch and not piece.CanQuery,"Scenery finishing must stay inert and leave interaction rays clear")
+			scenicCount+=1
+		end
+	end
+	assert(scenicCount>1500,"The map refinement must include substantial authored detail")
+	for _,id in {"Meadow","Dunes","Cosmic"} do
+		local island=scene:FindFirstChild(id)
+		assert(island:FindFirstChild("BiomeDetails") and island:FindFirstChild("PathFinishes"),"Each world needs authored scenic pockets and finished paths")
+	end
 	local boundaryChecks=0
 	local terrainRoutes=0
 	local function covered(intervals,first,last,description)
@@ -289,6 +301,7 @@ local function verifyWorld(World)
 	assert(#plot.displays:GetChildren()==0 and plot.model:GetAttribute("OwnerUserId")==0,"Released gardens must clear models and ownership")
 	assert(manager:claim(owners[1])==1 and #plot.displays:GetChildren()==0,"A reused plot must start empty")
 	assert(lighting.ClockTime == 9, "Lighting cycle must start")
+	assert(lighting:FindFirstChild("MapColorGrade") and lighting:FindFirstChild("MapBloom").Intensity<=0.2 and lighting:FindFirstChild("MapSunRays").Intensity<0.05,"Scenery needs a restrained, consistent lighting treatment")
 	assert(terrainRoutes==9,"All three worlds need their own complete three-stage climbing route")
 	print("PASS actual map startup, removed showcase, "..terrainRoutes.." connected biome stair routes, "..boundaryChecks.." continuous cliff edges, portals, six gardens and display lifecycle")
 end

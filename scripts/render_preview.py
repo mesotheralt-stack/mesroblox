@@ -132,11 +132,12 @@ def font(size,bold=False):
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--maps-only',action='store_true',help='Render only the scenery views')
     parser.add_argument('--variants-only',action='store_true',help='Render the finish comparison without rebuilding the other previews')
     args=parser.parse_args()
     content=json.loads((ROOT/'build/scene-geometry.json').read_text())
     output=ROOT/'build/previews';output.mkdir(exist_ok=True)
-    if content.get('variants'):
+    if content.get('variants') and not args.maps_only:
         tile_w,tile_h=420,410
         variants=content['variants']
         rows=math.ceil(len(variants)/5)
@@ -158,32 +159,33 @@ def main():
         print('Rendered all five collectible finishes in build/previews/variant-contact-sheet.png')
     if args.variants_only:
         return
-    w,h=720,650
-    columns=4 if len(content['creatures'])>24 else 3
-    rows=math.ceil(len(content['creatures'])/columns)
-    sheet=Image.new('RGB',(w*columns,h*rows+130),(239,235,222)); pen=ImageDraw.Draw(sheet)
-    pen.text((38,24),'BRAINROT BLOOM / CREATURE SCULPTURES',font=font(30,True),fill=(34,53,43))
-    pen.text((38,72),'Geometry previews • Actual Part positions and rotations • Studio materials and lighting may differ',font=font(20),fill=(92,108,93))
-    for i,creature in enumerate(content['creatures']):
-        image=render(creature['parts'],(w,h-110),depth_buffer=True)
-        draw=ImageDraw.Draw(image)
-        image.save(output/(creature['id']+'.png'))
-        x=(i%columns)*w;y=(i//columns)*h+130
-        sheet.paste(image,(x,y))
-        pen.text((x+34,y+h-100),creature['name'],font=font(25,True),fill=(34,53,43))
-        pen.text((x+34,y+h-62),creature['rarity']+'  /  '+str(len(creature['parts']))+' sculpted pieces',font=font(21),fill=(92,108,93))
-    sheet.resize((columns*360,round((h*rows+130)/2)),Image.Resampling.LANCZOS).save(output/'creature-contact-sheet.png')
-    if content.get('detectors'):
-        tile_w,tile_h=560,620
-        gear=Image.new('RGB',(tile_w*4,tile_h*2+90),(239,235,222))
-        pen=ImageDraw.Draw(gear)
-        pen.text((30,24),'BRAINROT BLOOM / DETECTOR CRAFTSMANSHIP',font=font(27,True),fill=(34,53,43))
-        for i,detector in enumerate(content['detectors']):
-            picture=render(detector['parts'],(tile_w,tile_h-80),camera=(5,4,-9),depth_buffer=True)
-            x,y=(i%4)*tile_w,90+(i//4)*tile_h
-            gear.paste(picture,(x,y))
-            pen.text((x+26,y+tile_h-66),detector['name'],font=font(24,True),fill=(34,53,43))
-        gear.resize((1120,665),Image.Resampling.LANCZOS).save(output/'detector-contact-sheet.png')
+    if not args.maps_only:
+        w,h=720,650
+        columns=4 if len(content['creatures'])>24 else 3
+        rows=math.ceil(len(content['creatures'])/columns)
+        sheet=Image.new('RGB',(w*columns,h*rows+130),(239,235,222)); pen=ImageDraw.Draw(sheet)
+        pen.text((38,24),'BRAINROT BLOOM / CREATURE SCULPTURES',font=font(30,True),fill=(34,53,43))
+        pen.text((38,72),'Geometry previews • Actual Part positions and rotations • Studio materials and lighting may differ',font=font(20),fill=(92,108,93))
+        for i,creature in enumerate(content['creatures']):
+            image=render(creature['parts'],(w,h-110),depth_buffer=True)
+            draw=ImageDraw.Draw(image)
+            image.save(output/(creature['id']+'.png'))
+            x=(i%columns)*w;y=(i//columns)*h+130
+            sheet.paste(image,(x,y))
+            pen.text((x+34,y+h-100),creature['name'],font=font(25,True),fill=(34,53,43))
+            pen.text((x+34,y+h-62),creature['rarity']+'  /  '+str(len(creature['parts']))+' sculpted pieces',font=font(21),fill=(92,108,93))
+        sheet.resize((columns*360,round((h*rows+130)/2)),Image.Resampling.LANCZOS).save(output/'creature-contact-sheet.png')
+        if content.get('detectors'):
+            tile_w,tile_h=560,620
+            gear=Image.new('RGB',(tile_w*4,tile_h*2+90),(239,235,222))
+            pen=ImageDraw.Draw(gear)
+            pen.text((30,24),'BRAINROT BLOOM / DETECTOR CRAFTSMANSHIP',font=font(27,True),fill=(34,53,43))
+            for i,detector in enumerate(content['detectors']):
+                picture=render(detector['parts'],(tile_w,tile_h-80),camera=(5,4,-9),depth_buffer=True)
+                x,y=(i%4)*tile_w,90+(i//4)*tile_h
+                gear.paste(picture,(x,y))
+                pen.text((x+26,y+tile_h-66),detector['name'],font=font(24,True),fill=(34,53,43))
+            gear.resize((1120,665),Image.Resampling.LANCZOS).save(output/'detector-contact-sheet.png')
     for world in content['worlds']:
         image=render(world['parts'],(1600,1200),camera=(1.1,1.0,-1.4),background=(222,236,230))
         ImageDraw.Draw(image).text((32,24),world['name']+' • geometry preview',font=font(28,True),fill=(30,50,42))
@@ -193,6 +195,10 @@ def main():
         image=render(detail['parts'],(1600,1100),camera=camera,background=(222,236,230))
         ImageDraw.Draw(image).text((32,24),detail['name']+' • geometry preview',font=font(28,True),fill=(30,50,42))
         image.save(output/(detail['id'].lower()+'-terrain.png'))
+    for detail in content.get('scenicViews',[]):
+        image=render(detail['parts'],(1600,1100),camera=(1.0,.85,-1.5),background=(222,236,230))
+        ImageDraw.Draw(image).text((32,24),detail['name']+' • geometry preview',font=font(28,True),fill=(30,50,42))
+        image.save(output/(detail['id'].lower()+'-scenery.png'))
     meadow=content['worlds'][0]
     village=[p for p in meadow['parts'] if abs(p['cf'][0])<128 and -190<p['cf'][2]<-30 and (max(p['size'])<90 or p['name'] in {'VillagePlaza','PlazaInlay','CentralWalkway'})]
     village.append({'shape':'Block','size':[275,.2,180],'cf':[0,.15,-110,1,0,0,0,1,0,0,0,1],'color':[.55,.66,.46],'alpha':1,'material':'Grass'})
@@ -203,6 +209,6 @@ def main():
         image=render(content['gardens']['parts'],(1600,1200),camera=(1,1.1,1.5),background=(222,236,230))
         ImageDraw.Draw(image).text((32,24),'Six Personal Gardens • geometry preview',font=font(28,True),fill=(30,50,42))
         image.save(output/'personal-gardens.png')
-    print('Rendered original creature contact sheet and three map geometry previews in build/previews/')
+    print('Rendered requested geometry previews in build/previews/')
 
 if __name__=='__main__':main()

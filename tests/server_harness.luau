@@ -35,6 +35,7 @@ local vectorMeta = {}
 local function vec(x,y,z) return setmetatable({X=x,Y=y,Z=z},vectorMeta) end
 vectorMeta.__sub=function(a,b) return vec(a.X-b.X,a.Y-b.Y,a.Z-b.Z) end
 vectorMeta.__add=function(a,b) return vec(a.X+b.X,a.Y+b.Y,a.Z+b.Z) end
+vectorMeta.__div=function(a,b) return vec(a.X/b,a.Y/b,a.Z/b) end
 vectorMeta.__mul=function(a,b) if type(b)=="number" then return vec(a.X*b,a.Y*b,a.Z*b) end return vec(a.X+b.X,a.Y+b.Y,a.Z+b.Z) end
 vectorMeta.__index=function(a,key) if key=="Magnitude" then return math.sqrt(a.X*a.X+a.Y*a.Y+a.Z*a.Z) end end
 local Vector3={new=vec,zero=vec(0,0,0)}
@@ -100,7 +101,7 @@ local game={JobId="mock-server"}
 function game:GetService(name) return ({Players=Players,ReplicatedStorage=ReplicatedStorage,DataStoreService={GetDataStore=function() if dataStoreInitFailure then error("Mock unpublished experience") end; return store end},HttpService=HttpService,RunService=RunService})[name] end
 function game:BindToClose(callback) self.OnClose=callback end
 local script={Parent=node("Folder")}
-for _, name in {"World","DetectorTool","GardenService","PortalFactory","StationKeeper"} do local item=node("ModuleScript",name);item.Parent=script.Parent end
+for _, name in {"World","DetectorTool","GardenService","PortalFactory","StationKeeper","BiomeDetails"} do local item=node("ModuleScript",name);item.Parent=script.Parent end
 local forcedRandomNumbers = {} -- Unit draws queued by tests; production never sees this hook.
 local randomNumberDraws = 0
 local forcedRandomIntegers = {}
@@ -132,11 +133,13 @@ end
 local ActualGardenService
 local ActualPortalFactory
 local ActualStationKeeper
+local ActualBiomeDetails
 local require=function(module)
 	if module.Name=="Config" then return Config end
 	if module.Name=="GardenService" then return assert(ActualGardenService,"Real GardenService must be loaded by test runner") end
 	if module.Name=="PortalFactory" then return assert(ActualPortalFactory,"Real PortalFactory must be loaded by test runner") end
 	if module.Name=="StationKeeper" then return assert(ActualStationKeeper,"Real StationKeeper must be loaded by test runner") end
+	if module.Name=="BiomeDetails" then return assert(ActualBiomeDetails,"Real BiomeDetails must be loaded by test runner") end
 	if module.Name=="World" then return {build=function() return map end} end
 	if module.Name=="CreatureFactory" then return {create=function(spec,scale,variant) local model=node("Model",spec.name);model.AppliedScale=scale;model.AppliedVariant=variant;return model end} end
 	if module.Name=="DetectorTool" then return setmetatable({},{__index=function() return function() end end}) end
