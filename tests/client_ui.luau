@@ -160,6 +160,14 @@ end
 local function checkClient()
 	assert(textExists("Brainrot Bloom"),"HUD must initialize")
 	local gameScreen=gui:FindFirstChild("BrainrotBloom")
+	assert(gameScreen:GetAttribute("MusicWorld")=="Meadow","The initial music theme must match the current world")
+	for _,worldId in {"Dunes","Cosmic","Meadow","Unknown"} do
+		state.world=worldId
+		remoteFolder:FindFirstChild("State").OnClientEvent:Fire(state)
+		assert(gameScreen:GetAttribute("MusicWorld")== (worldId=="Unknown" and "Meadow" or worldId),"World updates must select a supported music theme")
+	end
+	state.world="Meadow"
+	remoteFolder:FindFirstChild("State").OnClientEvent:Fire(state)
 	local detectorButton=gameScreen:FindFirstChild("DetectorDig")
 	local detectorStatus=gameScreen:FindFirstChild("ExpeditionStatus")
 	local function controlsShown() return visible(detectorButton) and visible(detectorStatus) end
@@ -184,6 +192,17 @@ local function checkClient()
 		local screen
 		for _,object in uiNodes do if object.ClassName=="ScreenGui" then screen=object;break end end
 		screen:GetPropertyChangedSignal("AbsoluteSize"):Fire()
+		click("?")
+		assert(textExists("Sound: On") and textExists("Music: On"),"Help must offer separate sound and music controls")
+		click("Music: On")
+		assert(gameScreen:GetAttribute("MusicMuted")==true and not gameScreen:GetAttribute("SoundMuted"),"Muting music must leave sound effects enabled")
+		click("×");click("?")
+		assert(textExists("Music: Off"),"The music choice must survive rebuilding the help page")
+		click("Sound: On")
+		assert(gameScreen:GetAttribute("SoundMuted")==true and gameScreen:GetAttribute("MusicMuted")==true,"Sound effects can be muted independently")
+		click("Music: Off")
+		assert(not gameScreen:GetAttribute("MusicMuted") and gameScreen:GetAttribute("SoundMuted")==true,"Music can be restored while sound effects remain muted")
+		click("Sound: Off");click("×")
 		assert(screen:GetAttribute("MenuOpen")==false and screen:GetAttribute("Capturing")==false,"Exploration must expose clear input state to sprint")
 		local wallet=screen:FindFirstChild("WalletHud")
 		local help

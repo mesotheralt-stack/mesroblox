@@ -118,6 +118,7 @@ Cloud tasks already have an isolated checkout; use this checkout without creatin
 | `src/server/Main.server.luau` | Profiles, saving, shops, income, validated capture sessions |
 | `src/client/Main.client.luau` | HUD, shop and collection UI, teleport controls, capture presentation |
 | `src/client/Sprint.client.luau` | Keyboard, controller, and touch sprint input |
+| `src/client/Music.client.luau` | Original ambient themes, world changes, capture ducking, and independent music mute |
 | `src/server/Sprint.server.luau` | Validated sprint requests and character speed lifecycle |
 
 ## Geometry previews
@@ -146,3 +147,9 @@ These checks do **not** render the game or connect to Roblox DataStores. Follow 
 ## Sound effects
 
 Local sound cues accompany scans, signals, capture taps and completion, purchases, feeding, sales, portal travel, and errors. Quiet button clicks use Roblox-bundled sounds; no uploaded audio permission is required. Open **? → Sound: On/Off** to mute feedback for the current session. Playback uses a fixed sound bank and per-cue throttling; income ticks stay silent. Confirm playback and volume balance in Studio, including touch capture and mute during an active sound.
+
+## Background music
+
+Original, gently sequenced ambient themes accompany Clover Commons, Sunset Sands, and Moonbloom Cove. The music uses Roblox-bundled samples, so it needs no uploaded track IDs or audio permissions. World travel changes the theme, and music becomes quieter during scans and capture challenges so signal feedback stays clear.
+
+Open **? → Music: On/Off** to mute or restore the music independently of sound effects. These audio choices last for the current session, including character resets. Automated music checks execute the actual client script to verify theme changes, tempos, crossfades, mute, ducking, bounded voices, and cleanup. Check actual playback, transitions, and volume balance in Roblox Studio; automated checks cannot establish how the mix sounds in the engine.

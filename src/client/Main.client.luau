@@ -490,6 +490,7 @@ local function updateHud()
 	incomeLabel.Text = "+$" .. money(state.income) .. " / sec  •  " .. tostring(#(state.brainrots or {})) .. " brainrots"
 	local d = find(Config.Detectors, state.detector)
 	local w = find(Config.Worlds, state.world)
+	screen:SetAttribute("MusicWorld",w and w.id or "Meadow")
 	detectorLabel.Text = (d and d.name or "Detector") .. "  /  " .. (w and w.name or "Meadow")
 end
 
@@ -1038,6 +1039,9 @@ local function helpPage()
  button(body,screen:GetAttribute("SoundMuted") and "Sound: Off" or "Sound: On",function()
   screen:SetAttribute("SoundMuted",not screen:GetAttribute("SoundMuted"));renderPage()
  end,{Size=UDim2.new(1,0,0,44)})
+ button(body,screen:GetAttribute("MusicMuted") and "Music: Off" or "Music: On",function()
+  screen:SetAttribute("MusicMuted",not screen:GetAttribute("MusicMuted"));renderPage()
+ end,{Name="MusicToggle",Size=UDim2.new(1,0,0,44)})
 	title.Text="A little guide"
 	subtitle.Text="Find something weird. Feed it. Watch your garden grow."
 	button(body,"Take me to the sand pit",function()

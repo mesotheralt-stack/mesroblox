@@ -17,6 +17,13 @@ These engine checks remain to be performed in Roblox Studio. Automated CLI check
 
 For tuning, use `src/shared/Config.luau`; keep game rewards and purchases on the server. No debug money grant or save-wipe endpoint is shipped.
 
+## Background music checks
+
+- Listen to the ambient theme in Clover Commons, then travel to Sunset Sands and Moonbloom Cove. Each world should have its own melody. Travel back, visit a personal garden, and reset the character; music should remain bounded without duplicate overlapping scores or abrupt bursts.
+- Start a scan and complete or expire a capture. Music should become quieter during the challenge and return afterward, leaving the detector and capture sounds easy to hear.
+- Open **?** and toggle **Music: On/Off** while sound effects remain enabled. Toggle **Sound: On/Off** independently and verify music can keep playing. Close/reopen the help page and reset the character; both choices should remain for the session.
+- Check these controls in desktop, touch portrait, and narrow landscape views. Listen for comfortable volume, clean note endings, and smooth theme changes in the actual Roblox engine.
+
 ## Collectible finish checks
 
 - Inspect Normal, Bronze, Silver, Gold, and Diamond versions in the index. Each finish should have a distinct model, readable face, clear odds and income multiplier; an undiscovered finish remains a silhouette. Check the selector and cards on portrait phones and landscape screens.

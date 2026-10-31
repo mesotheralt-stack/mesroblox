@@ -82,6 +82,11 @@ def main() -> int:
             + '\n;(function()\n' + (ROOT / 'src/client/PortalEffects.client.luau').read_text()
             + '\nend)()\nverifyPortalEffects()\n')
         subprocess.run([runtime, str(portal_test)], check=True, cwd=ROOT)
+        music_test = Path(temporary) / 'music-run.luau'
+        music_test.write_text((ROOT / 'tests/music.luau').read_text()
+            + '\n;(function()\n' + (ROOT / 'src/client/Music.client.luau').read_text()
+            + '\nend)()\nverifyMusic()\n')
+        subprocess.run([runtime, str(music_test)], check=True, cwd=ROOT)
     print('Studio playtest remains required for rendering, multiplayer and live persistence.', flush=True)
     return 0
 
